@@ -242,7 +242,7 @@ export default defineDocs({
   },
 
   github: {
-    url: "https://github.com/maniculehq/lim-docs",
+    url: "https://github.com/maniculehq/lim-run-docs",
     branch: "main",
   },
 
