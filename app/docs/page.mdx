@@ -1,0 +1,46 @@
+---
+title: Introduction
+description: Run Xcode and iOS sandboxes in the cloud, controllable from any language or coding agent.
+order: 1
+icon: rocket
+---
+
+# lim.run
+
+Limrun gives cloud coding agents (Claude Code, Cursor, Codex) hands-on access to remote iOS simulators
+with attached Xcode sandboxes. No local Mac. No `xcodebuild` running on the agent's host.
+
+The agent issues `lim` commands, Limrun handles the build and the simulator, and you watch the device
+stream live in a browser.
+
+## What you can do
+
+- **Remote iOS builds** — Run `xcodebuild` on a hosted Xcode instance from Linux, Windows, or CI
+- **iOS simulator control** — Tap, type, scroll, take screenshots, and record video via the TypeScript SDK or CLI
+- **MCP integration** — Each instance exposes a Model Context Protocol server, plug directly into Claude Desktop, Cursor, or Codex
+- **Any agent, any OS** — The `lim` CLI and `@limrun/api` SDK work identically on every platform
+
+## Quick navigation
+
+<Cards>
+  <Card
+    title="Quickstart"
+    description="Up and running in 3 minutes — CLI install, auth, and first iOS instance."
+    href="/docs/quickstart"
+  />
+  <Card
+    title="Build with Remote Xcode"
+    description="Sync source, run xcodebuild remotely, and auto-install on the simulator."
+    href="/docs/ios/build-with-xcode"
+  />
+  <Card
+    title="Run an iOS Simulator"
+    description="Provision, connect, and control a cloud iPhone or iPad simulator."
+    href="/docs/ios/run-simulator"
+  />
+  <Card
+    title="Control an iOS Instance"
+    description="Full device-control API — apps, input, element tree, recordings, simctl."
+    href="/docs/ios/control-instance"
+  />
+</Cards>

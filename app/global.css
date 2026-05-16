@@ -1,0 +1,285 @@
+@import "tailwindcss";
+@import "@farming-labs/theme/pixel-border/css";
+
+/* ─── Fonts ──────────────────────────────────────────────────────── */
+:root {
+  --fd-font-sans: "JetBrains Mono", monospace;
+  --fd-font-mono: "JetBrains Mono", monospace;
+  --radius: 0px;
+}
+
+body {
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* ─── Dark mode colours ──────────────────────────────────────────── */
+.dark {
+  color-scheme: dark;
+  --color-fd-background: hsl(0 0% 0%);
+  --color-fd-foreground: #ffffff;
+  --color-fd-card: hsl(0 0% 3%);
+  --color-fd-card-foreground: #ffffff;
+  --color-fd-popover: hsl(0 0% 3%);
+  --color-fd-popover-foreground: #ffffff;
+  --color-fd-primary: hsl(25 100% 50%);
+  --color-fd-primary-foreground: #000000;
+  --color-fd-secondary: hsl(0 0% 10%);
+  --color-fd-secondary-foreground: #ffffff;
+  --color-fd-muted: hsl(0 0% 10%);
+  --color-fd-muted-foreground: hsl(0 0% 50%);
+  --color-fd-accent: hsl(0 0% 10%);
+  --color-fd-accent-foreground: #ffffff;
+  --color-fd-border: hsl(0 0% 18%);
+  --color-fd-ring: hsl(25 100% 50%);
+  --scrollbar-thumb: hsl(0 0% 18%);
+  --scrollbar-thumb-hover: hsl(25 100% 50%);
+}
+
+.dark body {
+  background: hsl(0 0% 0%);
+  color: #fff;
+}
+
+/* ─── Light mode colours ─────────────────────────────────────────── */
+:root:not(.dark),
+.light {
+  color-scheme: light;
+  --color-fd-background: hsl(0 0% 99%);
+  --color-fd-foreground: hsl(0 0% 4%);
+  --color-fd-card: hsl(0 0% 97%);
+  --color-fd-card-foreground: hsl(0 0% 4%);
+  --color-fd-popover: hsl(0 0% 97%);
+  --color-fd-popover-foreground: hsl(0 0% 4%);
+  --color-fd-primary: hsl(25 100% 50%);
+  --color-fd-primary-foreground: #000000;
+  --color-fd-secondary: hsl(0 0% 92%);
+  --color-fd-secondary-foreground: hsl(0 0% 4%);
+  --color-fd-muted: hsl(0 0% 93%);
+  --color-fd-muted-foreground: hsl(0 0% 42%);
+  --color-fd-accent: hsl(0 0% 92%);
+  --color-fd-accent-foreground: hsl(0 0% 4%);
+  --color-fd-border: hsl(0 0% 86%);
+  --color-fd-ring: hsl(25 100% 50%);
+  --scrollbar-thumb: hsl(0 0% 80%);
+  --scrollbar-thumb-hover: hsl(25 100% 50%);
+}
+
+:root:not(.dark) body,
+.light body {
+  background: hsl(0 0% 99%);
+  color: hsl(0 0% 4%);
+}
+
+/* ─── Orange selection ───────────────────────────────────────────── */
+::selection {
+  background: hsl(25 100% 50%);
+  color: #000;
+}
+
+/* ─── Active sidebar link ────────────────────────────────────────── */
+.fd-sidebar-link-active,
+.fd-sidebar-link[data-active="true"] {
+  color: hsl(25 100% 50%) !important;
+}
+
+.fd-sidebar-folder-content .fd-sidebar-link-active::before {
+  background: hsl(25 100% 50%);
+}
+
+/* ─── Sidebar search hover ───────────────────────────────────────── */
+.fd-sidebar-search-btn:hover {
+  color: hsl(25 100% 60%) !important;
+}
+
+/* ─── Code block stripe header ───────────────────────────────────── */
+.fd-codeblock-title {
+  background-image: repeating-linear-gradient(-45deg,
+      color-mix(in srgb, hsl(25 100% 50%) 8%, transparent),
+      color-mix(in srgb, hsl(25 100% 50%) 8%, transparent) 1px,
+      transparent 1px,
+      transparent 6px) !important;
+  color: hsl(25 100% 65%) !important;
+}
+
+/* ─── Nav CTA button ─────────────────────────────────────────────── */
+.fd-nav-cta,
+[data-nav-cta] {
+  background: hsl(25 100% 50%) !important;
+  color: #000 !important;
+  border-radius: 0 !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  font-size: 0.72rem !important;
+}
+
+/* ─── Callout ────────────────────────────────────────────────────── */
+.fd-callout[data-type="info"],
+.fd-callout:not([data-type]) {
+  border-left: 2px solid hsl(25 100% 50%);
+}
+
+/* ─── Prev / Next navigation cards ──────────────────────────────── */
+/*
+ * fumadocs renders these as:  article a[class*="rounded-lg border"]
+ * The pixel-border theme sets hover:bg to fd-muted which is near-black
+ * in dark mode — invisible. Override with a visible orange-tinted card.
+ */
+article a[class*="rounded-lg border"] {
+  background: var(--color-fd-card);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+article a[class*="rounded-lg border"]:hover {
+  background: color-mix(in srgb, hsl(25 100% 50%) 9%, var(--color-fd-card)) !important;
+  border-color: hsl(25 100% 50%) !important;
+}
+
+/* ─── Breadcrumb ─────────────────────────────────────────────────── */
+.fd-breadcrumb-parent,
+.fd-breadcrumb-current {
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* ─── Inline code ────────────────────────────────────────────────── */
+code:not(pre code) {
+  background: color-mix(in srgb, hsl(25 100% 50%) 10%, var(--color-fd-card));
+  color: hsl(25 100% 62%);
+  padding: 0.1em 0.35em;
+  border: 1px solid color-mix(in srgb, hsl(25 100% 50%) 25%, transparent);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.875em;
+}
+
+/* ─── h1 underline ───────────────────────────────────────────────── */
+.fd-page-body h1 {
+  border-bottom: 1px solid var(--color-fd-border);
+  padding-bottom: 0.6rem;
+}
+
+/* ─── Table header ───────────────────────────────────────────────── */
+.fd-page-body table th {
+  border-bottom: 2px solid hsl(25 100% 50%) !important;
+  background: var(--color-fd-card) !important;
+}
+
+/* ─── Steps counter ──────────────────────────────────────────────── */
+.fd-steps>li::before {
+  background: hsl(25 100% 50%) !important;
+  color: #000 !important;
+  border-radius: 0 !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-weight: 700 !important;
+}
+
+.fd-steps>li {
+  border-left: 1px solid var(--color-fd-border);
+}
+
+/* ─── Accordion hover ────────────────────────────────────────────── */
+[data-radix-accordion-trigger]:hover {
+  color: hsl(25 100% 60%) !important;
+}
+
+/* ─── Content width override ─────────────────────────────────────── */
+/*
+ * fumadocs hardcodes max-w-[900px] on the docs page container in JS —
+ * the contentWidth config option only sets a CSS var that the layout
+ * never reads. Override it directly here.
+ */
+ @media (min-width: 1024px) {
+  .fd-page-meta {
+    padding-top: 20px !important;
+    padding-bottom: 20px !important;
+  }
+ }
+
+
+
+#nd-docs-layout [class*="max-w-[900px]"] {
+  /* max-width: 1000px !important;
+  margin: auto !important; */
+  padding-left: 50px !important;
+  padding-right: 50px !important;
+}
+
+/* ─── Sidebar rail stripes (desktop) ────────────────────────────── */
+@media (min-width: 768px) {
+  #nd-docs-layout aside#nd-sidebar {
+    --fd-sidebar-rail-width: 5px;
+    --fd-sidebar-item-inset: 16px;
+    --fd-sidebar-nested-marker-offset: calc(var(--fd-sidebar-item-inset) + 1.125rem);
+    border-left: 1px solid var(--color-fd-border) !important;
+    border-right: 1px solid var(--color-fd-border) !important;
+    isolation: isolate !important;
+  }
+
+  #nd-docs-layout aside#nd-sidebar::before,
+  #nd-docs-layout aside#nd-sidebar::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: var(--fd-sidebar-rail-width) !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    background-color: color-mix(in srgb, var(--color-fd-background) 94%, transparent) !important;
+    background-image: repeating-linear-gradient(-45deg,
+        color-mix(in srgb, var(--color-fd-border) 2%, transparent),
+        color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px,
+        transparent 1px,
+        transparent 6px) !important;
+  }
+
+  #nd-docs-layout aside#nd-sidebar::before {
+    left: 0 !important;
+    border-right: 1px solid var(--color-fd-border) !important;
+  }
+
+  #nd-docs-layout aside#nd-sidebar::after {
+    right: 0 !important;
+    border-left: 1px solid var(--color-fd-border) !important;
+  }
+
+  #nd-docs-layout aside#nd-sidebar>* {
+    position: relative !important;
+    z-index: 1 !important;
+  }
+
+  #nd-docs-layout aside a[data-active],
+  #nd-docs-layout aside button[aria-controls][aria-expanded] {
+    padding-left: calc(0.625rem + var(--fd-sidebar-item-inset)) !important;
+    padding-right: calc(0.625rem + var(--fd-sidebar-item-inset)) !important;
+  }
+
+  #nd-docs-layout aside div.overflow-hidden[data-state] a[data-active] {
+    padding-left: calc(2rem + var(--fd-sidebar-item-inset)) !important;
+  }
+
+  #nd-docs-layout aside a[data-active="true"]::before {
+    margin-left: 0 !important;
+    inset-inline-start: calc(var(--fd-sidebar-item-inset) + 0.5rem) !important;
+  }
+
+  #nd-docs-layout aside div.overflow-hidden[data-state] a[data-active="true"]::before {
+    inset-inline-start: var(--fd-sidebar-nested-marker-offset) !important;
+  }
+
+  #nd-docs-layout aside div.overflow-hidden[data-state]::before {
+    margin-left: calc(var(--fd-sidebar-item-inset) + 0.5rem) !important;
+  }
+}
+
+/* ─── Hide Ask AI when mobile sidebar is open ────────────────────── */
+@media (max-width: 767px) {
+
+  body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-floating-btn,
+  body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-floating-trigger,
+  body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-fm-trigger-btn,
+  body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-fm-input-bar {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}

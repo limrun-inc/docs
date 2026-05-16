@@ -1,0 +1,270 @@
+---
+title: Control an iOS Instance
+description: Connect to a running iOS simulator and drive it — install apps, read the screen, drive input, batch actions, stream logs, and drop to simctl.
+order: 3
+icon: terminal
+---
+
+# Control an iOS Instance
+
+Once you have a provisioned iOS instance (see [Run an iOS Simulator](/docs/ios/run-simulator)), the
+control surface gives you everything you need to drive the simulator from code: connect a client,
+manage app lifecycle, observe the screen, send input, batch interactions, stream logs, and drop to
+`simctl` for anything outside the typed API.
+
+<Accordions>
+  <Accordion title="Copy this prompt for your coding agent">
+    ```text
+    You are helping a developer control an iOS simulator on Limrun. Assume the user already has an IosInstance.
+
+    Prefer this order when scripting an interaction:
+    1. Open the client with await Ios.createInstanceClient({ apiUrl, token }). Do not use a non-existent iosInstances.createClient.
+    2. Make sure the right app is installed and foregrounded. Use client.installApp(url), client.listApps(), and client.launchApp(bundleId, 'RelaunchIfRunning') as needed.
+    3. Read the screen before each action with client.elementTree(). Use client.screenshot() only when a visual check matters.
+    4. Drive input by accessibility selector first ({ AXLabel: 'Continue' } or { AXUniqueId: 'startButton' }). Coordinates are a fallback.
+    5. For multi-step interactions, call client.performActions([...]) so the pod runs the batch with no round trips.
+    6. For app logs use client.streamAppLog(bundleId) (live) or client.appLogTail(bundleId, n) (one-shot).
+    7. Drop to client.simctl(args) only when the typed surface doesn't cover what you need.
+
+    Read /ios/control-instance.md for the full method reference.
+    ```
+  </Accordion>
+</Accordions>
+
+## Prerequisites
+
+A provisioned iOS instance. Follow step 1 of [Run an iOS Simulator](/docs/ios/run-simulator) to
+create one. You'll need `instance.status.apiUrl` and `instance.status.token` from the response.
+
+## 1. Connect a device-control client
+
+```ts title="TypeScript"
+import { Ios, Limrun } from '@limrun/api';
+
+const lim = new Limrun({ apiKey: process.env['LIM_API_KEY'] });
+
+const instance = await lim.iosInstances.create({ wait: true });
+if (!instance.status.apiUrl) throw new Error('API URL is missing');
+
+const client = await Ios.createInstanceClient({
+  apiUrl: instance.status.apiUrl,
+  token: instance.status.token,
+});
+```
+
+`client.deviceInfo` — `screenWidth`, `screenHeight`, `udid`, `model` — is available synchronously
+after the await resolves. The SDK keeps the WebSocket warm with a 30s ping and auto-reconnects on
+transient drops.
+
+## 2. Manage apps
+
+### Install
+
+`installApp(url, options?)` accepts a URL to a `.ipa` or `.app` bundle and resolves with
+`{ url, bundleId }`.
+
+```ts title="TypeScript"
+const { bundleId } = await client.installApp(
+  'https://my-bucket.s3.amazonaws.com/build.app.tar.gz',
+  { md5: '...', launchMode: 'ForegroundIfRunning' },
+);
+```
+
+```bash title="lim CLI"
+lim ios install-app https://my-bucket.s3.amazonaws.com/build.app.tar.gz
+```
+
+For local-build iteration without re-uploading, use `client.syncApp(localAppBundlePath, opts)`.
+It uses xdelta3 patching to push only the changed bytes.
+
+### List
+
+```ts title="TypeScript"
+const apps = await client.listApps();
+// → [{ bundleId, name, installType }, ...]
+```
+
+```bash title="lim CLI"
+lim ios list-apps
+```
+
+### Launch
+
+```ts title="TypeScript"
+await client.launchApp('com.example.myapp');
+await client.launchApp('com.example.myapp', 'RelaunchIfRunning');
+```
+
+```bash title="lim CLI"
+lim ios launch-app com.example.myapp
+```
+
+### Terminate
+
+```ts title="TypeScript"
+await client.terminateApp('com.example.myapp');
+```
+
+### Reset state
+
+`softReset(bundleId, options?)` clears app state without restarting the simulator.
+
+```ts
+// Fast: wipe the data container only.
+await client.softReset('com.example.myapp');
+
+// Thorough: clear keychain, privacy grants, NSUserDefaults, App Group containers.
+await client.softReset('com.example.myapp', { strategy: 'full' });
+```
+
+Returns `{ strategy, bundleId, itemsCleared?, durationMs }`.
+
+## 3. Read the screen
+
+Three ways to observe the simulator — pick by what you need:
+
+| Method | When to use |
+| --- | --- |
+| `elementTree()` | Accessibility hierarchy — pair with `tapElement` for selector-based interaction. The default move for an agent loop. |
+| `screenshot()` | JPEG of current screen — use when a visual property matters (rendering, layout, color). |
+| `startRecording()` / `stopRecording()` | Server-side MP4 — use for demos, QA artifacts, or recording an agent flow. |
+
+### Element tree
+
+```ts title="TypeScript"
+const tree = await client.elementTree();
+const scoped = await client.elementTree({ x: 200, y: 400 });
+
+// Raw JSON string
+const json = await client.elementTreeRaw();
+```
+
+```bash title="lim CLI"
+lim ios element-tree
+```
+
+Each node carries `role`, `type`, `title`, `AXLabel`, `AXUniqueId`, `AXValue`, `traits`, `frame`,
+and recursive `children`.
+
+### Screenshot
+
+```ts title="TypeScript"
+const { base64, width, height } = await client.screenshot();
+// width and height are in points, ready to feed into tap(x, y)
+```
+
+```bash title="lim CLI"
+lim ios screenshot -o /tmp/screen.png
+```
+
+### Video recording
+
+```ts title="TypeScript"
+await client.startRecording({ quality: 7 }); // quality 1–10
+
+// ... drive the simulator ...
+
+await client.stopRecording({ localPath: './demo.mp4' });
+```
+
+## 4. Drive input
+
+### Tap
+
+```ts title="TypeScript"
+// By accessibility label (preferred)
+await client.tapElement({ AXLabel: 'Continue' });
+await client.tapElement({ AXUniqueId: 'startButton' });
+
+// By coordinates (fallback)
+await client.tap(100, 200);
+```
+
+### Type text
+
+```ts
+await client.typeText('hello world', true); // second arg = pressEnter
+```
+
+### Scroll
+
+```ts
+await client.scroll({ x: 200, y: 400 }, 'up', 100); // element, direction, amount
+```
+
+### Set orientation
+
+```ts
+await client.setOrientation('landscape');
+await client.setOrientation('portrait');
+```
+
+### Open URL
+
+```ts
+await client.openUrl('https://apple.com');
+await client.openUrl('myapp://deeplink/path');
+```
+
+## 5. Batch actions
+
+`performActions([...])` sends a sequence of actions in one round trip. Use for custom gestures and
+multi-step agent turns.
+
+```ts title="TypeScript"
+await client.performActions([
+  { type: 'tap', x: 100, y: 200 },
+  { type: 'wait', durationMs: 500 },
+  { type: 'typeText', text: 'demo', pressEnter: true },
+  { type: 'buttonDown', button: 'home' },
+  { type: 'buttonUp',   button: 'home' },
+]);
+```
+
+Hardware buttons (`home`, `lock`, `side`, `applePay`, `softwareKeyboard`) require paired
+`buttonDown` / `buttonUp` actions.
+
+## 6. Stream logs
+
+```ts title="App logs (live)"
+const stream = await client.streamAppLog('com.example.myapp');
+stream.on('data', (line) => console.log(line));
+```
+
+```ts title="App logs (one-shot tail)"
+const lines = await client.appLogTail('com.example.myapp', 100);
+```
+
+```ts title="Syslog"
+const sys = await client.streamSyslog();
+sys.on('data', (line) => console.log(line));
+```
+
+## 7. Low-level simctl
+
+Drop to `simctl` for anything outside the typed API.
+
+```ts
+const result = await client.simctl(['status_bar', 'override', '--time', '12:00']);
+```
+
+<Callout type="warn">
+  On the instance itself, `xcodebuild` accepts only `-version` and `xcrun` only `--sdk` /
+  `--show-sdk-*-version`. For real builds use
+  [Build with Remote Xcode](/docs/ios/build-with-xcode).
+</Callout>
+
+## Next steps
+
+<Cards>
+  <Card
+    title="Run an iOS Simulator"
+    description="Provision, connect, and manage the full lifecycle of a cloud iOS simulator."
+    href="/docs/ios/run-simulator"
+  />
+  <Card
+    title="Build with Remote Xcode"
+    description="Sync source, run xcodebuild remotely, and auto-install on the attached simulator."
+    href="/docs/ios/build-with-xcode"
+  />
+</Cards>
