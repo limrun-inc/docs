@@ -16,6 +16,22 @@ export default defineDocs({
       },
       typography: {
         font: {
+          h1: {
+            size: "1.3rem",
+            weight: 700,
+          },
+          h2: {
+            size: "1.15rem",
+            weight: 600,
+          },
+          h3: {
+            size: "0.8rem",
+            weight: 400,
+          },
+          h4: {
+            size: "0.8rem",
+            weight: 400,
+          },
           style: {
             sans: "'JetBrains Mono', monospace",
             mono: "'JetBrains Mono', monospace",
@@ -24,7 +40,7 @@ export default defineDocs({
       },
       layout: {
         contentWidth: 200,
-        sidebarWidth: 330,
+        sidebarWidth: 320,
         toc: { enabled: true, depth: 3 },
         header: { height: 56, sticky: true },
       },
