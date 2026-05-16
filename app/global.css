@@ -198,7 +198,13 @@ code:not(pre code) {
  }
 
 
-
+.omni-empty-icon {
+  background: transparent !important;
+  border: 1px solid var(--color-fd-border) !important;
+}
+.omni-kbd {
+  background: transparent !important;
+}
 #nd-docs-layout [class*="max-w-[900px]"] {
   /* max-width: 1000px !important;
   margin: auto !important; */
