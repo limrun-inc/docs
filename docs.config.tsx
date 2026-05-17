@@ -146,9 +146,9 @@ export default defineDocs({
     flat: false,
     banner: (
       <div
-        className="-mx-4 relative lim-sidebar-banner"
+        className="mx-0 -mt-10 relative lim-sidebar-banner"
         style={{
-          padding: "12px 16px",
+          padding: "12px 0px",
           borderBottom: "1px solid var(--color-fd-border)",
           // borderTop: "1px solid var(--color-fd-border)",
           fontSize: "13px",
