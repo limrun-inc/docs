@@ -1,0 +1,169 @@
+---
+title: TypeScript SDK
+description: Full API reference for @limrun/api — instances, control clients, and types.
+order: 2
+icon: rocket
+---
+
+# TypeScript SDK
+
+Install via npm:
+
+```bash
+npm install @limrun/api
+```
+
+The SDK exports two top-level objects: `Limrun` (REST client) and `Ios` (device control).
+
+## Limrun
+
+The REST client. Instantiate once and reuse.
+
+```ts
+import { Limrun } from '@limrun/api';
+
+const lim = new Limrun({ apiKey: process.env.LIM_API_KEY });
+```
+
+### Constructor options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `apiKey` | `string` | Your `lim_...` API key |
+| `baseUrl` | `string?` | Override the API base URL |
+| `fetch` | `typeof fetch?` | Custom fetch implementation |
+
+### lim.iosInstances.create(options)
+
+Create a new iOS simulator instance.
+
+```ts
+const instance = await lim.iosInstances.create({
+  wait: true,
+  reuseIfExists: true,
+  metadata: { labels: { issue: 'DEMO', repo: 'my-app' } },
+  spec: { model: 'iphone', osVersion: '17' },
+});
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `wait` | `boolean` | `false` | Block until `status.state === 'ready'` |
+| `reuseIfExists` | `boolean` | `false` | Return an existing instance matching labels |
+| `metadata.labels` | `Record<string, string>` | `{}` | Metadata labels for filtering |
+| `spec.model` | `'iphone' \| 'ipad' \| 'watch'` | `'iphone'` | Device model |
+| `spec.osVersion` | `string` | latest | iOS version |
+| `xcode` | `boolean` | `false` | Attach an Xcode sandbox |
+
+Returns an `IosInstance` object:
+
+```ts
+interface IosInstance {
+  id: string;
+  status: {
+    state: 'creating' | 'ready' | 'error';
+    apiUrl: string;
+    token: string;
+    consoleUrl: string;
+    signedStreamUrl: string;
+  };
+  metadata: { labels: Record<string, string> };
+}
+```
+
+### lim.iosInstances.list(options?)
+
+```ts
+const instances = await lim.iosInstances.list({
+  labels: { issue: 'DEMO' },
+});
+```
+
+### lim.iosInstances.delete(id)
+
+```ts
+await lim.iosInstances.delete('ios_abc123');
+```
+
+## Ios
+
+Device control client. Connects over a WebSocket to a running instance.
+
+```ts
+import { Ios } from '@limrun/api';
+
+const client = await Ios.createInstanceClient({
+  apiUrl: instance.status.apiUrl,
+  token: instance.status.token,
+});
+```
+
+### client.screenshot()
+
+Capture the current screen as a PNG buffer.
+
+```ts
+const png = await client.screenshot();
+await fs.writeFile('/tmp/screen.png', png);
+```
+
+### client.elementTree()
+
+Dump the accessibility element tree.
+
+```ts
+const tree = await client.elementTree();
+// tree.elements: AXElement[]
+```
+
+### client.tapElement(options)
+
+Tap an element by accessibility label or unique ID.
+
+```ts
+await client.tapElement({ AXLabel: 'Continue' });
+await client.tapElement({ AXUniqueId: 'btn-submit' });
+```
+
+### client.typeText(text)
+
+Type text into the focused element.
+
+```ts
+await client.typeText('hello@example.com');
+```
+
+### client.performActions(actions)
+
+Execute a sequence of actions atomically.
+
+```ts
+await client.performActions([
+  { type: 'buttonDown', button: 'home' },
+  { type: 'buttonUp', button: 'home' },
+]);
+```
+
+### client.swipe(options)
+
+Swipe in a direction or between coordinates.
+
+```ts
+await client.swipe({ direction: 'up', duration: 300 });
+```
+
+### client.installApp(ipaPath)
+
+Install an IPA file on the simulator.
+
+```ts
+await client.installApp('./build/MyApp.ipa');
+```
+
+### client.launchApp(bundleId)
+
+Launch an installed app by bundle ID.
+
+```ts
+await client.launchApp('com.example.myapp');
+```

@@ -1,26 +1,18 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { RootProvider } from "@farming-labs/theme";
 import docsConfig from "@/docs.config";
 import "@farming-labs/next/api-reference.css";
 import "./global.css";
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
-const jetbrainsMonoDocs = JetBrains_Mono({
-  variable: "--fd-font-sans",
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-});
-
-const jetbrainsMonoMono = JetBrains_Mono({
-  variable: "--fd-font-mono",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -54,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${jetbrainsMono.variable} ${jetbrainsMonoDocs.variable} ${jetbrainsMonoMono.variable}`}
+        className={`${geistSans.variable} ${geistMono.variable}`}
         suppressHydrationWarning
       >
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: intentional theme init */}

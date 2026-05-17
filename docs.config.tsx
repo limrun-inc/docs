@@ -1,47 +1,35 @@
 import { defineDocs } from "@farming-labs/docs";
-import { pixelBorder } from "@farming-labs/theme/pixel-border";
+import { darkbold } from "@farming-labs/theme/darkbold";
 import { Smartphone, Rocket, Hammer, Terminal, BookOpen, Zap } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 
 export default defineDocs({
   entry: "docs",
 
-  theme: pixelBorder({
+  theme: darkbold({
     ui: {
       colors: {
-        primary: "hsl(25 100% 50%)",
-        background: "hsl(0 0% 0%)",
-        muted: "hsl(0 0% 50%)",
-        border: "hsl(0 0% 18%)",
+        primary: "#000",
+        background: "#000",
+        muted: "#888",
+        border: "#2e2e2e",
       },
       typography: {
         font: {
-          h1: {
-            size: "1.3rem",
-            weight: 700,
-          },
-          h2: {
-            size: "1.15rem",
-            weight: 600,
-          },
-          h3: {
-            size: "0.8rem",
-            weight: 400,
-          },
-          h4: {
-            size: "0.8rem",
-            weight: 400,
-          },
+          h1: { size: "1.75rem", weight: 600 },
+          h2: { size: "1.375rem", weight: 600 },
+          h3: { size: "1.125rem", weight: 600 },
+          h4: { size: "1rem", weight: 600 },
           style: {
-            sans: "'JetBrains Mono', monospace",
-            mono: "'JetBrains Mono', monospace",
+            sans: "var(--font-geist-sans), 'Geist', system-ui, sans-serif",
+            mono: "var(--font-geist-mono), 'Geist Mono', ui-monospace, monospace",
           },
         },
       },
       layout: {
-        contentWidth: 200,
-        sidebarWidth: 320,
-        toc: { enabled: true, depth: 3 },
+        contentWidth: 768,
+        sidebarWidth: 280,
+        toc: { enabled: true, depth: 3, style: "directional" },
         header: { height: 56, sticky: true },
       },
     },
@@ -67,7 +55,7 @@ export default defineDocs({
         </svg>
         <span
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "var(--font-geist-sans), 'Geist', sans-serif",
             fontWeight: 700,
             letterSpacing: "-0.03em",
             fontSize: "0.92rem",
@@ -77,7 +65,7 @@ export default defineDocs({
         </span>
         <span
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "var(--font-geist-sans), 'Geist', sans-serif",
             fontSize: "0.7rem",
             letterSpacing: "0.1em",
             opacity: 0.45,
@@ -96,6 +84,8 @@ export default defineDocs({
   },
 
   breadcrumb: { enabled: true },
+
+  lastUpdated: { enabled: true, position: "below-title" },
 
   readingTime: {
     enabled: true,
@@ -163,44 +153,42 @@ export default defineDocs({
           borderTop: "1px solid var(--color-fd-border)",
           fontSize: "13px",
           color: "var(--color-fd-muted-foreground)",
-          backgroundImage:
-            "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-border) 2%, transparent), color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px, transparent 1px, transparent 6px)",
         }}
       >
-        <div
-          className="font-mono tracking-tighter"
-          style={{ fontWeight: 600, marginBottom: 4, color: "var(--color-fd-foreground)" }}
-        >
-          <span className="text-[12px]" style={{ color: "hsl(25 100% 65%)" }}>
+        <div style={{ marginBottom: 6 }}>
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: 500,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: "hsl(25 100% 60%)",
+            }}
+          >
             Early Access
           </span>
         </div>
-        <span className="uppercase font-mono text-[10px] tracking-tight block">
+        <span style={{ fontSize: "12px", display: "block", lineHeight: 1.5, color: "var(--color-fd-muted-foreground)" }}>
           Cloud sandboxes for iOS, Android &amp; Linux.
         </span>
         <a
           href="https://console.limrun.com"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-1.5 mt-3 font-mono text-[11px] uppercase tracking-wider hover:underline underline-offset-2 decoration-dotted"
-          style={{
-            color: "hsl(25 100% 60%)",
-            textDecorationColor: "color-mix(in srgb, hsl(25 100% 50%) 40%, transparent)",
-          }}
+          className="flex items-center gap-1.5 mt-3 hover:underline underline-offset-2"
+          style={{ fontSize: "12px", color: "hsl(25 100% 60%)", textDecorationColor: "hsl(25 100% 40%)" }}
         >
-          <Terminal size={12} className="shrink-0" />
+          <Terminal size={11} className="shrink-0" />
           Get your free API key
         </a>
         <a
           href="https://github.com/limrun-inc"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-1.5 mt-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--color-fd-foreground)] hover:underline underline-offset-2 decoration-dotted"
-          style={{
-            textDecorationColor: "color-mix(in srgb, var(--color-fd-foreground) 40%, transparent)",
-          }}
+          className="flex items-center gap-1.5 mt-1.5 hover:underline underline-offset-2"
+          style={{ fontSize: "12px", color: "var(--color-fd-muted-foreground)", textDecorationColor: "var(--color-fd-border)" }}
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
             <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
           </svg>
           View on GitHub
@@ -209,21 +197,14 @@ export default defineDocs({
     ),
     footer: (
       <div
-        className="-mx-4 -my-2 -mb-4 border-t flex flex-col font-mono uppercase"
-        style={{
-          fontSize: "12px",
-          backgroundImage:
-            "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-fd-border) 2%, transparent), color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px, transparent 1px, transparent 6px)",
-        }}
+        className="-mx-4 -my-2 -mb-4 border-t flex flex-col"
+        style={{ fontSize: "12px" }}
       >
         <div
           className="flex px-4 py-2 items-center justify-between"
-          style={{
-            color: "var(--color-fd-muted-foreground)",
-            borderBottom: "1px solid color-mix(in srgb, var(--color-fd-border) 60%, transparent)",
-          }}
+          style={{ color: "var(--color-fd-muted-foreground)" }}
         >
-          <span className="text-[10px] tracking-wide">Theme</span>
+          <span style={{ fontSize: "11px" }}>Theme</span>
           <SidebarThemeToggle variant="pill" />
         </div>
       </div>
@@ -239,6 +220,14 @@ export default defineDocs({
     rocket: <Rocket size={15} />,
     hammer: <Hammer size={15} />,
     terminal: <Terminal size={15} />,
+    bookopen: <BookOpen size={15} />,
+  },
+
+  feedback: {
+    enabled: true,
+    question: "Was this guide helpful?",
+    positiveLabel: "Yes",
+    negativeLabel: "No",
   },
 
   github: {

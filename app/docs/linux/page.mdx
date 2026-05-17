@@ -1,0 +1,26 @@
+---
+title: Linux Sandboxes
+description: Spin up ephemeral Linux environments controllable from any coding agent.
+order: 5
+icon: terminal
+---
+
+# Linux Sandboxes
+
+<Callout type="info">
+  Linux sandbox support is coming soon. Join the [early access list](https://console.limrun.com) to be notified.
+</Callout>
+
+Limrun Linux sandboxes are ephemeral Ubuntu environments your coding agent can provision, configure, and tear down over a REST API. Use them for CI steps, build pipelines, or any task that needs a clean, isolated Linux context.
+
+## Planned capabilities
+
+- **Ubuntu 22.04 / 24.04** — Pre-configured with common build tools, Node, Python, Go, and Rust
+- **Persistent volumes** — Mount a named volume across runs so agents can reuse workspace state
+- **Port forwarding** — Expose a service inside the sandbox to a public HTTPS URL
+- **Shell over WebSocket** — Run arbitrary commands from your agent without SSH key management
+- **Snapshot and restore** — Fork a running sandbox into a new instance at any point
+
+## Stay updated
+
+Sign up at [console.limrun.com](https://console.limrun.com) to get notified when Linux support launches.

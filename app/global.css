@@ -1,210 +1,383 @@
 @import "tailwindcss";
-@import "@farming-labs/theme/pixel-border/css";
+@import "@farming-labs/theme/darkbold/css";
 
-/* ─── Fonts ──────────────────────────────────────────────────────── */
-:root {
-  --fd-font-sans: "JetBrains Mono", monospace;
-  --fd-font-mono: "JetBrains Mono", monospace;
-  --radius: 0px;
-}
-
+/* ─── Fonts ─────────────────────────────────────────────────────────
+ * Next.js sets --font-geist-* on <body> via the variable class,
+ * so we must read them here too (not on :root where they're empty).
+ * ──────────────────────────────────────────────────────────────── */
 body {
-  font-family: "JetBrains Mono", monospace;
+  --fd-font-sans: var(--font-geist-sans), "Geist", system-ui, -apple-system, sans-serif;
+  --fd-font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  font-family: var(--fd-font-sans);
 }
 
 /* ─── Dark mode colours ──────────────────────────────────────────── */
 .dark {
   color-scheme: dark;
-  --color-fd-background: hsl(0 0% 0%);
-  --color-fd-foreground: #ffffff;
-  --color-fd-card: hsl(0 0% 3%);
-  --color-fd-card-foreground: #ffffff;
-  --color-fd-popover: hsl(0 0% 3%);
-  --color-fd-popover-foreground: #ffffff;
-  --color-fd-primary: hsl(25 100% 50%);
-  --color-fd-primary-foreground: #000000;
-  --color-fd-secondary: hsl(0 0% 10%);
-  --color-fd-secondary-foreground: #ffffff;
-  --color-fd-muted: hsl(0 0% 10%);
-  --color-fd-muted-2: hsl(0, 0%, 73%);
-  --color-fd-muted-foreground: hsl(0 0% 50%);
-  --color-fd-accent: hsl(0 0% 10%);
-  --color-fd-accent-foreground: #ffffff;
-  --color-fd-border: hsl(0 0% 18%);
-  --color-fd-ring: hsl(25 100% 50%);
-  --scrollbar-thumb: hsl(0 0% 18%);
-  --scrollbar-thumb-hover: hsl(25 100% 50%);
-}
-
-.dark body {
-  background: hsl(0 0% 0%);
-  color: #fff;
+  --color-fd-background: #000;
+  --color-fd-foreground: #ededed;
+  --color-fd-card: #0d0d0d;
+  --color-fd-card-foreground: #ededed;
+  --color-fd-popover: #111;
+  --color-fd-popover-foreground: #ededed;
+  --color-fd-primary: #fff;
+  --color-fd-primary-foreground: #000;
+  --color-fd-secondary: #111;
+  --color-fd-secondary-foreground: #ededed;
+  --color-fd-muted: #111;
+  --color-fd-muted-foreground: #888;
+  --color-fd-accent: #1a1a1a;
+  --color-fd-accent-foreground: #ededed;
+  --color-fd-border: #2e2e2e;
+  --color-fd-ring: #fff;
 }
 
 /* ─── Light mode colours ─────────────────────────────────────────── */
 :root:not(.dark),
 .light {
   color-scheme: light;
-  --color-fd-background: hsl(0 0% 99%);
-  --color-fd-foreground: hsl(0 0% 4%);
-  --color-fd-card: hsl(0 0% 97%);
-  --color-fd-card-foreground: hsl(0 0% 4%);
-  --color-fd-popover: hsl(0 0% 97%);
-  --color-fd-popover-foreground: hsl(0 0% 4%);
-  --color-fd-primary: hsl(25 100% 50%);
-  --color-fd-primary-foreground: #000000;
-  --color-fd-secondary: hsl(0 0% 92%);
-  --color-fd-secondary-foreground: hsl(0 0% 4%);
-  --color-fd-muted: hsl(0 0% 93%);
-  --color-fd-muted-foreground: hsl(0 0% 42%);
-  --color-fd-accent: hsl(0 0% 92%);
-  --color-fd-accent-foreground: hsl(0 0% 4%);
-  --color-fd-border: hsl(0 0% 86%);
-  --color-fd-ring: hsl(25 100% 50%);
-  --scrollbar-thumb: hsl(0 0% 80%);
-  --scrollbar-thumb-hover: hsl(25 100% 50%);
+  --color-fd-background: #fff;
+  --color-fd-foreground: #111;
+  --color-fd-card: #fafafa;
+  --color-fd-card-foreground: #111;
+  --color-fd-popover: #fff;
+  --color-fd-popover-foreground: #111;
+  --color-fd-primary: #000;
+  --color-fd-primary-foreground: #fff;
+  --color-fd-secondary: #f5f5f5;
+  --color-fd-secondary-foreground: #111;
+  --color-fd-muted: #f5f5f5;
+  --color-fd-muted-foreground: #666;
+  --color-fd-accent: #f0f0f0;
+  --color-fd-accent-foreground: #111;
+  --color-fd-border: #e5e5e5;
+  --color-fd-ring: #000;
 }
 
-:root:not(.dark) body,
-.light body {
-  background: hsl(0 0% 99%);
-  color: hsl(0 0% 4%);
-}
-
-/* ─── Orange selection ───────────────────────────────────────────── */
+/* ─── Selection ──────────────────────────────────────────────────── */
 ::selection {
   background: hsl(25 100% 50%);
   color: #000;
 }
 
-/* ─── Active sidebar link ────────────────────────────────────────── */
-.fd-sidebar-link-active,
-.fd-sidebar-link[data-active="true"] {
-  color: hsl(25 100% 50%) !important;
+/* ═══════════════════════════════════════════════════════════════════
+ * SIDEBAR — Vercel-style: clean labels, orange active, no borders
+ * ═══════════════════════════════════════════════════════════════════ */
+
+aside#nd-sidebar,
+aside,
+#nd-docs-layout aside {
+  border: none !important;
+  border-right: none !important;
+  box-shadow: none !important;
+  background: var(--color-fd-background) !important;
 }
 
-.fd-sidebar-folder-content .fd-sidebar-link-active::before {
-  background: hsl(25 100% 50%);
+/* No icons */
+aside a > svg:first-child,
+aside a > img:first-child {
+  display: none !important;
 }
 
-/* ─── Sidebar search hover ───────────────────────────────────────── */
-.fd-sidebar-search-btn:hover {
-  color: hsl(25 100% 60%) !important;
+/* Search button */
+aside button[class*="bg-fd-secondary"] {
+  background: var(--color-fd-secondary) !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 6px !important;
+  font-size: 0.8125rem !important;
+  font-family: var(--fd-font-sans) !important;
+  color: var(--color-fd-muted-foreground) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
 }
 
-/* ─── Code block stripe header ───────────────────────────────────── */
-.fd-codeblock-title {
-  background-image: repeating-linear-gradient(-45deg,
-      color-mix(in srgb, hsl(25 100% 50%) 8%, transparent),
-      color-mix(in srgb, hsl(25 100% 50%) 8%, transparent) 1px,
-      transparent 1px,
-      transparent 6px) !important;
-  color: hsl(25 100% 65%) !important;
+/* Catch-all: never uppercase any button in the sidebar that isn't a category folder */
+aside button.text-fd-muted-foreground {
+  text-transform: none !important;
 }
 
-/* ─── Nav CTA button ─────────────────────────────────────────────── */
-.fd-nav-cta,
-[data-nav-cta] {
-  background: hsl(25 100% 50%) !important;
-  color: #000 !important;
-  border-radius: 0 !important;
-  font-family: "JetBrains Mono", monospace !important;
-  font-weight: 700 !important;
+aside button[class*="bg-fd-secondary"]:hover {
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+/* Category headings — folder buttons only (not search button) */
+aside button[aria-controls].text-fd-muted-foreground,
+aside button[aria-expanded].text-fd-muted-foreground {
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
   letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
-  font-size: 0.72rem !important;
-}
-
-/* ─── Callout ────────────────────────────────────────────────────── */
-.fd-callout[data-type="info"],
-.fd-callout:not([data-type]) {
-  border-left: 2px solid hsl(25 100% 50%);
-}
-
-/* ─── Prev / Next navigation cards ──────────────────────────────── */
-/*
- * fumadocs renders these as:  article a[class*="rounded-lg border"]
- * The pixel-border theme sets hover:bg to fd-muted which is near-black
- * in dark mode — invisible. Override with a visible orange-tinted card.
- */
-article a[class*="rounded-lg border"],
-article a[class*="rounded-xl border"] {
-  background: var(--color-fd-card);
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-article a[class*="rounded-lg border"]:hover,
-article a[class*="rounded-xl border"]:hover {
-  background: color-mix(in srgb, hsl(25 100% 50%) 9%, var(--color-fd-card)) !important;
-  border-color: hsl(25 100% 50%) !important;
-}
-
-/* ─── Edit on GitHub action ───────────────────────────────────────── */
-.fd-page-meta a[href*="github.com"][href*="/edit/"] {
-  background: var(--color-fd-card) !important;
-  border-color: var(--color-fd-border) !important;
   color: var(--color-fd-muted-foreground) !important;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+  padding-top: 0 !important;
+  padding-bottom: 0.375rem !important;
 }
 
-.fd-page-meta a[href*="github.com"][href*="/edit/"]:hover {
-  background: color-mix(in srgb, hsl(25 100% 50%) 9%, var(--color-fd-card)) !important;
-  border-color: hsl(25 100% 50%) !important;
+/* ── Sidebar collapse button — remove it ─────────────────────────── */
+button[data-collapsed],
+button[aria-label="Collapse Sidebar"],
+button[aria-label="Expand Sidebar"] {
+  display: none !important;
+}
+
+/* ── Sidebar horizontal group separators ─────────────────────────── */
+/* Folder nodes (DIV[data-state]) are top-level siblings of page links.
+   Add a separator line above each folder to split logical groups. */
+#nd-sidebar [class*="overscroll"] > div > div[data-state] {
+  margin-top: 1rem !important;
+  padding-top: 0.875rem !important;
+  border-top: 1px solid var(--color-fd-border) !important;
+}
+
+/* Sidebar links — default */
+aside a[data-active] {
+  font-size: 0.8125rem !important;
+  line-height: 1.5 !important;
+  border-radius: 4px !important;
+  padding: 5px 8px !important;
+  font-weight: 400 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  background: transparent !important;
+  transition: color 0.12s ease, background 0.12s ease !important;
+}
+
+/* Hover — very subtle orange tint */
+aside a[data-active]:hover {
+  color: var(--color-fd-foreground) !important;
+  background: color-mix(in srgb, hsl(25 100% 50%) 6%, transparent) !important;
+}
+
+/* Active — orange brand color */
+aside a[data-active="true"] {
   color: hsl(25 100% 62%) !important;
-  text-decoration: none !important;
+  font-weight: 500 !important;
+  background: color-mix(in srgb, hsl(25 100% 50%) 8%, transparent) !important;
 }
 
-.fd-page-meta a[href*="github.com"][href*="/edit/"] svg {
-  color: currentColor !important;
+aside a[data-active="true"]::before {
+  background-color: transparent !important;
+  width: 0 !important;
 }
 
-/* ─── Breadcrumb ─────────────────────────────────────────────────── */
-.fd-breadcrumb-parent,
-.fd-breadcrumb-current {
-  font-family: "JetBrains Mono", monospace;
+/* Nested sidebar items */
+aside div.overflow-hidden[data-state] a[data-active] {
+  font-size: 0.8125rem !important;
+  padding-left: 1.25rem !important;
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  color: var(--color-fd-muted-foreground) !important;
 }
 
-/* ─── Inline code ────────────────────────────────────────────────── */
-code:not(pre code) {
-  background: color-mix(in srgb, hsl(25 100% 50%) 10%, var(--color-fd-card));
-  color: hsl(25 100% 62%);
-  padding: 0.1em 0.35em;
-  border: 1px solid color-mix(in srgb, hsl(25 100% 50%) 25%, transparent);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 0.875em;
+aside div.overflow-hidden[data-state] a[data-active="true"] {
+  color: hsl(25 100% 62%) !important;
+  font-weight: 500 !important;
+  background: color-mix(in srgb, hsl(25 100% 50%) 8%, transparent) !important;
 }
 
-/* ─── h1 underline ───────────────────────────────────────────────── */
+aside div.overflow-hidden[data-state] a[data-active]:hover {
+  background: color-mix(in srgb, hsl(25 100% 50%) 6%, transparent) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+/* Sidebar footer border */
+aside .border-t,
+aside [class*="border-t"] {
+  border-top-color: var(--color-fd-border) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * HEADER
+ * ═══════════════════════════════════════════════════════════════════ */
+
+header,
+[role="banner"],
+#nd-docs-layout > header {
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-background) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TYPOGRAPHY
+ * ═══════════════════════════════════════════════════════════════════ */
+
+h1 {
+  letter-spacing: -0.05em !important;
+  font-weight: 600 !important;
+}
+h2 {
+  letter-spacing: -0.03em !important;
+  font-weight: 600 !important;
+}
+h3 {
+  letter-spacing: -0.02em !important;
+  font-weight: 600 !important;
+}
+
+.prose p, .prose li, .prose td, article p {
+  font-size: 0.9rem !important;
+  line-height: 1.65 !important;
+  font-weight: 400 !important;
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+/* h1 underline */
 .fd-page-body h1 {
   border-bottom: 1px solid var(--color-fd-border);
   padding-bottom: 0.6rem;
 }
 
-/* ─── Table header ───────────────────────────────────────────────── */
-.fd-page-body table th {
-  border-bottom: 2px solid hsl(25 100% 50%) !important;
-  background: var(--color-fd-card) !important;
+/* ═══════════════════════════════════════════════════════════════════
+ * INLINE CODE — orange-tinted background
+ * ═══════════════════════════════════════════════════════════════════ */
+
+code:not(pre code) {
+  font-family: var(--fd-font-mono) !important;
+  font-size: 0.8125em !important;
+  padding: 0.15em 0.4em !important;
+  border-radius: 4px !important;
+  background: color-mix(in srgb, hsl(25 100% 50%) 10%, var(--color-fd-card)) !important;
+  border: 1px solid color-mix(in srgb, hsl(25 100% 50%) 22%, transparent) !important;
+  color: hsl(25 100% 65%) !important;
+  font-weight: 400 !important;
 }
 
-/* ─── Steps counter ──────────────────────────────────────────────── */
-.fd-steps>li::before {
+/* ═══════════════════════════════════════════════════════════════════
+ * CODE BLOCKS — Vercel/darkbold style
+ * ═══════════════════════════════════════════════════════════════════ */
+
+figure.shiki,
+#nd-docs-layout figure.shiki {
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+}
+
+.dark figure.shiki,
+.dark #nd-docs-layout figure.shiki {
+  border-color: #2e2e2e !important;
+}
+
+/* Code block filename/title bar */
+.fd-codeblock-title {
+  font-family: var(--fd-font-mono) !important;
+  font-size: 0.75rem !important;
+  font-weight: 400 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  background: var(--color-fd-card) !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  background-image: none !important;
+  padding: 0.6rem 1rem !important;
+}
+
+#nd-docs-layout figure[data-rehype-pretty-code-figure],
+#nd-docs-layout figure[data-rehype-pretty-code-figure] pre {
+  border-radius: 8px !important;
+}
+
+#nd-docs-layout figure.shiki > div:first-child {
+  border-radius: 8px 8px 0 0 !important;
+}
+
+#nd-docs-layout figure.shiki button {
+  border-radius: 4px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TABLES
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-page-body table th {
+  background: var(--color-fd-secondary) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * PREV / NEXT NAV CARDS — orange brand hover
+ * ═══════════════════════════════════════════════════════════════════ */
+
+article a[class*="rounded-lg border"],
+article a[class*="rounded-xl border"] {
+  background: var(--color-fd-card);
+  border-color: var(--color-fd-border) !important;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+article a[class*="rounded-lg border"]:hover,
+article a[class*="rounded-xl border"]:hover {
+  background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-card)) !important;
+  border-color: hsl(25 100% 50%) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CALLOUT
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-callout[data-type="info"],
+.fd-callout:not([data-type]) {
+  border-left: 2px solid var(--color-fd-border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * STEPS — orange brand counter
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-steps > li::before {
   background: hsl(25 100% 50%) !important;
   color: #000 !important;
-  border-radius: 0 !important;
-  font-family: "JetBrains Mono", monospace !important;
+  border-radius: 4px !important;
+  font-family: var(--fd-font-mono) !important;
   font-weight: 700 !important;
 }
 
-.fd-steps>li {
+.fd-steps > li {
   border-left: 1px solid var(--color-fd-border);
 }
 
-/* ─── Accordion hover ────────────────────────────────────────────── */
-[data-radix-accordion-trigger]:hover {
-  color: hsl(25 100% 60%) !important;
+/* ═══════════════════════════════════════════════════════════════════
+ * BREADCRUMB — orange current page
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-breadcrumb {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.375rem !important;
+  margin-bottom: 0.5rem !important;
+  font-size: 0.8125rem !important;
+  font-family: var(--fd-font-sans) !important;
 }
 
-/* ─── Page actions ────────────────────────────────────────────────── */
+.fd-breadcrumb-parent {
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.8125rem !important;
+  font-family: var(--fd-font-sans) !important;
+  text-decoration: none !important;
+  transition: color 0.12s !important;
+}
+
+.fd-breadcrumb-parent:hover {
+  color: var(--color-fd-foreground) !important;
+}
+
+.fd-breadcrumb-sep {
+  color: var(--color-fd-muted-foreground) !important;
+  opacity: 0.5 !important;
+}
+
+.fd-breadcrumb-current {
+  color: hsl(25 100% 62%) !important;
+  font-size: 0.8125rem !important;
+  font-family: var(--fd-font-sans) !important;
+  font-weight: 500 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * PAGE ACTIONS — darkbold style
+ * ═══════════════════════════════════════════════════════════════════ */
+
 .fd-actions-portal {
   margin-top: 0.35rem !important;
 }
@@ -217,27 +390,40 @@ code:not(pre code) {
 .fd-page-actions .fd-page-action-btn,
 [data-page-actions] .fd-page-action-btn {
   height: 2rem !important;
-  padding: 0 0.7rem !important;
-  border: 1px solid color-mix(in srgb, var(--color-fd-border) 82%, transparent) !important;
-  border-radius: 0 !important;
-  background: color-mix(in srgb, var(--color-fd-card) 88%, var(--color-fd-background)) !important;
+  padding: 0 0.75rem !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 6px !important;
+  background: var(--color-fd-secondary) !important;
   box-shadow: none !important;
   color: var(--color-fd-muted-foreground) !important;
-  font-family: "JetBrains Mono", monospace !important;
-  font-size: 10px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.04em !important;
+  font-family: var(--fd-font-sans) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
   line-height: 1 !important;
-  text-transform: uppercase !important;
+  text-transform: none !important;
+  transition: background 0.15s, border-color 0.15s, color 0.15s !important;
 }
 
-.fd-page-actions>.fd-page-action-btn:not(:only-child),
-[data-page-actions]>.fd-page-action-btn:not(:only-child) {
+.fd-page-actions > .fd-page-action-btn:not(:last-child),
+[data-page-actions] > .fd-page-action-btn:not(:last-child) {
   border-right-color: transparent !important;
+  border-radius: 6px 0 0 6px !important;
+}
+
+.fd-page-actions > .fd-page-action-btn:not(:first-child),
+[data-page-actions] > .fd-page-action-btn:not(:first-child) {
+  border-radius: 0 6px 6px 0 !important;
+}
+
+.fd-page-actions > .fd-page-action-btn:only-child,
+[data-page-actions] > .fd-page-action-btn:only-child {
+  border-radius: 6px !important;
 }
 
 .fd-page-action-dropdown .fd-page-action-btn {
-  min-width: 6.4rem !important;
+  border-radius: 6px !important;
+  min-width: 5.5rem !important;
   justify-content: center !important;
 }
 
@@ -247,9 +433,9 @@ code:not(pre code) {
 [data-page-actions] .fd-page-action-btn:hover,
 [data-page-actions] .fd-page-action-btn[aria-expanded="true"],
 [data-page-actions] .fd-page-action-btn[data-copied="true"] {
-  border-color: hsl(25 100% 50%) !important;
-  background: color-mix(in srgb, hsl(25 100% 50%) 11%, var(--color-fd-card)) !important;
-  color: hsl(25 100% 62%) !important;
+  background: var(--color-fd-accent) !important;
+  border-color: var(--color-fd-foreground) !important;
+  color: var(--color-fd-foreground) !important;
 }
 
 .fd-page-actions .fd-page-action-btn svg,
@@ -259,144 +445,287 @@ code:not(pre code) {
   color: currentColor !important;
 }
 
-.fd-page-action-menu-item:first-child {
-  border-top: 0 !important;
+.fd-page-action-menu {
+  border-radius: 8px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-popover) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+  padding: 0.25rem !important;
+}
+
+.fd-page-action-menu-item {
+  border-radius: 4px !important;
+  font-size: 0.8125rem !important;
+  font-family: var(--fd-font-sans) !important;
+  border-top: none !important;
+  text-transform: none !important;
+  background: transparent !important;
+  color: var(--color-fd-muted-foreground) !important;
 }
 
 .fd-page-action-menu-item:hover {
-  background: color-mix(in srgb, hsl(25 100% 50%) 10%, transparent) !important;
-  color: hsl(25 100% 62%) !important;
+  background: var(--color-fd-accent) !important;
+  color: var(--color-fd-foreground) !important;
 }
 
-.fd-page-action-menu-icon,
-.fd-page-action-menu-item>svg {
-  color: currentColor !important;
-}
+/* ═══════════════════════════════════════════════════════════════════
+ * FIXED TOP NAV — show the fumadocs mobile header on desktop
+ * ═══════════════════════════════════════════════════════════════════ */
 
-/* ─── Content width override ─────────────────────────────────────── */
-/*
- * fumadocs hardcodes max-w-[900px] on the docs page container in JS —
- * the contentWidth config option only sets a CSS var that the layout
- * never reads. Override it directly here.
- */
- @media (min-width: 1024px) {
-  .fd-page-meta {
-    padding-top: 20px !important;
-    padding-bottom: 20px !important;
-  }
- }
-
-.fd-page-footer {
-  margin-top: 50px !important;
-  margin-bottom: 30px !important;
-}
-.omni-empty-icon {
-  background: transparent !important;
-  border: 1px solid var(--color-fd-border) !important;
-}
-.prose p, .prose li, .prose td, article p {
-  font-size: 13.5px !important;
-  line-height: 1.5 !important;
-  font-weight: 400 !important;
-  font-family: "JetBrains Mono", monospace !important;
-  color: var(--color-fd-muted-2) !important;
-}
-.omni-kbd {
-  background: transparent !important;
-}
 @media (min-width: 768px) {
-  #nd-docs-layout [class*="max-w-[900px]"] {
-  /* max-width: 1000px !important;
-  margin: auto !important; */
-    padding-left: 50px !important;
-    padding-right: 50px !important;
+  /* Lift the fumadocs mobile header out of the grid and fix it to the top */
+  #nd-subnav {
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 0 auto 0 !important;
+    width: 100% !important;
+    height: 56px !important;
+    z-index: 50 !important;
+    padding: 0 20px !important;
+    gap: 0.5rem !important;
+    background: color-mix(in srgb, var(--color-fd-background) 88%, transparent) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-bottom: 1px solid var(--color-fd-border) !important;
+  }
+
+  /* Offset the docs layout grid so it starts below the fixed header */
+  #nd-docs-layout {
+    --fd-docs-height: calc(100dvh - 56px) !important;
+    margin-top: 56px !important;
+  }
+
+  /* Hide sidebar logo (nav-title) to avoid duplication with the fixed header */
+  #nd-sidebar a[class*="me-auto"] {
+    display: none !important;
+  }
+
+  /* Also hide the sidebar search since it's now in the top bar */
+  aside [data-search-full],
+  aside button[data-search-full] {
+    display: none !important;
+  }
+
+  /* Remove extra top padding in the sidebar content area */
+  #nd-sidebar > div:first-child > div:first-child {
+    padding-top: 0.75rem !important;
   }
 }
-/* ─── TOC items font size ─────────────────────────────────────────── */
-/* #nd-toc alone doesn't override Tailwind's text-sm on child elements */
+
+/* Style the header search button — centered in the navbar */
+@media (min-width: 768px) {
+  /* Center search absolutely within the fixed header */
+  #nd-subnav button[data-search] {
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin-left: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.3125rem 0.75rem !important;
+    width: 240px !important;
+    border: 1px solid var(--color-fd-border) !important;
+    border-radius: 6px !important;
+    background: var(--color-fd-secondary) !important;
+    color: var(--color-fd-muted-foreground) !important;
+    font-size: 0.8125rem !important;
+    font-family: var(--fd-font-sans) !important;
+    transition: border-color 0.15s, background 0.15s !important;
+  }
+
+  #nd-subnav button[data-search]:hover {
+    background: var(--color-fd-accent) !important;
+    border-color: color-mix(in srgb, var(--color-fd-border) 60%, var(--color-fd-foreground)) !important;
+    color: var(--color-fd-foreground) !important;
+  }
+
+  #nd-subnav button[data-search]::after {
+    content: "Search...";
+    flex: 1 !important;
+    text-align: left !important;
+    font-size: 0.8125rem !important;
+  }
+
+  #nd-subnav button[data-search] > svg {
+    flex-shrink: 0 !important;
+  }
+}
+
+/* Nav link items (Support / Dashboard) */
+.nav-link-item {
+  font-size: 0.8125rem !important;
+  font-family: var(--fd-font-sans) !important;
+  color: var(--color-fd-muted-foreground) !important;
+  padding: 0.25rem 0.5rem !important;
+  border-radius: 5px !important;
+  text-decoration: none !important;
+  transition: color 0.12s, background 0.12s !important;
+  white-space: nowrap !important;
+}
+
+.nav-link-item:hover {
+  color: var(--color-fd-foreground) !important;
+  background: var(--color-fd-accent) !important;
+}
+
+.nav-link-dashboard {
+  background: hsl(25 100% 50%) !important;
+  color: #000 !important;
+  font-weight: 600 !important;
+  padding: 0.25rem 0.75rem !important;
+}
+
+.nav-link-dashboard:hover {
+  background: hsl(25 100% 45%) !important;
+  color: #000 !important;
+}
+
+/* Mobile: keep sidebar search visible */
+@media (max-width: 767px) {
+  aside [data-search-full] { display: inline-flex !important; }
+  #nd-subnav { display: flex !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * TOC — orange active vertical bar indicator
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* Override fd-primary to orange inside TOC so the clerk SVG track is brand-colored */
+#nd-toc {
+  --color-fd-primary: hsl(25 100% 50%);
+  --color-fd-primary-foreground: #000;
+}
+
 #nd-toc a,
 #nd-toc button,
 #nd-toc li,
 #nd-toc span,
 #nd-toc h3 {
-  font-size: 11px !important;
+  font-size: 0.75rem !important;
+  font-family: var(--fd-font-sans) !important;
 }
 
-/* ─── Sidebar rail stripes (desktop) ────────────────────────────── */
+#nd-toc h3 > svg,
+#nd-toc h3 > img {
+  display: none !important;
+}
+
+/* TOC links */
+#nd-toc a[data-active="true"] {
+  color: hsl(25 100% 62%) !important;
+  font-weight: 500 !important;
+}
+
+#nd-toc a[data-active="false"],
+#nd-toc a:not([data-active]) {
+  color: var(--color-fd-muted-foreground) !important;
+}
+
+#nd-toc a:hover {
+  color: var(--color-fd-foreground) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * NAV CTA
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-nav-cta,
+[data-nav-cta] {
+  background: hsl(25 100% 50%) !important;
+  color: #000 !important;
+  border-radius: 6px !important;
+  font-family: var(--fd-font-sans) !important;
+  font-weight: 600 !important;
+  font-size: 0.8125rem !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * FOOTER
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-page-footer {
+  border-top: 1px solid var(--color-fd-border) !important;
+  margin-top: 3rem !important;
+  margin-bottom: 2rem !important;
+  padding-top: 1rem !important;
+}
+
+.fd-page-footer a {
+  border-radius: 6px !important;
+  font-size: 0.8125rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+  transition: color 0.12s ease, border-color 0.12s ease !important;
+}
+
+.fd-page-footer a:hover {
+  color: hsl(25 100% 62%) !important;
+}
+
+/* llms.txt / llms-full.txt pill links */
+.fd-page-footer a[href*="llms"] {
+  border: 1px solid var(--color-fd-border) !important;
+  padding: 2px 8px !important;
+  border-radius: 5px !important;
+}
+
+.fd-page-footer a[href*="llms"]:hover {
+  border-color: hsl(25 100% 50%) !important;
+  color: hsl(25 100% 62%) !important;
+  background: color-mix(in srgb, hsl(25 100% 50%) 7%, transparent) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * CONTENT AREA PADDING
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 1024px) {
+  .fd-page-meta {
+    padding-top: 20px !important;
+    padding-bottom: 20px !important;
+  }
+}
+
 @media (min-width: 768px) {
-  #nd-docs-layout aside#nd-sidebar {
-    --fd-sidebar-rail-width: 7px;
-    --fd-sidebar-rail-border: var(--color-fd-border);
-    --fd-sidebar-item-inset: 16px;
-    --fd-sidebar-nested-marker-offset: calc(var(--fd-sidebar-item-inset) + 1.125rem);
-    border-left: 1px solid var(--fd-sidebar-rail-border) !important;
-    border-right: 1px solid var(--fd-sidebar-rail-border) !important;
-    isolation: isolate !important;
-  }
-
-  .dark #nd-docs-layout aside#nd-sidebar {
-    --fd-sidebar-rail-border: color-mix(in srgb, var(--color-fd-border) 65%, transparent);
-  }
-
-  #nd-docs-layout aside#nd-sidebar::before,
-  #nd-docs-layout aside#nd-sidebar::after {
-    content: "" !important;
-    position: absolute !important;
-    top: 0 !important;
-    bottom: 0 !important;
-    width: var(--fd-sidebar-rail-width) !important;
-    pointer-events: none !important;
-    z-index: 0 !important;
-    background-color: color-mix(in srgb, var(--color-fd-background) 94%, transparent) !important;
-    background-image: repeating-linear-gradient(-45deg,
-        color-mix(in srgb, var(--color-fd-border) 2%, transparent),
-        color-mix(in srgb, var(--color-fd-foreground) 7%, transparent) 1px,
-        transparent 1px,
-        transparent 6px) !important;
-  }
-
-  #nd-docs-layout aside#nd-sidebar::before {
-    left: 0 !important;
-    border-right: 1px solid var(--fd-sidebar-rail-border) !important;
-  }
-
-  #nd-docs-layout aside#nd-sidebar::after {
-    right: 0 !important;
-    border-left: 1px solid var(--fd-sidebar-rail-border) !important;
-  }
-
-  #nd-docs-layout aside#nd-sidebar>* {
-    position: relative !important;
-    z-index: 1 !important;
-  }
-
-  #nd-docs-layout aside a[data-active],
-  #nd-docs-layout aside button[aria-controls][aria-expanded] {
-    padding-left: calc(0.625rem + var(--fd-sidebar-item-inset)) !important;
-    padding-right: calc(0.625rem + var(--fd-sidebar-item-inset)) !important;
-  }
-
-  #nd-docs-layout aside div.overflow-hidden[data-state] a[data-active] {
-    padding-left: calc(2rem + var(--fd-sidebar-item-inset)) !important;
-  }
-
-  #nd-docs-layout aside a[data-active="true"]::before {
-    margin-left: 0 !important;
-    inset-inline-start: calc(var(--fd-sidebar-item-inset) + 0.5rem) !important;
-  }
-
-  #nd-docs-layout aside div.overflow-hidden[data-state] a[data-active="true"]::before {
-    inset-inline-start: var(--fd-sidebar-nested-marker-offset) !important;
-  }
-
-  #nd-docs-layout aside div.overflow-hidden[data-state]::before {
-    margin-left: calc(var(--fd-sidebar-item-inset) + 0.5rem) !important;
+  #nd-docs-layout [class*="max-w-[900px]"] {
+    padding-left: 48px !important;
+    padding-right: 48px !important;
   }
 }
 
-/* ─── Hide Ask AI when mobile sidebar is open ────────────────────── */
-@media (max-width: 767px) {
+/* ═══════════════════════════════════════════════════════════════════
+ * COMMAND PALETTE
+ * ═══════════════════════════════════════════════════════════════════ */
 
+.omni-content {
+  border-radius: 12px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-popover) !important;
+  box-shadow: 0 16px 70px rgba(0, 0, 0, 0.3) !important;
+}
+
+.omni-item {
+  border-radius: 6px !important;
+}
+
+.omni-item-active {
+  background: var(--color-fd-accent) !important;
+}
+
+.omni-empty-icon {
+  background: transparent !important;
+  border: 1px solid var(--color-fd-border) !important;
+}
+
+.omni-kbd {
+  background: transparent !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * HIDE MOBILE AI WHEN SIDEBAR OPEN
+ * ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
   body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-floating-btn,
   body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-floating-trigger,
   body:has(aside#nd-sidebar-mobile[data-state="open"]) .fd-ai-fm-trigger-btn,

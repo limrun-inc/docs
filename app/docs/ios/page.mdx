@@ -1,0 +1,37 @@
+---
+title: iOS Simulators
+description: Run, build, and control remote iOS simulators in the cloud.
+order: 3
+icon: smartphone
+---
+
+# iOS Simulators
+
+Limrun provides fully booted iPhone, iPad, and Watch simulators running in cloud pods. Each instance exposes a control WebSocket and an Xcode sandbox so your coding agent can build, install, and drive apps without a local Mac.
+
+## What you can do
+
+- **Provision in seconds** — Create a simulator with one API call or one `lim ios create` command. It boots in under 10 seconds.
+- **Build remotely** — Sync your Xcode project and run `lim xcode build`. Limrun compiles on hosted Xcode and auto-installs on the simulator.
+- **Drive the UI** — Tap, type, scroll, read the element tree, capture screenshots, and record video.
+- **Watch live** — Every instance streams to a browser-accessible URL with no credentials required.
+
+## Guides
+
+<Cards>
+  <Card
+    title="Run a Simulator"
+    description="Provision, connect, and stream a cloud iPhone or iPad."
+    href="/docs/ios/run-simulator"
+  />
+  <Card
+    title="Build with Remote Xcode"
+    description="Sync source, run xcodebuild remotely, and auto-install on the simulator."
+    href="/docs/ios/build-with-xcode"
+  />
+  <Card
+    title="Control an Instance"
+    description="Full device-control API — apps, input, element tree, recordings, simctl."
+    href="/docs/ios/control-instance"
+  />
+</Cards>

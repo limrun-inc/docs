@@ -1,0 +1,127 @@
+---
+title: CLI Reference
+description: Every lim command, subcommand, flag, and environment variable.
+order: 1
+icon: terminal
+---
+
+# CLI Reference
+
+The `lim` CLI is installed via npm and requires Node.js 18 or newer.
+
+```bash
+npm install --global @limrun/cli
+lim --version
+```
+
+## Global flags
+
+| Flag | Description |
+|------|-------------|
+| `--api-key <key>` | Override the API key for this invocation |
+| `--json` | Output results as JSON |
+| `--no-color` | Disable ANSI color output |
+| `--help` | Print help for any command |
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `LIM_API_KEY` | API key. Loaded from `.env` automatically. |
+| `LIM_BASE_URL` | Override the API base URL (for enterprise) |
+| `NO_COLOR` | Disable color output |
+
+## lim ios
+
+Manage cloud iOS simulator instances.
+
+### `lim ios create`
+
+```bash
+lim ios create [options]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--xcode` | `false` | Attach an Xcode sandbox to this instance |
+| `--reuse-if-exists` | `false` | Return an existing instance matching the labels |
+| `--label <key=value>` | — | Metadata labels (repeatable) |
+| `--model <model>` | `iphone` | Device model: `iphone`, `ipad`, `watch` |
+| `--os-version <ver>` | latest | iOS/iPadOS version |
+| `--wait` | `false` | Block until the instance reaches `ready` |
+
+### `lim ios list`
+
+List your iOS instances.
+
+```bash
+lim ios list [--label key=value] [--json]
+```
+
+### `lim ios delete`
+
+Delete an instance. Without `--id`, deletes the last instance created in this session.
+
+```bash
+lim ios delete [--id <id>]
+```
+
+### `lim ios screenshot`
+
+Capture the current simulator screen.
+
+```bash
+lim ios screenshot [-o <path>] [--id <id>]
+```
+
+### `lim ios element-tree`
+
+Dump the accessibility element tree.
+
+```bash
+lim ios element-tree [--id <id>]
+```
+
+### `lim ios tap-element`
+
+Tap an element by accessibility label or unique ID.
+
+```bash
+lim ios tap-element --ax-label "<label>" [--id <id>]
+lim ios tap-element --ax-unique-id "<id>" [--id <id>]
+```
+
+## lim xcode
+
+Build an iOS app on a remote Xcode sandbox.
+
+### `lim xcode build`
+
+Sync the current directory and run `xcodebuild`.
+
+```bash
+lim xcode build [path] [options]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--scheme <name>` | Xcode scheme to build |
+| `--workspace <path>` | Workspace file path |
+| `--configuration <name>` | Build configuration (default: `Debug`) |
+| `--no-install` | Build only, don't install on simulator |
+
+## lim skills
+
+Install the bundled Limrun skill into a coding agent.
+
+### `lim skills install`
+
+```bash
+lim skills install [options]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agents <name>` | Target agent: `claude`, `cursor`, `codex` |
+| `--scope <scope>` | `project` or `global` |
+| `--force` | Overwrite an existing skill file |
