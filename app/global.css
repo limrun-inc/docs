@@ -939,13 +939,14 @@ article a[data-card]:hover h3 {
 }
 
 .fd-page-footer .fd-llms-txt-links {
-  display: inline-flex !important;
+  display: none !important;
+  /* display: inline-flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
   gap: 0.5rem !important;
   font-size: 0.65rem !important;
   margin-left: auto !important;
-  margin-inline-start: auto !important;
+  margin-inline-start: auto !important; */
 }
 
 a[href*="llms"] {
