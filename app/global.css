@@ -648,9 +648,9 @@ article a[data-card]:hover h3 {
   }
 
   #nd-subnav button[data-search]:hover {
-    background: var(--color-fd-accent) !important;
-    border-color: color-mix(in srgb, var(--color-fd-border) 60%, var(--color-fd-foreground)) !important;
-    color: var(--color-fd-foreground) !important;
+    background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-secondary)) !important;
+    border-color: color-mix(in srgb, var(--color-fd-border) 72%, hsl(25 100% 50%) 28%) !important;
+    color: hsl(25 100% 62%) !important;
   }
 
   #nd-subnav button[data-search]::after {
@@ -662,6 +662,30 @@ article a[data-card]:hover h3 {
 
   #nd-subnav button[data-search] > svg {
     flex-shrink: 0 !important;
+    color: currentColor !important;
+  }
+}
+
+:root:not(.dark) #nd-subnav,
+.light #nd-subnav {
+  background: color-mix(in srgb, var(--color-fd-background) 94%, transparent) !important;
+  border-bottom-color: color-mix(in srgb, var(--color-fd-border) 90%, #111 10%) !important;
+}
+
+@media (min-width: 768px) {
+  :root:not(.dark) #nd-subnav button[data-search],
+  .light #nd-subnav button[data-search] {
+    background: #fff !important;
+    border-color: #dedede !important;
+    color: #5f6368 !important;
+    box-shadow: 0 1px 2px rgba(17, 17, 17, 0.04) !important;
+  }
+
+  :root:not(.dark) #nd-subnav button[data-search]:hover,
+  .light #nd-subnav button[data-search]:hover {
+    background: color-mix(in srgb, hsl(25 100% 50%) 6%, #fff) !important;
+    border-color: color-mix(in srgb, #dedede 72%, hsl(25 100% 50%) 28%) !important;
+    color: hsl(25 100% 42%) !important;
   }
 }
 
@@ -676,6 +700,16 @@ article a[data-card]:hover h3 {
   white-space: nowrap !important;
 }
 
+:root:not(.dark) .nav-link-item,
+.light .nav-link-item {
+  color: #4d4d4d !important;
+}
+
+:root:not(.dark) .nav-link-item:hover,
+.light .nav-link-item:hover {
+  background: color-mix(in srgb, hsl(25 100% 50%) 6%, #fff) !important;
+  color: hsl(25 100% 38%) !important;
+}
 
 .nav-link-dashboard {
   font-family: var(--font-geist-mono), ui-monospace, monospace !important;
@@ -689,8 +723,23 @@ article a[data-card]:hover h3 {
   padding: 0.25rem 0.75rem !important;
 }
 
+:root:not(.dark) .nav-link-dashboard,
+.light .nav-link-dashboard {
+  background: hsl(25 100% 50%) !important;
+  border: 1px solid color-mix(in srgb, hsl(25 100% 50%) 84%, #fff 16%) !important;
+  color: color-mix(in srgb, #000 74%, #fff 26%) !important;
+  box-shadow: 0 1px 2px rgba(255, 107, 0, 0.16) !important;
+}
+
 .nav-link-dashboard:hover {
   background: hsl(25 100% 45%) !important;
+  color: #000 !important;
+}
+
+:root:not(.dark) .nav-link-dashboard:hover,
+.light .nav-link-dashboard:hover {
+  background: hsl(25 100% 50%) !important;
+  border-color: hsl(25 100% 50%) !important;
   color: #000 !important;
 }
 
