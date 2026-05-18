@@ -2,9 +2,8 @@
 title: "CLI for coding agents"
 description: "Install the `lim` CLI in your coding agent's environment. The agent then builds your iOS app on a remote Mac, drives the simulator, and posts preview links on PRs."
 order: 1
-icon: bot
+icon: "terminal"
 ---
-
 # CLI for coding agents
 
 Coding agents drive Limrun through the `lim` CLI. Once it's installed and authenticated, the agent can create a simulator, build your app, tap through it, record video, and share a preview link without leaving its shell.
@@ -44,9 +43,7 @@ The CLI detects which coding agents you have on the machine (Claude Code, Cursor
 
 If you'd rather not install the skill, paste this prompt into your agent instead. It does the same thing:
 
-<Accordions>
-  <Accordion title="Copy this prompt for your coding agent">
-
+<Accordion icon="sparkles" title="Copy this prompt for your coding agent">
 ```text
 You're helping me build and test an iOS app on Limrun. For every task that runs the app:
 
@@ -70,11 +67,9 @@ You're helping me build and test an iOS app on Limrun. For every task that runs 
 8. Clean up with `lim ios delete`. If you created more than one instance, list first:
    lim ios list --label-selector "issue=<ID>"
 
-For MCP-based device control instead of the CLI, see /docs/agents/mcp.
+For MCP-based device control instead of the CLI, see /agents/mcp.md.
 ```
-
-  </Accordion>
-</Accordions>
+</Accordion>
 
 ## What the agent does
 
@@ -312,10 +307,10 @@ lim ios list --label-selector "agent=cursor,issue=LIM-34"
 ## Next steps
 
 <Cards>
-  <Card title="MCP for controlling instances" href="/docs/agents/mcp">
+  <Card title="MCP for controlling instances" icon="plug" href="/docs/agents/mcp">
     Use the per-instance MCP server instead of (or alongside) the CLI for agents that prefer tool-use over shell.
   </Card>
-  <Card title="Build with remote Xcode" href="/docs/ios/build-with-xcode">
+  <Card title="Build with remote Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
     Every `lim xcode build` flag in depth. Signing real-device IPAs. MCP-wrapped builds.
   </Card>
 </Cards>

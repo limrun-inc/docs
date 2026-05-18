@@ -2,9 +2,8 @@
 title: "Build with remote Xcode"
 description: "Sync your source, run `xcodebuild` in the cloud, stream the logs back, and install the result on a remote simulator. Or ship a signed IPA."
 order: 1
-icon: hammer
+icon: "hammer"
 ---
-
 # Build with remote Xcode
 
 Limrun lets you compile iOS apps on a remote Mac. Your laptop or CI runner doesn't need to be one. After a successful build, you either run the app on a remote simulator or download a signed IPA to ship.
@@ -33,8 +32,8 @@ The right shape depends on whether you also need a simulator.
 
 When you want to build an app *and* run it on a simulator, create one iOS instance with the Xcode sandbox attached. Pass `--xcode` to the CLI, or set the sandbox config on the SDK call as shown below. After a successful build, the app auto-installs and auto-launches on the simulator.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript","Python","Go"]}>
+```ts
 import Limrun from '@limrun/api';
 
 const lim = new Limrun({ apiKey: process.env['LIM_API_KEY'] });
@@ -55,7 +54,7 @@ const xcode = await lim.xcodeInstances.createClient({
 });
 ```
 
-```python title="Python"
+```python
 # Python provisions the paired instance; the build step itself is not in the
 # Python SDK today. Drive the build with `lim xcode build` from your CI step.
 instance = client.ios_instances.create(
@@ -67,7 +66,7 @@ instance = client.ios_instances.create(
 xcode_url = instance.status.sandbox.xcode.url
 ```
 
-```go title="Go"
+```go
 // Go provisions the paired instance; the build step itself is not in the
 // Go SDK today. Drive the build with `lim xcode build` from your CI step.
 instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
@@ -101,8 +100,8 @@ lim ios create --xcode --reuse-if-exists --label session=demo
 
 For pure CI builds, real-device IPA distribution, or MCP-wrapped build tools, create a top-level Xcode instance. It has no simulator attached.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript","Python"]}>
+```ts
 const xcodeInstance = await lim.xcodeInstances.create({
   wait: true,
   reuseIfExists: true,
@@ -112,7 +111,7 @@ const xcodeInstance = await lim.xcodeInstances.create({
 const xcode = await lim.xcodeInstances.createClient({ instance: xcodeInstance });
 ```
 
-```python title="Python"
+```python
 xcode_instance = client.xcode_instances.create(
     wait=True,
     reuse_if_exists=True,
@@ -143,8 +142,8 @@ You can also attach a simulator to a standalone Xcode sandbox later. See [Auto-i
 
 Syncing pushes your source to the sandbox. The first sync uploads everything; later ones only send what changed. The example below uses every option; in practice you pass only what you need.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript"]}>
+```ts
 await xcode.sync('./my-app', {
   watch: true,             // re-sync on file changes
   install: true,           // install after each sync (paired iOS only)
@@ -232,8 +231,8 @@ Paths on the remote side that start with `~/` expand to the sandbox's home direc
 
 Trigger a build. Logs stream back as it runs, and `await` resolves to the final exit status.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript"]}>
+```ts
 const build = xcode.xcodebuild({
   workspace: 'MyApp.xcworkspace',
   scheme: 'MyApp',
@@ -283,8 +282,8 @@ Match what you'd pass to local `xcodebuild`:
 
 To produce a signed IPA for distribution, switch the target SDK to `iphoneos`, pass a P12 certificate, and pass a provisioning profile. Add an upload target so the IPA lands in Asset Storage with a downloadable URL.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript"]}>
+```ts
 import fs from 'node:fs';
 
 const build = xcode.xcodebuild(
@@ -411,16 +410,16 @@ No `runs-on: macos-latest`. No Apple-licensed CI runner. The build happens on Li
 ## Next steps
 
 <Cards>
-  <Card title="Run an iOS Simulator" href="/docs/ios/run-simulator">
+  <Card title="Run an iOS Simulator" icon="smartphone" href="/docs/ios/run-simulator">
     Drive the simulator the build just installed onto: taps, screenshots, recordings, logs.
   </Card>
-  <Card title="Automatic PR Previews" href="/docs/ios/pr-previews">
+  <Card title="Automatic PR Previews" icon="git-pull-request" href="/docs/ios/pr-previews">
     Wire `lim xcode build --upload` into a GitHub workflow that posts a preview link on every PR.
   </Card>
-  <Card title="Asset Storage" href="/docs/platform/asset-storage">
+  <Card title="Asset Storage" icon="package" href="/docs/platform/asset-storage">
     Manage uploaded build artifacts, pre-install apps at boot, and browse the Limrun App Store.
   </Card>
-  <Card title="SDK Reference" href="/docs/reference">
+  <Card title="SDK Reference" icon="book-open" href="/docs/reference">
     Auth, errors, the instance state machine, every resource × CRUD.
   </Card>
 </Cards>

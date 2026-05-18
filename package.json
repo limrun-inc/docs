@@ -10,7 +10,7 @@
   "dependencies": {
     "@farming-labs/docs": "latest",
     "@farming-labs/next": "latest",
-    "@farming-labs/theme": "latest",
+    "@farming-labs/theme": "file:../docs_/packages/fumadocs",
     "fumadocs-ui": "^16.7.16",
     "lucide-react": "^0.564.0",
     "next": "16.2.6",
