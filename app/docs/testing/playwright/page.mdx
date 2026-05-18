@@ -1,0 +1,243 @@
+---
+title: "Playwright"
+description: "Drive Chrome on a Limrun Android emulator with Playwright. The CDP WebSocket terminates on the emulator's host, so tests stay responsive across regions."
+order: 2
+icon: flask-conical
+---
+
+# Playwright
+
+Playwright on Limrun automates **Chrome on Android emulator instances**. Your existing Playwright test code keeps working.
+
+## Before you start
+
+- A Limrun API key in `LIM_API_KEY` (get one from [console.limrun.com](https://console.limrun.com)). If you've never used the CLI before, walk through the [Quickstart](/docs/quickstart) first.
+- Node 20 or newer.
+- `playwright` installed in your project. The Android device API ships with the regular `playwright` package, but it lives under an internal export (`_android`).
+
+Code examples default to TypeScript. The instance-create call has Go and Python tabs alongside; from "Connect Playwright" onward the code is Node-only, because Playwright's Android device API only ships in the Node binding.
+
+## What's supported
+
+Playwright on Limrun is **Android Chrome only**. Each Android instance ships with Chrome, and Limrun exposes Chrome's DevTools Protocol (CDP) endpoint to your test as a single WebSocket URL. iOS Safari and desktop Chromium aren't routed through this integration; if you want Safari, look at [Appium](/docs/testing/appium).
+
+There are two ways to reach that CDP endpoint, and the choice has real consequences for test speed.
+
+**The Playwright Android sub-sandbox (recommended).** Limrun runs a Playwright-aware service on the same host as the emulator and exposes its WebSocket to you. Your test attaches to that WebSocket, and the CDP-to-emulator hops stay on the emulator's host. As a concrete reference, on one cross-continent run (laptop in Bengaluru, instance in Helsinki), the runnable example below (page load, three clicks, screenshot) finished in about 4.5 seconds.
+
+**A local ADB tunnel.** You can open an ADB tunnel and let Playwright drive the device through `adb`. It works, but every CDP call goes from your laptop → ADB tunnel → emulator. CDP is a chatty protocol (each click or locator lookup is several request-response round-trips), so suites get noticeably slower the further your test runner is from the instance's region. The rest of this page uses the sub-sandbox; the tunnel path is covered at the end.
+
+## Provision the instance
+
+Two things change relative to a plain Android create call. First, turn on the Playwright sub-sandbox so the instance exposes a CDP WebSocket. Second, ship Chrome a flag that lets it accept command-line arguments from Playwright (Chrome on Android ignores them by default). Both go into a single `create` call:
+
+<CodeGroup>
+```ts title="TypeScript"
+import { Limrun } from '@limrun/api';
+
+const limrun = new Limrun({ apiKey: process.env.LIM_API_KEY });
+
+// `wait: true` blocks until the instance is ready and the sandbox URL is
+// populated. `reuseIfExists` returns the same instance on a re-run with the
+// same labels, instead of spinning up a new one.
+const instance = await limrun.androidInstances.create({
+  wait: true,
+  reuseIfExists: true,
+  metadata: { labels: { name: 'playwright' } },
+  spec: {
+    // Turns on the per-instance Playwright service. Without this flag, no
+    // sandbox URL is returned and the rest of this page doesn't apply.
+    sandbox: {
+      playwrightAndroid: { enabled: true },
+    },
+    // Flips Chrome's "accept command-line flags" switch at boot. Playwright
+    // needs it set to launch its remote browser; setting it after boot is
+    // too late.
+    initialAssets: [
+      {
+        kind: 'Configuration',
+        configuration: {
+          kind: 'ChromeFlag',
+          chromeFlag: 'enable-command-line-on-non-rooted-devices@1',
+        },
+      },
+    ],
+  },
+});
+```
+
+```go title="Go"
+import (
+    "context"
+    "os"
+    limrun "github.com/limrun-inc/go-sdk"
+    "github.com/limrun-inc/go-sdk/option"
+)
+
+lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
+
+instance, err := lim.AndroidInstances.New(context.TODO(), limrun.AndroidInstanceNewParams{
+    Wait:          limrun.Bool(true),
+    ReuseIfExists: limrun.Bool(true),
+    Metadata: limrun.AndroidInstanceNewParamsMetadata{
+        Labels: map[string]string{"name": "playwright"},
+    },
+    Spec: limrun.AndroidInstanceNewParamsSpec{
+        // Turns on the per-instance Playwright service.
+        Sandbox: limrun.AndroidInstanceNewParamsSpecSandbox{
+            PlaywrightAndroid: limrun.AndroidInstanceNewParamsSpecSandboxPlaywrightAndroid{
+                Enabled: limrun.Bool(true),
+            },
+        },
+        // Flips Chrome's "accept command-line flags" switch at boot.
+        InitialAssets: []limrun.AndroidInstanceNewParamsSpecInitialAsset{
+            {
+                Kind: "Configuration",
+                Configuration: limrun.AndroidInstanceNewParamsSpecInitialAssetConfiguration{
+                    Kind:       "ChromeFlag",
+                    ChromeFlag: "enable-command-line-on-non-rooted-devices@1",
+                },
+            },
+        },
+    },
+})
+```
+
+```python title="Python"
+import os
+from limrun_api import Limrun
+
+limrun = Limrun(api_key=os.environ["LIM_API_KEY"])
+
+instance = limrun.android_instances.create(
+    wait=True,
+    reuse_if_exists=True,
+    metadata={"labels": {"name": "playwright"}},
+    spec={
+        # Turns on the per-instance Playwright service.
+        "sandbox": {"playwright_android": {"enabled": True}},
+        # Flips Chrome's "accept command-line flags" switch at boot.
+        "initial_assets": [
+            {
+                "kind": "Configuration",
+                "configuration": {
+                    "kind": "ChromeFlag",
+                    "chrome_flag": "enable-command-line-on-non-rooted-devices@1",
+                },
+            },
+        ],
+    },
+)
+```
+
+</CodeGroup>
+
+The Python SDK covers control-plane operations like the call above, but Playwright itself is the polyglot bottleneck here.
+
+<Note>
+  `reuseIfExists` matches existing instances by labels **and** region. If you don't pin `spec.region`, the platform may schedule your next create in a different region (closer to your current IP, for example), and the label match misses, so a fresh instance gets created instead. For repeatable reuse across CI runs or local dev sessions, pin `region: 'us-east'` (or whichever region you prefer) explicitly.
+</Note>
+
+When the call resolves, two things on the instance object matter for Playwright:
+
+- **The CDP WebSocket URL.** This is the endpoint Playwright connects to. On the returned object, it's `instance.status.sandbox.playwrightAndroid.url`.
+- **The bearer token.** Authenticates the URL above. It's `instance.status.token`.
+
+## Connect Playwright
+
+From here on, the code is Node/TypeScript: Playwright's Android device API only ships in the Node binding. If you need Android browser automation from `playwright-python`, `playwright-java`, or `playwright-dotnet`, fall back to the ADB-tunnel flow with Selenium or another WebDriver client instead.
+
+The Android API lives behind the internal `_android` export. Pass the CDP URL with the bearer token as a query parameter, then go through Playwright's regular Android flow: warm up Chrome, launch the browser, open a page:
+
+```ts
+import { _android as android } from 'playwright';
+
+// Build the CDP URL with the token as a query param.
+const cdpUrl =
+  instance.status.sandbox.playwrightAndroid!.url +
+  `?token=${instance.status.token}`;
+
+// Connect to the remote device. This is the equivalent of `android.devices()`
+// when running against a real USB-attached phone, but it goes through Limrun
+// instead of adb.
+const device = await android.connect(cdpUrl);
+
+// Chrome on a fresh Android profile won't accept CDP until it's run once and
+// processed first-run prompts. Start it, wait a second, force-stop it.
+// Skip this for warm instances you've already initialized.
+await device.shell('am start com.android.chrome/com.google.android.apps.chrome.Main');
+await new Promise((r) => setTimeout(r, 1_000));
+await device.shell('am force-stop com.android.chrome');
+
+// launchBrowser opens Chrome under Playwright's control and returns a regular
+// BrowserContext. From here, your test code is identical to local Chrome:
+// `newPage`, `goto`, `locator`, `screenshot`, etc.
+const browser = await device.launchBrowser();
+```
+
+## Run a test
+
+Once `launchBrowser()` returns, you're back on the standard Playwright API:
+
+```ts
+const page = await browser.newPage();
+await page.goto('https://github.com/microsoft/playwright');
+await page.waitForURL('https://github.com/microsoft/playwright');
+console.log(await page.title());
+
+await page.locator('a[title=".github"]').first().click();
+await page.locator('a[title="workflows"]').first().click();
+
+await page.screenshot({ path: 'screenshot.png' });
+
+// Clean up. `device.close()` releases the CDP session; the instance keeps
+// running until you delete it (or it ages out via the inactivity timeout).
+await device.close();
+await limrun.androidInstances.delete(instance.metadata.id);
+```
+
+The full runnable example is at [`typescript-sdk/examples/playwright`](https://github.com/limrun-inc/typescript-sdk/tree/main/examples/playwright).
+
+## The local-ADB alternative
+
+If you'd rather not enable the sub-sandbox, you can open an ADB tunnel and use Playwright's normal `android.devices()` flow:
+
+```ts
+// Open the tunnel through the CLI in another terminal, or programmatically
+// via `client.startAdbTunnel()` (see Appium > Android for the SDK call).
+// Then:
+const [device] = await android.devices();
+```
+
+This is the path the [Appium](/docs/testing/appium#run-an-android-test) page uses for UiAutomator2. It works for Playwright, but every CDP call traverses your laptop, so expect noticeably slower test runs.
+
+## Troubleshooting
+
+<Accordions>
+  <Accordion title="`Playwright Android sandbox URL not found`">
+    `instance.status.sandbox.playwrightAndroid.url` is undefined. Either `wait: true` wasn't set on `create` (so the status hasn't populated yet), or `spec.sandbox.playwrightAndroid.enabled` wasn't passed. Recreate with both.
+  </Accordion>
+  <Accordion title="Chrome refuses to launch with a flag error">
+    The `enable-command-line-on-non-rooted-devices` Chrome flag is required for any Playwright Android session. Pass it as a `Configuration` asset at create time as shown above; setting it after boot doesn't work.
+  </Accordion>
+  <Accordion title="`device.close` hangs on shutdown">
+    A leftover Chrome process is holding the CDP socket. Stop Chrome explicitly before closing: `await device.shell('am force-stop com.android.chrome')`, then `device.close()`.
+  </Accordion>
+  <Accordion title="Tests are slow despite the sub-sandbox">
+    Check that you're calling `_android.connect(url)` with the URL from `status.sandbox.playwrightAndroid.url`, not `_android.devices()` after opening an ADB tunnel. The two paths look similar in code but the second one routes every CDP call through your laptop's ADB.
+  </Accordion>
+</Accordions>
+
+## Next steps
+
+<Cards>
+  <Card title="Appium" href="/docs/testing/appium">
+    Cross-platform mobile automation: iOS Safari + native, Android native apps.
+  </Card>
+  <Card title="Run an Android Emulator" href="/docs/android/run-emulator">
+    Instance lifecycle, ADB tunnel internals, and the Android control SDK.
+  </Card>
+  <Card title="Asset Storage" href="/docs/platform/asset-storage">
+    Configuration assets like the Chrome flag used here, plus app assets for native testing.
+  </Card>
+</Cards>
