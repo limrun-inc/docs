@@ -58,7 +58,7 @@ The fork registers itself as `@limrun/xcuitest` (both `driverName` and `automati
 
 WebDriverAgent isn't on a fresh instance by default. Hand the platform a download URL for the WDA build when you create the instance, and the platform will install it and auto-launch it before `create` returns:
 
-<CodeGroup>
+<CodeGroup labels={["TypeScript", "Go", "Python"]}>
 ```ts title="TypeScript"
 import { Limrun, Ios } from '@limrun/api';
 
@@ -160,7 +160,7 @@ Appium drives iOS by sending HTTP requests to WebDriverAgent. When WDA runs on y
 
 The port gateway URL from the previous section is exactly that. To reach a specific port on the simulator, append the port number directly to the gateway URL, with **no slash**. WDA at port `8100` lives at `<gateway-url>8100`. There's one more quirk: Appium's URL parser needs an explicit port on the hostname, otherwise it builds invalid URLs when it makes follow-up requests. Insert `:443` (the HTTPS port) into the hostname:
 
-<CodeGroup>
+<CodeGroup labels={["TypeScript", "Go"]}>
 ```ts
 // Before: https://us-chi1-m36-u91.limrun.net/v1/ios_usea_01.../targetHttpPort
 // After:  https://us-chi1-m36-u91.limrun.net:443/v1/ios_usea_01.../targetHttpPort8100
@@ -180,7 +180,7 @@ You'll pass `wdaUrl` to the driver as the `appium:webDriverAgentUrl` capability,
 
 WDA can crash during long runs, and the auto-launch you set up at create time only fires on first install. Before each session, ping WDA's `/status` endpoint with the bearer token. If it doesn't answer cleanly, relaunch WDA from the platform side. The Limrun SDK gives you an instance client that can run `simctl` on the host Mac for exactly this:
 
-<CodeGroup>
+<CodeGroup labels={["TypeScript", "Go"]}>
 ```ts
 // Open an SDK client against the device control plane. We use it only to
 // run `simctl` on the host Mac; the Appium session itself goes through
@@ -238,7 +238,7 @@ if !ok {
 
 Pick your Appium client below. The capability keys are the same across all three; only the surrounding code differs.
 
-<CodeGroup>
+<CodeGroup labels={["TypeScript", "Python", "Java"]}>
 ```ts 
 import { remote } from 'webdriverio';
 
@@ -390,7 +390,7 @@ Android is simpler: open an ADB tunnel, then use any upstream Appium server. UiA
 
 ### Open the ADB tunnel
 
-<CodeGroup>
+<CodeGroup labels={["CLI", "TypeScript", "Go"]}>
 ```bash 
 # `create` waits for the instance to be ready and opens an ADB tunnel by default.
 # `--no-connect` skips the tunnel; `connect` opens one against an existing instance.
@@ -467,7 +467,7 @@ appium
 
 ### Android capabilities
 
-<CodeGroup>
+<CodeGroup labels={["TypeScript", "Python", "Java"]}>
 ```ts
 import { remote } from 'webdriverio';
 
