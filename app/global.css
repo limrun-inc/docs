@@ -553,12 +553,69 @@ article a[data-card]:hover h3 {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
- * CALLOUT
+ * CALLOUTS — Mintlify-style.
  * ═══════════════════════════════════════════════════════════════════ */
 
-.fd-callout[data-type="info"],
-.fd-callout:not([data-type]) {
-  border-left: 2px solid var(--color-fd-border);
+div[style*="--callout-color"] {
+  --callout-color: hsl(25 100% 55%) !important;
+  background: color-mix(in srgb, var(--callout-color) 7%, var(--color-fd-card)) !important;
+  border: 1px solid color-mix(in srgb, var(--callout-color) 28%, var(--color-fd-border)) !important;
+  border-left-width: 3px !important;
+  border-left-color: var(--callout-color) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  padding: 0.875rem 1rem !important;
+  gap: 0.7rem !important;
+  align-items: flex-start !important;
+  margin: 1rem 0 !important;
+}
+
+div[style*="--callout-color"] > div[role="none"] {
+  display: none !important;
+}
+
+div[style*="--callout-color"] > svg {
+  width: 1.05rem !important;
+  height: 1.05rem !important;
+  margin: 0.15rem 0 0 0 !important;
+  color: var(--callout-color) !important;
+  fill: transparent !important;
+  flex-shrink: 0 !important;
+  stroke-width: 2 !important;
+}
+
+div[style*="--callout-color"] .prose-no-margin {
+  color: var(--color-fd-foreground) !important;
+}
+
+div[style*="--callout-color"] p,
+div[style*="--callout-color"] li {
+  color: var(--color-fd-foreground) !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.6 !important;
+  margin: 0 !important;
+}
+
+div[style*="--callout-color"] p + p {
+  margin-top: 0.5rem !important;
+}
+
+div[style*="--callout-color"] p a {
+  color: var(--callout-color) !important;
+  text-decoration: underline !important;
+  text-decoration-color: color-mix(in srgb, var(--callout-color) 55%, transparent) !important;
+  text-underline-offset: 0.2em !important;
+  font-weight: 500 !important;
+}
+
+div[style*="--callout-color"] p a:hover {
+  text-decoration-color: var(--callout-color) !important;
+}
+
+div[style*="--callout-color"] code:not(pre code) {
+  background: color-mix(in srgb, var(--callout-color) 15%, var(--color-fd-card)) !important;
+  border-color: color-mix(in srgb, var(--callout-color) 30%, transparent) !important;
+  color: color-mix(in srgb, var(--callout-color) 75%, var(--color-fd-foreground)) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
