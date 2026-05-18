@@ -367,10 +367,13 @@ article h1 {
   margin-bottom: 1.25rem !important;
 }
 
-/* The horizontal rule between description and reading-time was
- * creating visual noise in the title block. Hide it. */
+/* Single thin divider between the title block and the page body. */
 .fd-title-separator {
-  display: none !important;
+  display: block !important;
+  border: none !important;
+  border-top: 1px solid var(--color-fd-border) !important;
+  margin: 0.5rem 0 0 !important;
+  opacity: 0.9 !important;
 }
 
 /* Slim down the reading-time row so it sits compactly under the
@@ -428,9 +431,9 @@ article em a:hover {
 /* Card / anchor blocks (which already have their own border styling)
  * should keep their own look — exclude them from the inline-link rule above. */
 .fd-page-body p a[class*="rounded"],
-.fd-page-body p a[data-card],
+.fd-page-body p a[data-card="true"],
 article p a[class*="rounded"],
-article p a[data-card] {
+article p a[data-card="true"] {
   text-decoration: none !important;
 }
 
@@ -591,32 +594,90 @@ article table td code {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
- * PREV / NEXT NAV CARDS — orange brand hover
+ * <Cards> / <Card> — refined Vercel-style.
+ *
+ * Each card is an <a data-card="true"> with an <h3> title and a
+ * description paragraph inside. Defaults are too compact (13px
+ * title) and the hover state is a flat background flip. New look:
+ * cleaner border + subtle elevation on hover, slightly larger
+ * title, animated arrow indicator, gentle background tint.
  * ═══════════════════════════════════════════════════════════════════ */
 
-article a[class*="rounded-lg border"],
-article a[class*="rounded-xl border"] {
-  background: var(--color-fd-card);
-  border-color: var(--color-fd-border) !important;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+article a[data-card="true"],
+.fd-page-body a[data-card="true"] {
+  position: relative !important;
+  padding: 1.05rem 1.15rem !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--color-fd-border) !important;
+  background: var(--color-fd-card) !important;
+  text-decoration: none !important;
+  overflow: hidden !important;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease !important;
 }
 
-article [data-card] h3 {
-  font-size: 0.8125rem !important;
+article a[data-card="true"]:hover,
+.fd-page-body a[data-card="true"]:hover {
+  border-color: color-mix(in srgb, hsl(25 100% 50%) 38%, var(--color-fd-border)) !important;
+  background: color-mix(in srgb, hsl(25 100% 50%) 4%, var(--color-fd-card)) !important;
+  box-shadow: 0 1px 0 0 color-mix(in srgb, hsl(25 100% 50%) 12%, transparent),
+    0 8px 24px -16px color-mix(in srgb, hsl(25 100% 50%) 40%, transparent) !important;
+  transform: translateY(-1px) !important;
+}
+
+article a[data-card="true"] h3,
+.fd-page-body a[data-card="true"] h3 {
+  font-size: 0.9375rem !important;
   line-height: 1.35 !important;
   font-weight: 500 !important;
+  letter-spacing: -0.005em !important;
+  margin: 0 0 0.3rem 0 !important;
+  color: var(--color-fd-foreground) !important;
+  transition: color 0.15s ease !important;
 }
 
-article a[class*="rounded-lg border"]:hover,
-article a[class*="rounded-xl border"]:hover {
-  background: color-mix(in srgb, hsl(25 100% 50%) 6%, var(--color-fd-card)) !important;
-  border-color: color-mix(in srgb, var(--color-fd-border) 72%, hsl(25 100% 50%) 28%) !important;
-  color: var(--color-fd-card-foreground) !important;
-}
-
-article a[data-card]:hover h3 {
+article a[data-card="true"]:hover h3,
+.fd-page-body a[data-card="true"]:hover h3 {
   color: hsl(25 100% 62%) !important;
 }
+
+article a[data-card="true"] p,
+.fd-page-body a[data-card="true"] p {
+  font-size: 0.8125rem !important;
+  line-height: 1.55 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  margin: 0 !important;
+}
+
+/* Animated arrow indicator: hidden by default, slides in on hover. */
+article a[data-card="true"]::after,
+.fd-page-body a[data-card="true"]::after {
+  content: "→" !important;
+  position: absolute !important;
+  top: 1.05rem !important;
+  right: 1.15rem !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-size: 0.95rem !important;
+  font-weight: 400 !important;
+  opacity: 0 !important;
+  transform: translateX(-4px) !important;
+  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease !important;
+  pointer-events: none !important;
+}
+
+article a[data-card="true"]:hover::after,
+.fd-page-body a[data-card="true"]:hover::after {
+  opacity: 1 !important;
+  transform: translateX(0) !important;
+  color: hsl(25 100% 62%) !important;
+}
+
+/* Heading anchor links use data-card="" (empty), so the
+ * data-card="true" selectors above don't touch them. No exception
+ * block needed. */
 
 /* ═══════════════════════════════════════════════════════════════════
  * CALLOUT
