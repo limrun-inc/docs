@@ -2,6 +2,7 @@ import { getMDXComponents } from "@farming-labs/theme/mdx";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import type { MDXComponents } from "mdx/types";
 import docsConfig from "@/docs.config";
 import { CodeGroup } from "@/components/code-group";
@@ -15,6 +16,8 @@ export function useMDXComponents(components?: MDXComponents): MDXComponents {
       Step,
       Steps,
       Callout,
+      Tab,
+      Tabs,
       // Mintlify's <Note> maps to an info callout
       Note: ({ children }: { children: React.ReactNode }) => (
         <Callout type="info">{children}</Callout>
