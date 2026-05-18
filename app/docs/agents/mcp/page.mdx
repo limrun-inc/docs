@@ -32,7 +32,7 @@ Most agents end up using both. Use the CLI for provisioning, builds, and assets.
 Create an instance, then read the `mcpUrl` field off its status.
 
 <CodeGroup>
-```ts TypeScript
+```ts title="TypeScript"
 import Limrun from '@limrun/api';
 
 const lim = new Limrun({ apiKey: process.env['LIM_API_KEY'] });
@@ -46,7 +46,7 @@ const instance = await lim.iosInstances.create({
 console.log(instance.status.mcpUrl);
 ```
 
-```python Python
+```python title="Python"
 from limrun_api import Limrun
 
 client = Limrun()
@@ -54,7 +54,7 @@ instance = client.ios_instances.create(wait=True, reuse_if_exists=True)
 print(instance.status.mcp_url)
 ```
 
-```go Go
+```go title="Go"
 client := limrun.NewClient()
 inst, _ := client.IosInstances.New(ctx, limrun.IosInstanceNewParams{
     Wait:          limrun.Bool(true),

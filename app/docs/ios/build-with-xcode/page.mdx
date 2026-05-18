@@ -34,7 +34,7 @@ The right shape depends on whether you also need a simulator.
 When you want to build an app *and* run it on a simulator, create one iOS instance with the Xcode sandbox attached. Pass `--xcode` to the CLI, or set the sandbox config on the SDK call as shown below. After a successful build, the app auto-installs and auto-launches on the simulator.
 
 <CodeGroup>
-```ts TypeScript
+```ts title="TypeScript"
 import Limrun from '@limrun/api';
 
 const lim = new Limrun({ apiKey: process.env['LIM_API_KEY'] });
@@ -55,7 +55,7 @@ const xcode = await lim.xcodeInstances.createClient({
 });
 ```
 
-```python Python
+```python title="Python"
 # Python provisions the paired instance; the build step itself is not in the
 # Python SDK today. Drive the build with `lim xcode build` from your CI step.
 instance = client.ios_instances.create(
@@ -67,7 +67,7 @@ instance = client.ios_instances.create(
 xcode_url = instance.status.sandbox.xcode.url
 ```
 
-```go Go
+```go title="Go"
 // Go provisions the paired instance; the build step itself is not in the
 // Go SDK today. Drive the build with `lim xcode build` from your CI step.
 instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
@@ -102,7 +102,7 @@ lim ios create --xcode --reuse-if-exists --label session=demo
 For pure CI builds, real-device IPA distribution, or MCP-wrapped build tools, create a top-level Xcode instance. It has no simulator attached.
 
 <CodeGroup>
-```ts TypeScript
+```ts title="TypeScript"
 const xcodeInstance = await lim.xcodeInstances.create({
   wait: true,
   reuseIfExists: true,
@@ -112,7 +112,7 @@ const xcodeInstance = await lim.xcodeInstances.create({
 const xcode = await lim.xcodeInstances.createClient({ instance: xcodeInstance });
 ```
 
-```python Python
+```python title="Python"
 xcode_instance = client.xcode_instances.create(
     wait=True,
     reuse_if_exists=True,
@@ -144,7 +144,7 @@ You can also attach a simulator to a standalone Xcode sandbox later. See [Auto-i
 Syncing pushes your source to the sandbox. The first sync uploads everything; later ones only send what changed. The example below uses every option; in practice you pass only what you need.
 
 <CodeGroup>
-```ts TypeScript
+```ts title="TypeScript"
 await xcode.sync('./my-app', {
   watch: true,             // re-sync on file changes
   install: true,           // install after each sync (paired iOS only)
@@ -233,7 +233,7 @@ Paths on the remote side that start with `~/` expand to the sandbox's home direc
 Trigger a build. Logs stream back as it runs, and `await` resolves to the final exit status.
 
 <CodeGroup>
-```ts TypeScript
+```ts title="TypeScript"
 const build = xcode.xcodebuild({
   workspace: 'MyApp.xcworkspace',
   scheme: 'MyApp',
@@ -284,7 +284,7 @@ Match what you'd pass to local `xcodebuild`:
 To produce a signed IPA for distribution, switch the target SDK to `iphoneos`, pass a P12 certificate, and pass a provisioning profile. Add an upload target so the IPA lands in Asset Storage with a downloadable URL.
 
 <CodeGroup>
-```ts TypeScript
+```ts title="TypeScript"
 import fs from 'node:fs';
 
 const build = xcode.xcodebuild(
@@ -372,7 +372,7 @@ After the attach call returns, the next successful build auto-installs on that s
 
 A complete Linux CI job that builds, signs, uploads, and posts a download link:
 
-```yaml .github/workflows/build.yml
+```yaml title=".github/workflows/build.yml"
 name: iOS build
 on: { pull_request: { types: [opened, synchronize] } }
 jobs:

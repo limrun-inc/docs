@@ -305,16 +305,65 @@ article h3 {
 }
 
 .prose p, .prose li, .prose td, article p {
-  font-size: 0.875rem !important;
-  line-height: 1.6 !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.65 !important;
   font-weight: 400 !important;
   color: var(--color-fd-muted-foreground) !important;
 }
 
-/* h1 underline */
+/* H1 has no underline rule; the framework injects TitleDecorations
+ * (description + read-time) directly after it with its own divider, so
+ * a second border here was creating duplicate horizontal rules. */
 .fd-page-body h1 {
-  border-bottom: 1px solid var(--color-fd-border);
-  padding-bottom: 0.6rem;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0.5rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * INLINE LINKS — orange underline so they don't read as bold
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-page-body p a,
+.fd-page-body li a,
+.fd-page-body td a,
+.fd-page-body strong a,
+.fd-page-body em a,
+article p a,
+article li a,
+article td a,
+article strong a,
+article em a {
+  color: hsl(25 100% 62%) !important;
+  text-decoration: underline !important;
+  text-decoration-color: color-mix(in srgb, hsl(25 100% 50%) 60%, transparent) !important;
+  text-decoration-thickness: 1px !important;
+  text-underline-offset: 0.22em !important;
+  font-weight: inherit !important;
+  transition: text-decoration-color 0.12s ease, color 0.12s ease !important;
+}
+
+.fd-page-body p a:hover,
+.fd-page-body li a:hover,
+.fd-page-body td a:hover,
+.fd-page-body strong a:hover,
+.fd-page-body em a:hover,
+article p a:hover,
+article li a:hover,
+article td a:hover,
+article strong a:hover,
+article em a:hover {
+  color: hsl(25 100% 70%) !important;
+  text-decoration-color: hsl(25 100% 62%) !important;
+}
+
+/* Card / anchor blocks (which already have their own border styling)
+ * should keep their own look — exclude them from the inline-link rule above. */
+.fd-page-body p a[class*="rounded"],
+.fd-page-body p a[data-card],
+article p a[class*="rounded"],
+article p a[data-card] {
+  text-decoration: none !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

@@ -50,7 +50,7 @@ Set these in **Settings → Secrets and variables → Actions** on the GitHub re
 
 End-to-end: build on every PR open or sync, upload under a PR-scoped asset name, post the preview link as a comment. Replace `MyApp` with your scheme name.
 
-```yaml .github/workflows/ios-preview.yml
+```yaml title=".github/workflows/ios-preview.yml"
 name: iOS Preview
 
 on:
@@ -172,7 +172,7 @@ Trigger it from the same workflow file by adding `closed` to the `on.pull_reques
 
 If your CI is GitHub Actions, [`limrun-inc/ios-preview-action`](https://github.com/limrun-inc/ios-preview-action) wraps the create, build, upload, and PR-comment steps into one. It also cleans up the Xcode sandbox in a `post:` step automatically, so you don't need a separate cleanup job.
 
-```yaml .github/workflows/ios-preview.yml
+```yaml title=".github/workflows/ios-preview.yml"
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]

@@ -4,6 +4,7 @@ import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 import type { MDXComponents } from "mdx/types";
 import docsConfig from "@/docs.config";
+import { CodeGroup } from "@/components/code-group";
 
 export function useMDXComponents(components?: MDXComponents): MDXComponents {
   return getMDXComponents(
@@ -22,10 +23,8 @@ export function useMDXComponents(components?: MDXComponents): MDXComponents {
       Warning: ({ children }: { children: React.ReactNode }) => (
         <Callout type="warn">{children}</Callout>
       ),
-      // Mintlify's <CodeGroup> → just render children (fumadocs tabs handle it in MDX)
-      CodeGroup: ({ children }: { children: React.ReactNode }) => (
-        <div className="fd-tabs">{children}</div>
-      ),
+      // Mintlify's <CodeGroup> renders each child fence as a tab.
+      CodeGroup,
       Frame: ({ children }: { children: React.ReactNode }) => (
         <div className="docs-frame">{children}</div>
       ),
