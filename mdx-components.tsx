@@ -1,5 +1,8 @@
 import { getMDXComponents } from "@farming-labs/theme/mdx";
-import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
+import {
+  Accordion as FumadocsAccordion,
+  Accordions,
+} from "fumadocs-ui/components/accordion";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
@@ -11,7 +14,7 @@ export function useMDXComponents(components?: MDXComponents): MDXComponents {
   return getMDXComponents(
     {
       // Mintlify → fumadocs-ui equivalents
-      Accordion,
+      Accordion: FumadocsAccordion,
       Accordions,
       Step,
       Steps,

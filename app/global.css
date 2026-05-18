@@ -204,6 +204,7 @@ button[aria-label="Expand Sidebar"] {
 
 /* Sidebar links — default */
 aside a[data-active] {
+  position: relative !important;
   font-size: 0.8125rem !important;
   line-height: 1.5 !important;
   border-radius: 4px !important;
@@ -228,8 +229,8 @@ aside a[data-active="true"] {
 }
 
 aside a[data-active="true"]::before {
-  background-color: transparent !important;
-  width: 0 !important;
+  content: none !important;
+  display: none !important;
 }
 
 /* Nested sidebar items */
@@ -245,6 +246,21 @@ aside div.overflow-hidden[data-state] a[data-active="true"] {
   color: hsl(25 100% 62%) !important;
   font-weight: 500 !important;
   background: color-mix(in srgb, hsl(25 100% 50%) 8%, transparent) !important;
+}
+
+aside div.overflow-hidden[data-state] a[data-active="true"]::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset-inline-start: 0.625rem !important;
+  top: 0.35rem !important;
+  bottom: 0.35rem !important;
+  width: 1px !important;
+  border-radius: 999px !important;
+  background: hsl(25 100% 55%) !important;
+  opacity: 0.95 !important;
+  pointer-events: none !important;
+  transition: opacity 0.18s ease, top 0.18s ease, bottom 0.18s ease, background-color 0.18s ease !important;
 }
 
 aside div.overflow-hidden[data-state] a[data-active]:hover {
@@ -305,136 +321,32 @@ article h3 {
 }
 
 .prose p, .prose li, .prose td, article p {
-  font-size: 1rem !important;
-  line-height: 1.7 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.6 !important;
   font-weight: 400 !important;
   color: var(--color-fd-muted-foreground) !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
- * RIGHT-HAND TOC — bumped width.
- *
- * The framework's TOC container ships with a tailwind class that
- * pins --fd-toc-width to 268px at the xl breakpoint, which clobbers
- * the value we set in docs.config (300). Force the larger value at
- * every breakpoint that shows the TOC.
- * ═══════════════════════════════════════════════════════════════════ */
-
-#nd-toc,
-[style*="--fd-toc-width"] {
-  --fd-toc-width: 300px !important;
-}
-
-@media (min-width: 1024px) {
-  #nd-toc {
-    width: 300px !important;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- * PAGE TITLE BLOCK — Vercel-style compact
- *
- * The framework renders:
- *   <h1>Title</h1>
- *   <p class="fd-page-description">…</p>
- *   <div class="fd-below-title-block">
- *     <hr class="fd-title-separator" />
- *     [reading time]
- *   </div>
- *
- * The defaults leave too much vertical space between elements and add
- * a horizontal rule between the description and the reading time.
- * Vercel docs run them tighter and skip the rule.
- * ═══════════════════════════════════════════════════════════════════ */
-
-.fd-page-body h1,
-article h1 {
-  border-bottom: none !important;
-  padding-bottom: 0 !important;
-  margin-bottom: 0.4rem !important;
-}
-
-.fd-page-description {
-  margin-top: 0 !important;
-  margin-bottom: 0.5rem !important;
-  font-size: 1rem !important;
-  line-height: 1.55 !important;
-  color: color-mix(in srgb, var(--color-fd-muted-foreground) 88%, var(--color-fd-foreground)) !important;
-}
-
-.fd-below-title-block {
-  margin-top: 0.25rem !important;
-  margin-bottom: 1.25rem !important;
-}
-
-/* Single thin divider between the title block and the page body. */
-.fd-title-separator {
-  display: block !important;
-  border: none !important;
-  border-top: 1px solid var(--color-fd-border) !important;
-  margin: 0.5rem 0 0 !important;
-  opacity: 0.9 !important;
-}
-
-/* Slim down the reading-time row so it sits compactly under the
- * description rather than floating in dead space. */
-.fd-page-meta,
-.fd-reading-time {
-  font-family: var(--fd-font-mono) !important;
-  font-size: 0.7rem !important;
-  letter-spacing: 0.04em !important;
-  text-transform: uppercase !important;
-  color: var(--color-fd-muted-foreground) !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- * INLINE LINKS — orange underline so they don't read as bold
- * ═══════════════════════════════════════════════════════════════════ */
-
-.fd-page-body p a,
-.fd-page-body li a,
-.fd-page-body td a,
-.fd-page-body strong a,
-.fd-page-body em a,
-article p a,
-article li a,
-article td a,
-article strong a,
-article em a {
+.fd-page-body a:not([data-card]):not([class*="rounded"]):not([href^="#"]),
+article a:not([data-card]):not([class*="rounded"]):not([href^="#"]) {
   color: hsl(25 100% 62%) !important;
-  text-decoration: underline !important;
-  text-decoration-color: color-mix(in srgb, hsl(25 100% 50%) 60%, transparent) !important;
-  text-decoration-thickness: 1px !important;
-  text-underline-offset: 0.22em !important;
-  font-weight: inherit !important;
-  transition: text-decoration-color 0.12s ease, color 0.12s ease !important;
+  font-weight: 500 !important;
+  text-decoration-line: underline !important;
+  text-decoration-color: color-mix(in srgb, hsl(25 100% 50%) 45%, transparent) !important;
+  text-underline-offset: 0.18em !important;
+  transition: color 0.12s ease, text-decoration-color 0.12s ease !important;
 }
 
-.fd-page-body p a:hover,
-.fd-page-body li a:hover,
-.fd-page-body td a:hover,
-.fd-page-body strong a:hover,
-.fd-page-body em a:hover,
-article p a:hover,
-article li a:hover,
-article td a:hover,
-article strong a:hover,
-article em a:hover {
-  color: hsl(25 100% 70%) !important;
+.fd-page-body a:not([data-card]):not([class*="rounded"]):not([href^="#"]):hover,
+article a:not([data-card]):not([class*="rounded"]):not([href^="#"]):hover {
+  color: hsl(25 100% 68%) !important;
   text-decoration-color: hsl(25 100% 62%) !important;
 }
 
-/* Card / anchor blocks (which already have their own border styling)
- * should keep their own look — exclude them from the inline-link rule above. */
-.fd-page-body p a[class*="rounded"],
-.fd-page-body p a[data-card="true"],
-article p a[class*="rounded"],
-article p a[data-card="true"] {
-  text-decoration: none !important;
+/* h1 underline */
+.fd-page-body h1 {
+  border-bottom: 1px solid var(--color-fd-border);
+  padding-bottom: 0.6rem;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -524,150 +436,139 @@ figure.shiki,
   border-radius: 4px !important;
 }
 
+.docs-code-tabs {
+  border-color: var(--color-fd-border) !important;
+  border-radius: 10px !important;
+  background: var(--color-fd-card) !important;
+  box-shadow: none !important;
+}
+
+.docs-code-tabs [role="tablist"] {
+  min-height: 2.375rem !important;
+  padding: 0 0.875rem !important;
+  gap: 1.25rem !important;
+  overflow-x: visible !important;
+  flex-wrap: wrap !important;
+  border-bottom: 1px solid var(--color-fd-border) !important;
+  background: color-mix(in srgb, var(--color-fd-card) 92%, var(--color-fd-foreground) 3%) !important;
+}
+
+.docs-code-tabs [role="tab"] {
+  gap: 0.5rem !important;
+  margin-bottom: -1px !important;
+  padding: 0.5rem 0 !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
+  color: var(--color-fd-muted-foreground) !important;
+  font-family: var(--fd-font-sans) !important;
+  font-size: 0.8rem !important;
+  font-weight: 450 !important;
+  transition: color 0.15s ease, border-color 0.15s ease !important;
+}
+
+.docs-code-tabs [role="tab"]:hover {
+  color: var(--color-fd-foreground) !important;
+  font-weight: 450 !important;
+}
+
+.docs-code-tabs [role="tab"][data-state="active"] {
+  color: hsl(25 100% 62%) !important;
+  border-bottom-color: hsl(25 100% 50%) !important;
+  font-weight: 450 !important;
+}
+
+.docs-code-tabs [role="tab"] > div {
+  display: none !important;
+}
+
+.docs-code-tabs [role="tab"][data-state="active"] > div {
+  display: none !important;
+}
+
+.docs-code-tabs .docs-code-tab-icon {
+  width: 0.95rem !important;
+  height: 0.95rem !important;
+  color: currentColor !important;
+  opacity: 0.82 !important;
+  flex-shrink: 0 !important;
+}
+
+#nd-docs-layout .docs-code-tabs figure.shiki {
+  margin: -1rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+#nd-docs-layout .docs-code-tabs [role="tabpanel"] {
+  margin-top: 0 !important;
+  border-top: 0 !important;
+  background: var(--color-fd-card) !important;
+  outline: none !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
- * TABLES — Vercel-style: no outer border, just subtle row dividers,
- * header in muted uppercase, compact rows.
+ * TABLES
  * ═══════════════════════════════════════════════════════════════════ */
 
 .fd-page-body table,
 article table {
-  border: none !important;
-  border-radius: 0 !important;
-  overflow: visible !important;
-  border-collapse: collapse !important;
-  width: 100% !important;
-  font-size: 0.9375rem !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 8px !important;
 }
 
 .fd-page-body table thead,
 article table thead {
+  background: color-mix(in srgb, var(--color-fd-foreground) 4%, transparent) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fd-border) 85%, hsl(25 100% 50%) 15%) !important;
+}
+
+.fd-page-body table tbody,
+.fd-page-body table tr,
+article table tbody,
+article table tr {
   background: transparent !important;
-  border-bottom: 1px solid var(--color-fd-border) !important;
 }
 
 .fd-page-body table th,
 article table th {
-  background: transparent !important;
-  border: none !important;
-  color: var(--color-fd-muted-foreground) !important;
+  background: color-mix(in srgb, var(--color-fd-foreground) 4%, transparent) !important;
+  border-color: var(--color-fd-border) !important;
+  color: color-mix(in srgb, var(--color-fd-foreground) 82%, var(--color-fd-muted-foreground)) !important;
   font-family: var(--fd-font-sans) !important;
   font-size: 0.75rem !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.04em !important;
-  text-transform: uppercase !important;
-  text-align: left !important;
-  padding: 0.625rem 0.875rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
 }
 
-.fd-page-body table tbody tr,
-article table tbody tr {
-  border-bottom: 1px solid color-mix(in srgb, var(--color-fd-border) 60%, transparent) !important;
-}
-
-.fd-page-body table tbody tr:last-child,
-article table tbody tr:last-child {
-  border-bottom: none !important;
+.fd-page-body table th code,
+article table th code {
+  font-weight: 600 !important;
 }
 
 .fd-page-body table td,
 article table td {
-  border: none !important;
-  padding: 0.7rem 0.875rem !important;
-  vertical-align: top !important;
-  color: var(--color-fd-foreground) !important;
-  line-height: 1.55 !important;
+  background: transparent !important;
 }
 
-/* Code in header cells should match header weight, not bold. */
-.fd-page-body table th code,
-article table th code {
-  font-weight: 500 !important;
-  font-size: 0.7rem !important;
-  text-transform: none !important;
-  letter-spacing: 0 !important;
-}
-
-/* Code in body cells should look like inline code elsewhere. */
-.fd-page-body table td code,
-article table td code {
+article [data-card] h3 {
   font-size: 0.8125rem !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- * <Cards> / <Card> — refined Vercel-style.
- *
- * Each card is an <a data-card="true"> with an <h3> title and a
- * description paragraph inside. Defaults are too compact (13px
- * title) and the hover state is a flat background flip. New look:
- * cleaner border + subtle elevation on hover, slightly larger
- * title, animated arrow indicator, gentle background tint.
- * ═══════════════════════════════════════════════════════════════════ */
-
-article a[data-card="true"],
-.fd-page-body a[data-card="true"] {
-  position: relative !important;
-  padding: 1.05rem 1.15rem !important;
-  border-radius: 10px !important;
-  border: 1px solid var(--color-fd-border) !important;
-  background: var(--color-fd-card) !important;
-  text-decoration: none !important;
-  overflow: hidden !important;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease,
-    transform 0.15s ease,
-    box-shadow 0.15s ease !important;
-}
-
-article a[data-card="true"]:hover,
-.fd-page-body a[data-card="true"]:hover {
-  border-color: color-mix(in srgb, hsl(25 100% 50%) 38%, var(--color-fd-border)) !important;
-  background: color-mix(in srgb, hsl(25 100% 50%) 4%, var(--color-fd-card)) !important;
-  box-shadow: 0 1px 0 0 color-mix(in srgb, hsl(25 100% 50%) 12%, transparent),
-    0 8px 24px -16px color-mix(in srgb, hsl(25 100% 50%) 40%, transparent) !important;
-  transform: translateY(-1px) !important;
-}
-
-article a[data-card="true"] h3,
-.fd-page-body a[data-card="true"] h3 {
-  font-size: 1rem !important;
-  line-height: 1.4 !important;
+  line-height: 1.35 !important;
   font-weight: 500 !important;
-  letter-spacing: -0.005em !important;
-  margin: 0 0 0.35rem 0 !important;
-  color: var(--color-fd-foreground) !important;
-  transition: color 0.15s ease !important;
 }
 
-article a[data-card="true"]:hover h3,
-.fd-page-body a[data-card="true"]:hover h3 {
-  color: hsl(25 100% 62%) !important;
+article a[data-card] > div.not-prose:first-child {
+  display: none !important;
 }
-
-article a[data-card="true"] p,
-.fd-page-body a[data-card="true"] p {
-  font-size: 0.9375rem !important;
-  line-height: 1.55 !important;
-  color: var(--color-fd-muted-foreground) !important;
-  margin: 0 !important;
-}
-
-/* Heading anchor links use data-card="" (empty), so the
- * data-card="true" selectors above don't touch them. No exception
- * block needed. */
 
 /* ═══════════════════════════════════════════════════════════════════
  * CALLOUTS — Mintlify-style.
- *
- * fumadocs-ui's <Callout> renders as a flex row with an internal
- * left-bar div and an icon, all on a solid card background. We
- * target it via the inline `--callout-color` CSS variable (set
- * per type: info / warn / error) and replace the look with a
- * tinted background, a single accent border-left, and text that
- * reads as foreground rather than muted.
  * ═══════════════════════════════════════════════════════════════════ */
 
 div[style*="--callout-color"] {
+  --callout-color: hsl(25 100% 55%) !important;
   background: color-mix(in srgb, var(--callout-color) 7%, var(--color-fd-card)) !important;
   border: 1px solid color-mix(in srgb, var(--callout-color) 28%, var(--color-fd-border)) !important;
   border-left-width: 3px !important;
@@ -680,8 +581,6 @@ div[style*="--callout-color"] {
   margin: 1rem 0 !important;
 }
 
-/* The framework draws a duplicate inner left bar. Hide it; our
- * border-left already provides the accent. */
 div[style*="--callout-color"] > div[role="none"] {
   display: none !important;
 }
@@ -696,8 +595,6 @@ div[style*="--callout-color"] > svg {
   stroke-width: 2 !important;
 }
 
-/* Text content: foreground (not muted) so the callout actually
- * reads as a highlighted note instead of fading away. */
 div[style*="--callout-color"] .prose-no-margin {
   color: var(--color-fd-foreground) !important;
 }
@@ -726,11 +623,75 @@ div[style*="--callout-color"] p a:hover {
   text-decoration-color: var(--callout-color) !important;
 }
 
-/* Inline code inside callouts — match the tint of the callout. */
 div[style*="--callout-color"] code:not(pre code) {
   background: color-mix(in srgb, var(--callout-color) 15%, var(--color-fd-card)) !important;
   border-color: color-mix(in srgb, var(--callout-color) 30%, transparent) !important;
   color: color-mix(in srgb, var(--callout-color) 75%, var(--color-fd-foreground)) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ACCORDIONS — single grouped border, quieter triggers
+ * ═══════════════════════════════════════════════════════════════════ */
+
+.fd-page-body [data-orientation="vertical"].rounded-lg.border,
+article [data-orientation="vertical"].rounded-lg.border {
+  overflow: hidden !important;
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 8px !important;
+  background: var(--color-fd-card) !important;
+  box-shadow: none !important;
+}
+
+.fd-page-body [data-orientation="vertical"].rounded-lg.border > [data-orientation="vertical"],
+article [data-orientation="vertical"].rounded-lg.border > [data-orientation="vertical"] {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.fd-page-body [data-orientation="vertical"].rounded-lg.border > [data-orientation="vertical"] + [data-orientation="vertical"],
+article [data-orientation="vertical"].rounded-lg.border > [data-orientation="vertical"] + [data-orientation="vertical"] {
+  border-top: 1px solid var(--color-fd-border) !important;
+}
+
+.fd-page-body [data-orientation="vertical"].rounded-lg.border button[data-orientation="vertical"],
+article [data-orientation="vertical"].rounded-lg.border button[data-orientation="vertical"] {
+  min-height: 2.75rem !important;
+  padding: 0.65rem 0.95rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  line-height: 1.45 !important;
+  color: color-mix(in srgb, var(--color-fd-foreground) 86%, var(--color-fd-muted-foreground)) !important;
+}
+
+.fd-page-body [data-orientation="vertical"].rounded-lg.border button[data-orientation="vertical"]:hover,
+article [data-orientation="vertical"].rounded-lg.border button[data-orientation="vertical"]:hover {
+  background: color-mix(in srgb, hsl(25 100% 50%) 4%, transparent) !important;
+  color: var(--color-fd-foreground) !important;
+}
+
+.fd-page-body [data-orientation="vertical"].rounded-lg.border button[data-orientation="vertical"] svg,
+article [data-orientation="vertical"].rounded-lg.border button[data-orientation="vertical"] svg {
+  width: 0.95rem !important;
+  height: 0.95rem !important;
+}
+
+.fd-page-body [data-orientation="vertical"].rounded-lg.border [data-state="open"] > h3,
+article [data-orientation="vertical"].rounded-lg.border [data-state="open"] > h3 {
+  border-bottom: 0 !important;
+}
+
+.fd-page-body [data-orientation="vertical"].rounded-lg.border [data-state="open"] > div,
+article [data-orientation="vertical"].rounded-lg.border [data-state="open"] > div {
+  border-top: 0 !important;
+}
+
+.fd-page-body [data-orientation="vertical"].rounded-lg.border [data-state="open"] > div > div,
+article [data-orientation="vertical"].rounded-lg.border [data-state="open"] > div > div {
+  padding: 0 0.95rem 0.85rem 2.35rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.65 !important;
+  color: var(--color-fd-muted-foreground) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -908,9 +869,41 @@ div[style*="--callout-color"] code:not(pre code) {
   color: var(--color-fd-muted-foreground) !important;
 }
 
-.fd-page-action-menu-item:hover {
-  background: var(--color-fd-accent) !important;
-  color: var(--color-fd-foreground) !important;
+.fd-page-action-menu-item:hover,
+.fd-page-action-menu-item[data-highlighted],
+.fd-page-action-menu-item[data-selected="true"] {
+  background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-secondary)) !important;
+  color: hsl(25 100% 62%) !important;
+}
+
+.fd-page-action-menu [role="menuitem"]:hover,
+.fd-page-action-menu [role="menuitem"][data-highlighted],
+.fd-page-action-menu [role="menuitem"][data-selected="true"],
+.fd-page-action-menu [cmdk-item]:hover,
+.fd-page-action-menu [cmdk-item][data-selected="true"],
+[role="menu"] .fd-page-action-menu-item:hover,
+[role="menu"] .fd-page-action-menu-item[data-highlighted],
+[role="menu"] .fd-page-action-menu-item[data-selected="true"],
+[role="menu"] [role="menuitem"]:hover,
+[role="menu"] [role="menuitem"][data-highlighted],
+[role="menu"] [role="menuitem"][data-selected="true"],
+[data-radix-popper-content-wrapper] .fd-page-action-menu-item:hover,
+[data-radix-popper-content-wrapper] .fd-page-action-menu-item[data-highlighted],
+[data-radix-popper-content-wrapper] .fd-page-action-menu-item[data-selected="true"],
+[data-radix-popper-content-wrapper] [role="menuitem"]:hover,
+[data-radix-popper-content-wrapper] [role="menuitem"][data-highlighted],
+[data-radix-popper-content-wrapper] [role="menuitem"][data-selected="true"] {
+  background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-secondary)) !important;
+  color: hsl(25 100% 62%) !important;
+}
+
+[data-radix-popper-content-wrapper] a[href*="github.com"]:hover,
+[data-radix-popper-content-wrapper] a[href*="chatgpt.com"]:hover,
+[data-radix-popper-content-wrapper] a[href*="claude.ai"]:hover,
+[data-radix-popper-content-wrapper] a[href*="cursor.com"]:hover,
+[data-radix-popper-content-wrapper] button:hover {
+  background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-secondary)) !important;
+  color: hsl(25 100% 62%) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1143,6 +1136,57 @@ div[style*="--callout-color"] code:not(pre code) {
 @media (max-width: 767px) {
   [data-toc-popover] {
     --fd-toc-popover-height: 40px !important;
+    --color-fd-primary: hsl(25 100% 50%) !important;
+    --color-fd-primary-foreground: #000 !important;
+    --mobile-toc-surface: color-mix(
+      in srgb,
+      var(--color-fd-background) 80%,
+      transparent
+    );
+  }
+
+  .dark [data-toc-popover] > header {
+    background: var(--mobile-toc-surface) !important;
+    border-color: color-mix(
+      in srgb,
+      var(--color-fd-border) 62%,
+      transparent
+    ) !important;
+    backdrop-filter: blur(18px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(140%) !important;
+    box-shadow: none !important;
+  }
+
+  .dark [data-toc-popover-trigger] {
+    color: color-mix(
+      in srgb,
+      var(--color-fd-foreground) 74%,
+      var(--color-fd-muted-foreground)
+    ) !important;
+  }
+
+  .dark [data-toc-popover-trigger]:hover,
+  .dark [data-toc-popover][data-state="open"] [data-toc-popover-trigger] {
+    color: var(--color-fd-foreground) !important;
+  }
+
+  [data-toc-popover-content] {
+    border-color: color-mix(
+      in srgb,
+      var(--color-fd-border) 72%,
+      transparent
+    ) !important;
+  }
+
+  .dark [data-toc-popover-content] {
+    background: var(--mobile-toc-surface) !important;
+    border-color: color-mix(
+      in srgb,
+      var(--color-fd-border) 62%,
+      transparent
+    ) !important;
+    backdrop-filter: blur(18px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(140%) !important;
   }
 
   [data-toc-popover-content] > div {
@@ -1151,6 +1195,65 @@ div[style*="--callout-color"] code:not(pre code) {
 
   [data-toc-popover-content] [data-radix-scroll-area-viewport] > div {
     padding-top: 0 !important;
+  }
+
+  [data-toc-popover-content] .py-3 {
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+  }
+
+  [data-toc-popover-content] ul,
+  [data-toc-popover-content] ol,
+  [data-toc-popover-content] li {
+    gap: 0 !important;
+    margin-block: 0 !important;
+  }
+
+  [data-toc-popover-content] a {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 2rem !important;
+    padding-block: 0.35rem !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .dark [data-toc-popover-content] a {
+    color: color-mix(
+      in srgb,
+      var(--color-fd-foreground) 58%,
+      var(--color-fd-muted-foreground)
+    ) !important;
+  }
+
+  .dark [data-toc-popover-content] a:hover {
+    color: var(--color-fd-foreground) !important;
+  }
+
+  .dark [data-toc-popover-content] a[data-active="true"] {
+    color: hsl(25 100% 62%) !important;
+  }
+
+  [data-toc-popover-content] a span {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  [data-toc-popover-content] svg {
+    flex-shrink: 0 !important;
+  }
+
+  .dark [data-toc-popover-content] svg path,
+  .dark [data-toc-popover-content] svg line {
+    stroke: color-mix(
+      in srgb,
+      var(--color-fd-foreground) 14%,
+      transparent
+    ) !important;
   }
 
   [data-toc-popover-content] a:first-of-type {
@@ -1265,6 +1368,43 @@ a[href*="llms"]:hover {
   background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-secondary)) !important;
 }
 
+.fd-page-footer a[href*="/edit/"],
+.fd-page-footer a[href*="chatgpt.com"],
+.fd-page-footer a[href*="claude.ai"],
+.fd-page-footer a[href*="cursor.com"],
+.fd-actions-portal a[href*="/edit/"],
+.fd-actions-portal a[href*="chatgpt.com"],
+.fd-actions-portal a[href*="claude.ai"],
+.fd-actions-portal a[href*="cursor.com"],
+[data-page-actions] a[href*="/edit/"],
+[data-page-actions] a[href*="chatgpt.com"],
+[data-page-actions] a[href*="claude.ai"],
+[data-page-actions] a[href*="cursor.com"] {
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--color-fd-muted-foreground) !important;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+}
+
+.fd-page-footer a[href*="/edit/"]:hover,
+.fd-page-footer a[href*="chatgpt.com"]:hover,
+.fd-page-footer a[href*="claude.ai"]:hover,
+.fd-page-footer a[href*="cursor.com"]:hover,
+.fd-actions-portal a[href*="/edit/"]:hover,
+.fd-actions-portal a[href*="chatgpt.com"]:hover,
+.fd-actions-portal a[href*="claude.ai"]:hover,
+.fd-actions-portal a[href*="cursor.com"]:hover,
+[data-page-actions] a[href*="/edit/"]:hover,
+[data-page-actions] a[href*="chatgpt.com"]:hover,
+[data-page-actions] a[href*="claude.ai"]:hover,
+[data-page-actions] a[href*="cursor.com"]:hover {
+  background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-secondary)) !important;
+  border-color: color-mix(in srgb, var(--color-fd-border) 72%, hsl(25 100% 50%) 28%) !important;
+  color: hsl(25 100% 62%) !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
  * CONTENT AREA PADDING
  * ═══════════════════════════════════════════════════════════════════ */
@@ -1275,7 +1415,14 @@ a[href*="llms"]:hover {
     padding-bottom: 10px !important;
   }
 }
-
+.fd-feedback-input::placeholder {
+  font-size: 0.8125rem !important;
+}
+.fd-feedback-submit {
+  font-size: 0.8125rem !important;
+  letter-spacing: 0.08em !important;
+  font-weight: 400 !important;
+}
 @media (min-width: 768px) {
   #nd-docs-layout [class*="max-w-[900px]"] {
     padding-left: 78px !important;

@@ -1,6 +1,20 @@
 import { defineDocs } from "@farming-labs/docs";
 import { darkbold } from "@farming-labs/theme/darkbold";
-import { Smartphone, Rocket, Hammer, Terminal, BookOpen, Zap } from "lucide-react";
+import {
+  Blocks,
+  Bot,
+  CreditCard,
+  Database,
+  FlaskConical,
+  Hammer,
+  Play,
+  Rocket,
+  Smartphone,
+  TabletSmartphone,
+  Terminal,
+  BookOpen,
+  Zap,
+} from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
 
 export default defineDocs({
@@ -63,17 +77,6 @@ export default defineDocs({
           }}
         >
           lim.run
-        </span>
-        <span
-          style={{
-            fontFamily: "var(--font-geist-sans), 'Geist', sans-serif",
-            fontSize: "0.7rem",
-            letterSpacing: "0.1em",
-            opacity: 0.45,
-            textTransform: "uppercase",
-          }}
-        >
-          docs
         </span>
       </div>
     ),
@@ -222,6 +225,13 @@ export default defineDocs({
     hammer: <Hammer size={15} />,
     terminal: <Terminal size={15} />,
     bookopen: <BookOpen size={15} />,
+    bot: <Bot size={15} />,
+    "tablet-smartphone": <TabletSmartphone size={15} />,
+    "flask-conical": <FlaskConical size={15} />,
+    blocks: <Blocks size={15} />,
+    "credit-card": <CreditCard size={15} />,
+    database: <Database size={15} />,
+    play: <Play size={15} />,
   },
 
   feedback: {
