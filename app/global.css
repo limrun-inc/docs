@@ -498,19 +498,27 @@ figure.shiki,
 .fd-page-body table,
 article table {
   overflow: hidden !important;
+  background: transparent !important;
   border: 1px solid var(--color-fd-border) !important;
   border-radius: 8px !important;
 }
 
 .fd-page-body table thead,
 article table thead {
-  background: color-mix(in srgb, var(--color-fd-card) 82%, var(--color-fd-foreground) 4%) !important;
+  background: color-mix(in srgb, var(--color-fd-foreground) 4%, transparent) !important;
   border-bottom: 1px solid color-mix(in srgb, var(--color-fd-border) 85%, hsl(25 100% 50%) 15%) !important;
+}
+
+.fd-page-body table tbody,
+.fd-page-body table tr,
+article table tbody,
+article table tr {
+  background: transparent !important;
 }
 
 .fd-page-body table th,
 article table th {
-  background: transparent !important;
+  background: color-mix(in srgb, var(--color-fd-foreground) 4%, transparent) !important;
   border-color: var(--color-fd-border) !important;
   color: color-mix(in srgb, var(--color-fd-foreground) 82%, var(--color-fd-muted-foreground)) !important;
   font-family: var(--fd-font-sans) !important;
@@ -524,15 +532,9 @@ article table th code {
   font-weight: 600 !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
- * PREV / NEXT NAV CARDS — orange brand hover
- * ═══════════════════════════════════════════════════════════════════ */
-
-article a[class*="rounded-lg border"],
-article a[class*="rounded-xl border"] {
-  background: var(--color-fd-card);
-  border-color: var(--color-fd-border) !important;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+.fd-page-body table td,
+article table td {
+  background: transparent !important;
 }
 
 article [data-card] h3 {
@@ -541,15 +543,8 @@ article [data-card] h3 {
   font-weight: 500 !important;
 }
 
-article a[class*="rounded-lg border"]:hover,
-article a[class*="rounded-xl border"]:hover {
-  background: color-mix(in srgb, hsl(25 100% 50%) 6%, var(--color-fd-card)) !important;
-  border-color: color-mix(in srgb, var(--color-fd-border) 72%, hsl(25 100% 50%) 28%) !important;
-  color: var(--color-fd-card-foreground) !important;
-}
-
-article a[data-card]:hover h3 {
-  color: hsl(25 100% 62%) !important;
+article a[data-card] > div.not-prose:first-child {
+  display: none !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -793,9 +788,41 @@ div[style*="--callout-color"] code:not(pre code) {
   color: var(--color-fd-muted-foreground) !important;
 }
 
-.fd-page-action-menu-item:hover {
-  background: var(--color-fd-accent) !important;
-  color: var(--color-fd-foreground) !important;
+.fd-page-action-menu-item:hover,
+.fd-page-action-menu-item[data-highlighted],
+.fd-page-action-menu-item[data-selected="true"] {
+  background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-secondary)) !important;
+  color: hsl(25 100% 62%) !important;
+}
+
+.fd-page-action-menu [role="menuitem"]:hover,
+.fd-page-action-menu [role="menuitem"][data-highlighted],
+.fd-page-action-menu [role="menuitem"][data-selected="true"],
+.fd-page-action-menu [cmdk-item]:hover,
+.fd-page-action-menu [cmdk-item][data-selected="true"],
+[role="menu"] .fd-page-action-menu-item:hover,
+[role="menu"] .fd-page-action-menu-item[data-highlighted],
+[role="menu"] .fd-page-action-menu-item[data-selected="true"],
+[role="menu"] [role="menuitem"]:hover,
+[role="menu"] [role="menuitem"][data-highlighted],
+[role="menu"] [role="menuitem"][data-selected="true"],
+[data-radix-popper-content-wrapper] .fd-page-action-menu-item:hover,
+[data-radix-popper-content-wrapper] .fd-page-action-menu-item[data-highlighted],
+[data-radix-popper-content-wrapper] .fd-page-action-menu-item[data-selected="true"],
+[data-radix-popper-content-wrapper] [role="menuitem"]:hover,
+[data-radix-popper-content-wrapper] [role="menuitem"][data-highlighted],
+[data-radix-popper-content-wrapper] [role="menuitem"][data-selected="true"] {
+  background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-secondary)) !important;
+  color: hsl(25 100% 62%) !important;
+}
+
+[data-radix-popper-content-wrapper] a[href*="github.com"]:hover,
+[data-radix-popper-content-wrapper] a[href*="chatgpt.com"]:hover,
+[data-radix-popper-content-wrapper] a[href*="claude.ai"]:hover,
+[data-radix-popper-content-wrapper] a[href*="cursor.com"]:hover,
+[data-radix-popper-content-wrapper] button:hover {
+  background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-secondary)) !important;
+  color: hsl(25 100% 62%) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1148,6 +1175,43 @@ a[href*="llms"]:hover {
   border-color: color-mix(in srgb, var(--color-fd-border) 72%, hsl(25 100% 50%) 28%) !important;
   color: hsl(25 100% 62%) !important;
   background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-secondary)) !important;
+}
+
+.fd-page-footer a[href*="/edit/"],
+.fd-page-footer a[href*="chatgpt.com"],
+.fd-page-footer a[href*="claude.ai"],
+.fd-page-footer a[href*="cursor.com"],
+.fd-actions-portal a[href*="/edit/"],
+.fd-actions-portal a[href*="chatgpt.com"],
+.fd-actions-portal a[href*="claude.ai"],
+.fd-actions-portal a[href*="cursor.com"],
+[data-page-actions] a[href*="/edit/"],
+[data-page-actions] a[href*="chatgpt.com"],
+[data-page-actions] a[href*="claude.ai"],
+[data-page-actions] a[href*="cursor.com"] {
+  border: 1px solid var(--color-fd-border) !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--color-fd-muted-foreground) !important;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+}
+
+.fd-page-footer a[href*="/edit/"]:hover,
+.fd-page-footer a[href*="chatgpt.com"]:hover,
+.fd-page-footer a[href*="claude.ai"]:hover,
+.fd-page-footer a[href*="cursor.com"]:hover,
+.fd-actions-portal a[href*="/edit/"]:hover,
+.fd-actions-portal a[href*="chatgpt.com"]:hover,
+.fd-actions-portal a[href*="claude.ai"]:hover,
+.fd-actions-portal a[href*="cursor.com"]:hover,
+[data-page-actions] a[href*="/edit/"]:hover,
+[data-page-actions] a[href*="chatgpt.com"]:hover,
+[data-page-actions] a[href*="claude.ai"]:hover,
+[data-page-actions] a[href*="cursor.com"]:hover {
+  background: color-mix(in srgb, hsl(25 100% 50%) 7%, var(--color-fd-secondary)) !important;
+  border-color: color-mix(in srgb, var(--color-fd-border) 72%, hsl(25 100% 50%) 28%) !important;
+  color: hsl(25 100% 62%) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

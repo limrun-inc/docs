@@ -2,9 +2,8 @@
 title: "Build with remote Xcode"
 description: "Sync your source, run `xcodebuild` in the cloud, stream the logs back, and install the result on a remote simulator. Or ship a signed IPA."
 order: 1
-icon: hammer
+icon: "hammer"
 ---
-
 # Build with remote Xcode
 
 Limrun lets you compile iOS apps on a remote Mac. Your laptop or CI runner doesn't need to be one. After a successful build, you either run the app on a remote simulator or download a signed IPA to ship.
@@ -33,7 +32,7 @@ The right shape depends on whether you also need a simulator.
 
 When you want to build an app *and* run it on a simulator, create one iOS instance with the Xcode sandbox attached. Pass `--xcode` to the CLI, or set the sandbox config on the SDK call as shown below. After a successful build, the app auto-installs and auto-launches on the simulator.
 
-<CodeGroup labels={["TypeScript", "Python", "Go"]}>
+<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 import Limrun from '@limrun/api';
 
@@ -101,7 +100,7 @@ lim ios create --xcode --reuse-if-exists --label session=demo
 
 For pure CI builds, real-device IPA distribution, or MCP-wrapped build tools, create a top-level Xcode instance. It has no simulator attached.
 
-<CodeGroup labels={["TypeScript", "Python"]}>
+<CodeGroup labels={["TypeScript","Python"]}>
 ```ts
 const xcodeInstance = await lim.xcodeInstances.create({
   wait: true,
@@ -411,16 +410,16 @@ No `runs-on: macos-latest`. No Apple-licensed CI runner. The build happens on Li
 ## Next steps
 
 <Cards>
-  <Card title="Run an iOS Simulator" href="/docs/ios/run-simulator">
+  <Card title="Run an iOS Simulator" icon="smartphone" href="/docs/ios/run-simulator">
     Drive the simulator the build just installed onto: taps, screenshots, recordings, logs.
   </Card>
-  <Card title="Automatic PR Previews" href="/docs/ios/pr-previews">
+  <Card title="Automatic PR Previews" icon="git-pull-request" href="/docs/ios/pr-previews">
     Wire `lim xcode build --upload` into a GitHub workflow that posts a preview link on every PR.
   </Card>
-  <Card title="Asset Storage" href="/docs/platform/asset-storage">
+  <Card title="Asset Storage" icon="package" href="/docs/platform/asset-storage">
     Manage uploaded build artifacts, pre-install apps at boot, and browse the Limrun App Store.
   </Card>
-  <Card title="SDK Reference" href="/docs/reference">
+  <Card title="SDK Reference" icon="book-open" href="/docs/reference">
     Auth, errors, the instance state machine, every resource × CRUD.
   </Card>
 </Cards>

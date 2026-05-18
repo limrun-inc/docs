@@ -2,9 +2,8 @@
 title: "MCP for controlling instances"
 description: "Every Limrun instance comes with its own MCP server. Wire it into a coding agent for tight device-control loops without shelling out to the CLI."
 order: 2
-icon: plug
+icon: "bot"
 ---
-
 # MCP for controlling instances
 
 Every iOS and Android instance Limrun creates has its own [Model Context Protocol](https://modelcontextprotocol.io) server. Three things to know up front:
@@ -31,7 +30,7 @@ Most agents end up using both. Use the CLI for provisioning, builds, and assets.
 
 Create an instance, then read the `mcpUrl` field off its status.
 
-<CodeGroup labels={["TypeScript", "Python", "Go", "CLI"]}>
+<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 import Limrun from '@limrun/api';
 
@@ -63,11 +62,13 @@ inst, _ := client.IosInstances.New(ctx, limrun.IosInstanceNewParams{
 fmt.Println(inst.Status.McpURL)
 ```
 
+</CodeGroup>
+
+Or from the CLI:
+
 ```bash
 lim ios get --json | jq -r '.status.mcpUrl'
 ```
-
-</CodeGroup>
 
 The URL itself has no credentials in it. Authenticate by passing your org API key as an `Authorization: Bearer lim_...` header on every MCP request. This is the same `lim_...` key from your console, not the per-instance `status.token`.
 
@@ -195,10 +196,10 @@ This pattern is Node-only as written. The TypeScript SDK is the only one that wr
 ## Next steps
 
 <Cards>
-  <Card title="Run an iOS Simulator" href="/docs/ios/run-simulator">
+  <Card title="Run an iOS Simulator" icon="smartphone" href="/docs/ios/run-simulator">
     The full device-control surface MCP tools call into. Every method, every option.
   </Card>
-  <Card title="CLI for coding agents" href="/docs/agents/cli">
+  <Card title="CLI for coding agents" icon="bot" href="/docs/agents/cli">
     Use the CLI for instance lifecycle, builds, and asset management. MCP doesn't cover those.
   </Card>
 </Cards>

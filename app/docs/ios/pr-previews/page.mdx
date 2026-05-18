@@ -2,9 +2,8 @@
 title: "Automatic PR Previews with GitHub Actions"
 description: "On every pull request, build the iOS app on Limrun, upload it to Asset Storage, and post a live preview link as a PR comment."
 order: 3
-icon: git-pull-request
+icon: "rocket"
 ---
-
 # Automatic PR Previews with GitHub Actions
 
 An iOS PR preview works like a web deploy preview: every pull request gets its own build and its own link, and reviewers open the build in a browser. Limrun does the build, the asset upload, and the preview URL. GitHub Actions handles the workflow trigger and the PR comment.
@@ -199,10 +198,10 @@ The Action picks its own asset-name convention (`preview/<owner>/<repo>/pr-<n>-i
 ## Next steps
 
 <Cards>
-  <Card title="Build with remote Xcode" href="/docs/ios/build-with-xcode">
+  <Card title="Build with remote Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
     All the `lim xcode build` flags, including signing, multi-scheme, and additional files.
   </Card>
-  <Card title="Asset Storage" href="/docs/platform/asset-storage">
+  <Card title="Asset Storage" icon="package" href="/docs/platform/asset-storage">
     How the uploaded build artifact is stored, accessed, and cleaned up.
   </Card>
 </Cards>

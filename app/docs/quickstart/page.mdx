@@ -1,8 +1,8 @@
 ---
 title: "Quickstart"
 description: "Get a remote iOS simulator and Xcode build running from your terminal in 3 minutes."
-order: 3
-icon: quickstart
+order: 2
+icon: "quickstart"
 ---
 # Quickstart
 
@@ -42,9 +42,7 @@ The rest of this page covers the CLI flow.
 ## Set up the build
 
 <Steps>
-  <Step>
-
-### Authenticate
+  <Step title="Authenticate">
     Either set `LIM_API_KEY` in your environment or run `lim login`. Both work; pick whichever fits your setup.
 
     **Environment variable.** The CLI reads `LIM_API_KEY` from the shell. It also auto-loads `.env` files in your current working directory, so the line you added to `.env` in the prerequisites is enough on its own.
@@ -62,9 +60,7 @@ The rest of this page covers the CLI flow.
     For CI, devcontainers, or anything headless, the env var path is the right choice.
   </Step>
 
-  <Step>
-
-### Create an iOS instance with Xcode attached
+  <Step title="Create an iOS instance with Xcode attached">
     A single `lim ios create --xcode` provisions a simulator and an attached Xcode sandbox in one call. Adding `--reuse-if-exists` and a `--label` makes re-runs return the same instance instead of creating a new one.
 
     ```bash
@@ -74,9 +70,7 @@ The rest of this page covers the CLI flow.
     Open the **Signed Stream URL** from the output in any browser to watch the simulator live. The URL has its own token embedded, so no API key is needed in the browser.
   </Step>
 
-  <Step>
-
-### Build and run your app
+  <Step title="Build and run your app">
     From inside an iOS project on your local disk, run:
 
     ```bash
@@ -125,16 +119,16 @@ lim ios delete
 ## Where to go next
 
 <Cards>
-  <Card title="CLI for coding agents" href="/docs/agents/cli">
+  <Card title="CLI for coding agents" icon="bot" href="/docs/agents/cli">
     Hand the build, drive, and ship loop off to a coding agent via the bundled skill.
   </Card>
-  <Card title="Build with remote Xcode" href="/docs/ios/build-with-xcode">
+  <Card title="Build with remote Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
     Every `lim xcode build` flag, real-device IPAs, source-sync internals, MCP-wrapped build tools.
   </Card>
-  <Card title="Embed the simulator" href="/docs/platform/embed-simulator">
+  <Card title="Embed the simulator" icon="monitor-play" href="/docs/platform/embed-simulator">
     Stream a live iOS or Android simulator into your web app with `<RemoteControl />` from `@limrun/ui`.
   </Card>
-  <Card title="Run an Android Emulator" href="/docs/android/run-emulator">
+  <Card title="Run an Android Emulator" icon="tablet-smartphone" href="/docs/android/run-emulator">
     ADB tunnel, scrcpy streaming, Appium, and the rest of the Android toolchain over a remote emulator.
   </Card>
 </Cards>

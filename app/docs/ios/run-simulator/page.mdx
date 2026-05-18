@@ -2,9 +2,8 @@
 title: "Run an iOS Simulator"
 description: "Drive a running iOS simulator from code or shell: taps, typing, screenshots, recordings, app lifecycle, logs, and reverse tunnels."
 order: 2
-icon: smartphone
+icon: "smartphone"
 ---
-
 # Run an iOS Simulator
 
 Your iOS instance is `ready`. For provisioning, see the [Quickstart](/docs/quickstart); for builds, see [Build with remote Xcode](/docs/ios/build-with-xcode).
@@ -17,7 +16,7 @@ Open a WebSocket client to drive the instance.
 - **Go** covers most of the same methods. See the [SDK capability matrix](/docs/reference#sdk-capability-matrix) for the exact list.
 - **Python** only ships the control plane (create, list, delete instances). For taps, screenshots, and other device actions from Python, drive the device through the CLI or raw REST.
 
-<CodeGroup labels={["TypeScript", "Go"]}>
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 import { Ios } from '@limrun/api';
 
@@ -84,7 +83,7 @@ The instance status carries everything you need:
 
 Before any action, read what's actually on the screen. The element tree is the source of truth for what's interactable; the screenshot is the fastest visual sanity check.
 
-<CodeGroup labels={["TypeScript", "Go"]}>
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 const tree = await client.elementTree();
 // tree: ElementTreeNode[] (recursive accessibility hierarchy)
@@ -119,7 +118,7 @@ await client.tapWithScreenSize(x, y, screenshotWidth, screenshotHeight);
 
 Prefer accessibility selectors. They survive layout changes; coordinates don't.
 
-<CodeGroup labels={["TypeScript", "Go"]}>
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 // By accessibility identifier (most stable)
 await client.tapElement({ AXUniqueId: 'startButton' });
@@ -181,7 +180,7 @@ await client.setElementValue('42', { AXLabel: 'Count' });   // faster than typin
 
 Type into the currently focused field, press individual keys with optional modifiers, or toggle the on-screen keyboard. `toggleKeyboard` is the equivalent of pressing ⌘K in the simulator.
 
-<CodeGroup labels={["TypeScript", "Go"]}>
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 await client.typeText('hello world');                   // types into focused field
 await client.typeText('email@example.com', true);       // pressEnter = true
@@ -298,7 +297,7 @@ await client.performActions([
 
 Install from a URL or local file, launch by bundle ID, terminate when you're done. `listApps` enumerates what's already on the device, system apps included.
 
-<CodeGroup labels={["TypeScript", "Go"]}>
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 const apps = await client.listApps();
 // [{ bundleId, name, installType }, ...]
@@ -421,7 +420,7 @@ The remote port must be in **57090-57099**. That range is reserved for tunneled 
 
 When the high-level API doesn't cover what you need, the instance exposes a small set of macOS dev tools as escape hatches.
 
-<CodeGroup labels={["TypeScript", "Go"]}>
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 // Streaming simctl
 const exec = client.simctl(['listapps', 'booted']);
@@ -514,7 +513,7 @@ After a `delete` (or after the inactivity timeout fires), the row disappears fro
 
 By default, instances are an iPhone in a nearby region with a server-applied inactivity timeout. To pick a different model, pin a region, pre-install an app, or attach an Xcode build sandbox, pass `spec.*` at create time:
 
-<CodeGroup labels={["TypeScript", "Python", "Go"]}>
+<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 const instance = await lim.iosInstances.create({
   wait: true,
@@ -614,8 +613,7 @@ lim ios create --reuse-if-exists \
   <img src="/images/console/03-ios-models.png" alt="Console Playground iOS model picker showing iPhone, iPad, and Apple Watch options" />
 </Frame>
 
-<Accordions>
-  <Accordion title="Manage the WebSocket connection">
+<Accordion title="Manage the WebSocket connection">
 
 The TypeScript client exposes lifecycle hooks for long-running drivers and connection debugging:
 
@@ -633,22 +631,21 @@ client.disconnect();  // close cleanly, do not auto-reconnect
 
 The SDK auto-reconnects on transient failures with exponential backoff (defaults: 6 attempts, 1 s base, 30 s cap). `disconnect()` is final; no further auto-reconnects after it.
 
-  </Accordion>
-</Accordions>
+</Accordion>
 
 ## Next steps
 
 <Cards>
-  <Card title="Build with remote Xcode" href="/docs/ios/build-with-xcode">
+  <Card title="Build with remote Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
     Produce the build that gets installed onto the simulator.
   </Card>
-  <Card title="Automatic PR Previews" href="/docs/ios/pr-previews">
+  <Card title="Automatic PR Previews" icon="git-pull-request" href="/docs/ios/pr-previews">
     Ship every PR with a built app and a live preview link, straight from a GitHub workflow.
   </Card>
-  <Card title="Embed the simulator" href="/docs/platform/embed-simulator">
+  <Card title="Embed the simulator" icon="monitor-play" href="/docs/platform/embed-simulator">
     Render the simulator in your web app with `<RemoteControl />`.
   </Card>
-  <Card title="Test in-app purchases" href="/docs/ios/in-app-purchases">
+  <Card title="Test in-app purchases" icon="credit-card" href="/docs/ios/in-app-purchases">
     StoreKit local testing without an Apple Account or sandbox tester (advanced).
   </Card>
 </Cards>
