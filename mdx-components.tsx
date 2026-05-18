@@ -5,6 +5,7 @@ import {
 } from "fumadocs-ui/components/accordion";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import type { MDXComponents } from "mdx/types";
 import docsConfig from "@/docs.config";
 import { CodeGroup } from "@/components/code-group";
@@ -28,6 +29,9 @@ export function useMDXComponents(components?: MDXComponents): MDXComponents {
       ),
       // Mintlify's <CodeGroup> renders each child fence as a tab.
       CodeGroup,
+      // Tab groups for mixed content (e.g. iOS / Android tables and prose).
+      Tabs,
+      Tab,
       Frame: ({ children }: { children: React.ReactNode }) => (
         <div className="docs-frame">{children}</div>
       ),

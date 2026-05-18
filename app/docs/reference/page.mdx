@@ -69,7 +69,7 @@ Two credentials show up in most workflows. Mixing them up is the most common int
 | **Org API key** (`lim_...`) | [console.limrun.com](https://console.limrun.com) → Settings → API Keys; `lim login`; or `LIM_API_KEY` | REST control plane (`api.limrun.com`), including create/list/delete. Also **MCP**: `Authorization: Bearer <org API key>` on `instance.status.mcpUrl`. |
 | **Per-instance token** (`instance.status.token`) | Returned in `status` when the instance is `ready` | `apiUrl` device daemon, `endpointWebSocketUrl` (append `?token=`), `adbWebSocketUrl`, `sandbox.xcode.url`, and SDK helpers like `Ios.createInstanceClient`. Embedded in `signedStreamUrl` for browser streaming. |
 
-The org API key must never ship to a browser or end-user client. For embedded simulators, your backend holds the API key and passes only `endpointWebSocketUrl` + `status.token` to `<RemoteControl />`. See [Embed the simulator](/docs/platform/embed-simulator#authentication-model).
+The org API key must never ship to a browser or end-user client. For embedded simulators, your backend holds the API key and passes only `endpointWebSocketUrl` + `status.token` to `<RemoteControl />`. See [Embed the simulator](/docs/platform/embed-simulator#authentication).
 
 ## Install snippets
 
