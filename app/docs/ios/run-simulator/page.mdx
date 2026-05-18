@@ -17,8 +17,8 @@ Open a WebSocket client to drive the instance.
 - **Go** covers most of the same methods. See the [SDK capability matrix](/docs/reference#sdk-capability-matrix) for the exact list.
 - **Python** only ships the control plane (create, list, delete instances). For taps, screenshots, and other device actions from Python, drive the device through the CLI or raw REST.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript", "Go"]}>
+```ts
 import { Ios } from '@limrun/api';
 
 const client = await Ios.createInstanceClient({
@@ -31,7 +31,7 @@ console.log('UDID:', client.deviceInfo.udid);
 console.log('Screen:', client.deviceInfo.screenWidth, client.deviceInfo.screenHeight);
 ```
 
-```go title="Go"
+```go
 import (
     "context"
     limrun "github.com/limrun-inc/go-sdk"
@@ -84,8 +84,8 @@ The instance status carries everything you need:
 
 Before any action, read what's actually on the screen. The element tree is the source of truth for what's interactable; the screenshot is the fastest visual sanity check.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript", "Go"]}>
+```ts
 const tree = await client.elementTree();
 // tree: ElementTreeNode[] (recursive accessibility hierarchy)
 // fields per node: AXLabel, AXUniqueId, AXValue, role, type, title, traits, frame, children
@@ -94,7 +94,7 @@ const shot = await client.screenshot();
 // { base64: string, width: number, height: number }
 ```
 
-```go title="Go"
+```go
 treeJSON, err := client.ElementTree(ctx, nil)   // raw JSON; parse with encoding/json
 shot, err := client.Screenshot(ctx)             // shot.Base64, shot.Width, shot.Height
 ```
@@ -119,8 +119,8 @@ await client.tapWithScreenSize(x, y, screenshotWidth, screenshotHeight);
 
 Prefer accessibility selectors. They survive layout changes; coordinates don't.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript", "Go"]}>
+```ts
 // By accessibility identifier (most stable)
 await client.tapElement({ AXUniqueId: 'startButton' });
 
@@ -137,7 +137,7 @@ await client.tapElement({ type: 'Button', AXLabel: 'Done' });
 await client.tap(201, 450);
 ```
 
-```go title="Go"
+```go
 // Selector field names differ slightly from TypeScript:
 //   AccessibilityID, Label, LabelContains, ElementType, Title, TitleContains, Value
 _, err := client.TapElement(ctx, iosws.AccessibilitySelector{
@@ -181,8 +181,8 @@ await client.setElementValue('42', { AXLabel: 'Count' });   // faster than typin
 
 Type into the currently focused field, press individual keys with optional modifiers, or toggle the on-screen keyboard. `toggleKeyboard` is the equivalent of pressing ⌘K in the simulator.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript", "Go"]}>
+```ts
 await client.typeText('hello world');                   // types into focused field
 await client.typeText('email@example.com', true);       // pressEnter = true
 await client.pressKey('enter');
@@ -190,7 +190,7 @@ await client.pressKey('a', ['shift']);                   // modifiers: shift, co
 await client.toggleKeyboard();
 ```
 
-```go title="Go"
+```go
 err := client.TypeText(ctx, "hello world", false)
 err = client.TypeText(ctx, "email@example.com", true) // pressEnter
 err = client.PressKey(ctx, "enter")
@@ -298,8 +298,8 @@ await client.performActions([
 
 Install from a URL or local file, launch by bundle ID, terminate when you're done. `listApps` enumerates what's already on the device, system apps included.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript", "Go"]}>
+```ts
 const apps = await client.listApps();
 // [{ bundleId, name, installType }, ...]
 
@@ -315,7 +315,7 @@ await client.installApp('https://...build.zip', {
 });
 ```
 
-```go title="Go"
+```go
 apps, err := client.ListApps(ctx)
 // []InstalledApp{ BundleID, Name, InstallType }
 
@@ -421,8 +421,8 @@ The remote port must be in **57090-57099**. That range is reserved for tunneled 
 
 When the high-level API doesn't cover what you need, the instance exposes a small set of macOS dev tools as escape hatches.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript", "Go"]}>
+```ts
 // Streaming simctl
 const exec = client.simctl(['listapps', 'booted']);
 exec.on('line-stdout', (line) => console.log(line));
@@ -442,7 +442,7 @@ const remotePath = await client.cp('config.json', '/local/path/to/config.json');
 const sockets = await client.lsof();
 ```
 
-```go title="Go"
+```go
 // simctl mirrors os/exec.Cmd; pipe to your own writers or buffer the output.
 cmd := client.Simctl(ctx, "listapps", "booted")
 cmd.Stdout = os.Stdout
@@ -514,8 +514,8 @@ After a `delete` (or after the inactivity timeout fires), the row disappears fro
 
 By default, instances are an iPhone in a nearby region with a server-applied inactivity timeout. To pick a different model, pin a region, pre-install an app, or attach an Xcode build sandbox, pass `spec.*` at create time:
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript", "Python", "Go"]}>
+```ts
 const instance = await lim.iosInstances.create({
   wait: true,
   reuseIfExists: true,
@@ -536,7 +536,7 @@ const instance = await lim.iosInstances.create({
 });
 ```
 
-```python title="Python"
+```python
 instance = client.ios_instances.create(
     wait=True,
     reuse_if_exists=True,
@@ -560,7 +560,7 @@ instance = client.ios_instances.create(
 )
 ```
 
-```go title="Go"
+```go
 // The Go SDK does not expose `model` on the create params yet.
 // Instances default to iPhone. To pick iPad or Apple Watch, use the CLI or REST.
 instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{

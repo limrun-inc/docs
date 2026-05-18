@@ -31,8 +31,8 @@ Most agents end up using both. Use the CLI for provisioning, builds, and assets.
 
 Create an instance, then read the `mcpUrl` field off its status.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript", "Python", "Go", "CLI"]}>
+```ts
 import Limrun from '@limrun/api';
 
 const lim = new Limrun({ apiKey: process.env['LIM_API_KEY'] });
@@ -46,7 +46,7 @@ const instance = await lim.iosInstances.create({
 console.log(instance.status.mcpUrl);
 ```
 
-```python title="Python"
+```python
 from limrun_api import Limrun
 
 client = Limrun()
@@ -54,7 +54,7 @@ instance = client.ios_instances.create(wait=True, reuse_if_exists=True)
 print(instance.status.mcp_url)
 ```
 
-```go title="Go"
+```go
 client := limrun.NewClient()
 inst, _ := client.IosInstances.New(ctx, limrun.IosInstanceNewParams{
     Wait:          limrun.Bool(true),
@@ -63,13 +63,11 @@ inst, _ := client.IosInstances.New(ctx, limrun.IosInstanceNewParams{
 fmt.Println(inst.Status.McpURL)
 ```
 
-</CodeGroup>
-
-Or from the CLI:
-
 ```bash
 lim ios get --json | jq -r '.status.mcpUrl'
 ```
+
+</CodeGroup>
 
 The URL itself has no credentials in it. Authenticate by passing your org API key as an `Authorization: Bearer lim_...` header on every MCP request. This is the same `lim_...` key from your console, not the per-instance `status.token`.
 
