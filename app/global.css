@@ -652,29 +652,6 @@ article a[data-card="true"] p,
   margin: 0 !important;
 }
 
-/* Animated arrow indicator: hidden by default, slides in on hover. */
-article a[data-card="true"]::after,
-.fd-page-body a[data-card="true"]::after {
-  content: "→" !important;
-  position: absolute !important;
-  top: 1.05rem !important;
-  right: 1.15rem !important;
-  color: var(--color-fd-muted-foreground) !important;
-  font-size: 0.95rem !important;
-  font-weight: 400 !important;
-  opacity: 0 !important;
-  transform: translateX(-4px) !important;
-  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease !important;
-  pointer-events: none !important;
-}
-
-article a[data-card="true"]:hover::after,
-.fd-page-body a[data-card="true"]:hover::after {
-  opacity: 1 !important;
-  transform: translateX(0) !important;
-  color: hsl(25 100% 62%) !important;
-}
-
 /* Heading anchor links use data-card="" (empty), so the
  * data-card="true" selectors above don't touch them. No exception
  * block needed. */
