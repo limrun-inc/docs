@@ -50,8 +50,8 @@ You're helping me build and test an iOS app on Limrun. For every task that runs 
 
 1. Check `lim --version`. If it's missing, ask me to install `@limrun/cli` first.
 2. Check that `LIM_API_KEY` is set. If not, ask me.
-3. Create or reuse an instance, with labels we can find later:
-   lim ios create --xcode --reuse-if-exists --label issue=<ID> --label repo=<NAME> --label agent=<YOUR_NAME>
+3. Create or reuse an instance:
+   lim ios create --xcode --reuse-if-exists --label issue=<ID>
    Share the Signed Stream URL from the output so I can watch.
 4. Build with `lim xcode build .`. Never use local `xcodebuild`. For multi-scheme projects, add `--scheme` and `--workspace`. If the build fails, read the errors and fix the code; don't bounce them back to me.
 5. Before each tap, read the screen with `lim ios element-tree`. Prefer accessibility selectors:
@@ -89,14 +89,10 @@ The rest of this page is the command reference behind each step.
 ## Create an instance
 
 ```bash
-lim ios create --xcode \
-  --reuse-if-exists \
-  --label issue=<ISSUE_ID> \
-  --label repo=<REPO_NAME> \
-  --label agent=<AGENT_NAME>
+lim ios create --xcode --reuse-if-exists
 ```
 
-`--xcode` attaches a Mac sandbox to the simulator (required for `lim xcode build`). `--reuse-if-exists` returns an existing instance with the same labels instead of provisioning a new one. That matters when an agent retries a task and you want it to land on the same instance.
+`--xcode` attaches a Mac sandbox to the simulator (required for `lim xcode build`). `--reuse-if-exists` returns an existing instance in the same region instead of provisioning a new one, so retries land back on the same warm instance. Scope reuse to a specific task by adding a label (`--label issue=<ID>`); without one, every reuse call in your org matches the same unlabeled instance.
 
 The output includes the instance ID, the **Signed Stream URL**, and the Xcode sandbox URL. Open the Signed Stream URL in any browser to watch the simulator live; the token is in the URL, so no login is required. Share the Signed Stream URL with the user at the start of a task.
 
@@ -114,20 +110,6 @@ The output includes the instance ID, the **Signed Stream URL**, and the Xcode sa
 | `--install-asset <name>` | Pre-installed asset from Asset Storage. Repeatable. |
 | `--model iphone\|ipad\|watch` | Device model. Defaults to `iphone`. |
 | `--rm` | Delete the instance when the CLI process exits. Handy for one-shot runs. |
-
-### Keep one connection open across commands
-
-By default, every `lim ios` command opens a fresh WebSocket, runs one action, and disconnects. For multi-step agent loops, start a session daemon so the connection stays open:
-
-```bash
-lim session start            # opens a background daemon
-lim session status           # see active sessions
-lim session stop             # close one, or --all
-```
-
-Subsequent `lim ios` commands reuse the open connection. Per-command latency drops from a couple of seconds to around 50 ms.
-
-The console's **Connect** modal (cable icon next to a running instance) also wraps this up as one-click MCP installers for Replit, Cursor, and Claude Code. See [MCP for controlling instances](/docs/agents/mcp).
 
 ## Build the app
 
