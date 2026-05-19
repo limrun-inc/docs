@@ -43,7 +43,7 @@ iOS needs more setup than Android: install a forked driver, provision an instanc
 
 ```bash
 npm i --location=global appium
-appium driver install --source npm @limrun/appium-xcuitest-driver@10.14.6-lim.10
+appium driver install --source npm @limrun/appium-xcuitest-driver@10.14.6-lim.7
 ```
 
 Start the Appium server in another terminal:
@@ -90,13 +90,14 @@ import (
     "os"
     limrun "github.com/limrun-inc/go-sdk"
     "github.com/limrun-inc/go-sdk/option"
+    "github.com/limrun-inc/go-sdk/packages/param"
 )
 
 lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
 
 instance, err := lim.IosInstances.New(context.TODO(), limrun.IosInstanceNewParams{
-    Wait:          limrun.Bool(true),
-    ReuseIfExists: limrun.Bool(true),
+    Wait:          param.NewOpt(true),
+    ReuseIfExists: param.NewOpt(true),
     Metadata: limrun.IosInstanceNewParamsMetadata{
         Labels: map[string]string{"name": "appium-ios"},
     },
@@ -105,7 +106,7 @@ instance, err := lim.IosInstances.New(context.TODO(), limrun.IosInstanceNewParam
             {
                 Kind:       "App",
                 Source:     "URL",
-                URL:        limrun.String("https://github.com/appium/WebDriverAgent/releases/download/v10.4.5/WebDriverAgentRunner-Build-Sim-arm64.zip"),
+                URL:        param.NewOpt("https://github.com/appium/WebDriverAgent/releases/download/v10.4.5/WebDriverAgentRunner-Build-Sim-arm64.zip"),
                 LaunchMode: "ForegroundIfRunning",
             },
         },
@@ -141,7 +142,7 @@ instance = limrun.ios_instances.create(
 The Python SDK covers control-plane operations (create, list, get, delete). It doesn't ship a device-control client, so the WDA health check below stays in TypeScript or Go. The Appium session itself runs in whatever language your test code is in.
 
 <Note>
-  `reuseIfExists` matches existing instances by labels **and** region. If you don't pin `spec.region`, the platform may schedule your next create in a different region (closer to your current IP, for example), and the label match misses, so a fresh instance gets created instead. For repeatable reuse across CI runs or local dev sessions, pin `region: 'us-east'` (or whichever region you prefer) explicitly.
+  `reuseIfExists` matches existing instances by labels **and** region. If you don't pin `spec.region`, the platform may schedule your next create in a different region (closer to your current IP, for example), and the label match misses, so a fresh instance gets created instead. For repeatable reuse across CI runs or local dev sessions, pin `region: 'us-west'` (or whichever region you prefer) explicitly.
 </Note>
 
 When the call resolves, you have a live instance and three connection details you'll feed into Appium over the next few sections:
@@ -433,6 +434,7 @@ import (
     "os"
     limrun "github.com/limrun-inc/go-sdk"
     "github.com/limrun-inc/go-sdk/option"
+    "github.com/limrun-inc/go-sdk/packages/param"
     "github.com/limrun-inc/go-sdk/tunnel"
 )
 
@@ -440,7 +442,7 @@ lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
 
 // Provision an Android emulator and wait for it to be ready.
 instance, err := lim.AndroidInstances.New(context.TODO(), limrun.AndroidInstanceNewParams{
-    Wait: limrun.Bool(true),
+    Wait: param.NewOpt(true),
 })
 if err != nil { panic(err) }
 
@@ -526,7 +528,7 @@ Or pre-install it at instance creation with `initialAssets`. See [Run an Android
 
 ## Run from a Linux CI runner
 
-Neither iOS nor Android automation needs a macOS host. The macOS is on Limrun's side. A standard `ubuntu-latest` GitHub Actions job is enough.
+Neither iOS nor Android automation needs a macOS host. The Mac lives on Limrun's side. A standard `ubuntu-latest` GitHub Actions job is enough.
 
 ```yaml title=".github/workflows/appium-ios.yml"
 name: Appium iOS
@@ -546,7 +548,7 @@ jobs:
         run: |
           npm i -g appium
           # Pin a specific `-lim.N`. See npmjs.com/package/@limrun/appium-xcuitest-driver for the latest.
-          appium driver install --source npm @limrun/appium-xcuitest-driver@10.14.6-lim.10
+          appium driver install --source npm @limrun/appium-xcuitest-driver@10.14.6-lim.7
 
       - name: Start Appium
         run: appium --log-level error &

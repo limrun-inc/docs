@@ -13,7 +13,11 @@ Playwright on Limrun automates **Chrome on Android emulator instances**. Your ex
 
 - A Limrun API key in `LIM_API_KEY` (get one from [console.limrun.com](https://console.limrun.com)). If you've never used the CLI before, walk through the [Quickstart](/docs/quickstart) first.
 - Node 20 or newer.
-- `playwright` installed in your project. The Android device API ships with the regular `playwright` package, but it lives under an internal export (`_android`).
+- `playwright@1.56` in your project. The Android device API ships with the regular `playwright` package under an internal export (`_android`). The sub-sandbox server is pinned to `1.56`, so newer or older client versions reject the WebSocket handshake with a "Playwright version mismatch" error.
+
+  ```bash
+  npm install playwright@1.56
+  ```
 
 Code examples default to TypeScript. The instance-create call has Go and Python tabs alongside; from "Connect Playwright" onward the code is Node-only, because Playwright's Android device API only ships in the Node binding.
 
@@ -72,13 +76,14 @@ import (
     "os"
     limrun "github.com/limrun-inc/go-sdk"
     "github.com/limrun-inc/go-sdk/option"
+    "github.com/limrun-inc/go-sdk/packages/param"
 )
 
 lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
 
 instance, err := lim.AndroidInstances.New(context.TODO(), limrun.AndroidInstanceNewParams{
-    Wait:          limrun.Bool(true),
-    ReuseIfExists: limrun.Bool(true),
+    Wait:          param.NewOpt(true),
+    ReuseIfExists: param.NewOpt(true),
     Metadata: limrun.AndroidInstanceNewParamsMetadata{
         Labels: map[string]string{"name": "playwright"},
     },
@@ -86,7 +91,7 @@ instance, err := lim.AndroidInstances.New(context.TODO(), limrun.AndroidInstance
         // Turns on the per-instance Playwright service.
         Sandbox: limrun.AndroidInstanceNewParamsSpecSandbox{
             PlaywrightAndroid: limrun.AndroidInstanceNewParamsSpecSandboxPlaywrightAndroid{
-                Enabled: limrun.Bool(true),
+                Enabled: param.NewOpt(true),
             },
         },
         // Flips Chrome's "accept command-line flags" switch at boot.
@@ -135,7 +140,7 @@ instance = limrun.android_instances.create(
 The Python SDK covers control-plane operations like the call above, but Playwright itself is the polyglot bottleneck here.
 
 <Note>
-  `reuseIfExists` matches existing instances by labels **and** region. If you don't pin `spec.region`, the platform may schedule your next create in a different region (closer to your current IP, for example), and the label match misses, so a fresh instance gets created instead. For repeatable reuse across CI runs or local dev sessions, pin `region: 'us-east'` (or whichever region you prefer) explicitly.
+  `reuseIfExists` matches existing instances by labels **and** region. If you don't pin `spec.region`, the platform may schedule your next create in a different region (closer to your current IP, for example), and the label match misses, so a fresh instance gets created instead. For repeatable reuse across CI runs or local dev sessions, pin `region: 'us-west'` (or whichever region you prefer) explicitly.
 </Note>
 
 When the call resolves, two things on the instance object matter for Playwright:
