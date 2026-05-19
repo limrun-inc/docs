@@ -22,70 +22,57 @@ If you'd rather poke at an instance before installing anything, [console.limrun.
 
 The rest of this page covers the CLI flow.
 
-## Prerequisites
-
-- **A Limrun API key.** Sign up at [console.limrun.com](https://console.limrun.com), open **Settings → API Keys**, click **Create Token**, copy the value (prefixed `lim_`), and save it to a `.env` file at the root of your project. Make sure `.env` is in `.gitignore`.
-  <Frame>
-    <img src="/images/console/13-api-keys.png" alt="Settings → API Keys page on console.limrun.com with a Create Token button and a list of existing keys" />
-  </Frame>
-  ```bash .env
-  LIM_API_KEY=lim_...
-  ```
-- **The `lim` CLI.** Install [`@limrun/cli`](https://www.npmjs.com/package/@limrun/cli). Requires Node.js 20 LTS or newer.
-  ```bash
-  # Pick your package manager
-  npm  install --global @limrun/cli
-  pnpm add     --global @limrun/cli
-  bun  add     --global @limrun/cli
-  ```
-
 ## Set up the build
 
 <Steps>
-  <Step title="Authenticate">
-    Either set `LIM_API_KEY` in your environment or run `lim login`. Both work; pick whichever fits your setup.
-
-    **Environment variable.** The CLI reads `LIM_API_KEY` from the shell. It also auto-loads `.env` files in your current working directory, so the line you added to `.env` in the prerequisites is enough on its own.
+  <Step title="Install the CLI">
+    Requires Node.js 20 LTS or newer.
 
     ```bash
-    export LIM_API_KEY=lim_...
+    # Pick your package manager
+    npm  install --global @limrun/cli
+    pnpm add     --global @limrun/cli
+    bun  add     --global @limrun/cli
     ```
+  </Step>
 
-    **Browser flow.** `lim login` opens the console, listens on `http://localhost:32412` for the callback, and writes the returned key to `~/.lim/config.yaml` (mode `0600`).
+  <Step title="Authenticate">
+    Open the console in your browser, grab the API key from the page, and write it to `~/.lim/config.yaml`:
 
     ```bash
     lim login
     ```
 
-    For CI, devcontainers, or anything headless, the env var path is the right choice.
+    On a headless host (CI, a devcontainer), set `LIM_API_KEY` in the environment instead.
+  </Step>
+
+  <Step title="Get an iOS project to build">
+    Use the sample app for the quickest path. Already have an iOS project locally? Skip the clone and `cd` into your project directory.
+
+    ```bash
+    git clone https://github.com/limrun-inc/sample-native-app.git
+    cd sample-native-app
+    ```
   </Step>
 
   <Step title="Create an iOS instance with Xcode attached">
-    A single `lim ios create --xcode` provisions a simulator and an attached Xcode sandbox in one call. Adding `--reuse-if-exists` and a `--label` makes re-runs return the same instance instead of creating a new one.
+    A single `lim ios create --xcode` provisions a simulator and an attached Xcode sandbox in one call. `--reuse-if-exists` makes re-runs return the same instance instead of creating a new one.
 
     ```bash
     lim ios create --xcode --reuse-if-exists --label project=quickstart
     ```
 
-    Open the **Signed Stream URL** from the output in any browser to watch the simulator live. The URL has its own token embedded, so no API key is needed in the browser.
+    Open the **Signed Stream URL** from the output in any browser to watch the simulator live. The URL has its own token embedded, so no sign-in is needed.
   </Step>
 
-  <Step title="Build and run your app">
-    From inside an iOS project on your local disk, run:
+  <Step title="Build and run">
+    From inside the project directory:
 
     ```bash
     lim xcode build .
     ```
 
-    For multi-scheme projects pass `--scheme <name>` and either `--workspace <path>` or `--project <path>`.
-
-    Don't have an iOS project handy? Clone the sample app:
-
-    ```bash
-    git clone https://github.com/limrun-inc/sample-native-app.git
-    cd sample-native-app
-    lim xcode build .
-    ```
+    For multi-scheme projects, add `--scheme <name>` and either `--workspace <path>` or `--project <path>`.
 
     Build logs stream back as they happen. On success, the build artifact auto-installs and auto-launches on the attached simulator. The streaming tab updates to your app's first screen a few seconds after the build completes.
 
