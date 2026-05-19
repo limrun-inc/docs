@@ -38,7 +38,7 @@ Three parts of the system:
 
 - **End user's browser.** Renders `<RemoteControl />`, sees only a per-instance WebSocket URL and a per-instance token. Never sees your API key.
 - **Your backend.** Holds your API key, creates the instance via the Limrun SDK, returns `{ webrtcUrl, token }` to the browser, and handles teardown.
-- **Limrun control plane.** Provisions and scopes the instance, signs the token, and brokers the WebRTC connection.
+- **Limrun control plane.** Provisions the instance and returns a token scoped to it.
 
 ### Authentication
 
@@ -52,7 +52,7 @@ Before you embed, you need:
 - **A way to create an instance from your backend.** Follow [Run an iOS simulator](/docs/ios/run-simulator) (covers iPhone, iPad, Apple Watch) or [Run an Android emulator](/docs/android/run-emulator).
 - **A React 18+ frontend.** Vite, Next.js, Create React App, Remix, etc.
 
-The single contract between your backend and `<RemoteControl />` is the pair `endpointWebSocketUrl + token` from `instance.status`. Every spec field, region clue, label pattern, and lifecycle knob lives on the per-platform pages above; this page covers only the embed mechanics.
+The single contract between your backend and `<RemoteControl />` is the pair `endpointWebSocketUrl + token` from `instance.status`. Every spec field, region clue, label pattern, and lifecycle knob lives on the per-platform pages above.
 
 If your platform also builds your customers' apps in the cloud (not just runs them), [Build with remote Xcode](/docs/ios/build-with-xcode) is the companion page for compiling iOS apps on a remote Mac.
 
@@ -123,6 +123,7 @@ import (
 
     limrun "github.com/limrun-inc/go-sdk"
     "github.com/limrun-inc/go-sdk/option"
+    "github.com/limrun-inc/go-sdk/packages/param"
 )
 
 var lim = limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
@@ -138,8 +139,8 @@ func startHandler(w http.ResponseWriter, r *http.Request) {
     clientIP := clientIPFrom(r)
 
     inst, err := lim.IosInstances.New(r.Context(), limrun.IosInstanceNewParams{
-        Wait:          limrun.Bool(true),
-        ReuseIfExists: limrun.Bool(true),
+        Wait:          param.NewOpt(true),
+        ReuseIfExists: param.NewOpt(true),
         Metadata: limrun.IosInstanceNewParamsMetadata{
             Labels: map[string]string{
                 "tenant":     body.Tenant,
@@ -148,10 +149,10 @@ func startHandler(w http.ResponseWriter, r *http.Request) {
             },
         },
         Spec: limrun.IosInstanceNewParamsSpec{
-            InactivityTimeout: limrun.String("15m"),
+            InactivityTimeout: param.NewOpt("15m"),
             Clues: []limrun.IosInstanceNewParamsSpecClue{{
                 Kind:     "ClientIP",
-                ClientIP: limrun.String(clientIP),
+                ClientIP: param.NewOpt(clientIP),
             }},
         },
     })
@@ -226,7 +227,7 @@ A few details worth calling out. Full coverage of each lives on [Run an iOS simu
 - **Scheduling clues.** Network latency between client browser and Limrun's hosting region can be minised by hinting Limrun's scheduler to provision the instance closer to the end user's location. To do this, forward the end user's IP (`X-Forwarded-For` or `req.socket.remoteAddress`) as a `ClientIP` clue so the instance lands near them. 
 - **Labels for tenant scope and reuse.** Labels are free-form key-value pairs which can be used to organise multiple tenants or reuse hot instances. If `reuseIfExists` is set to `true`, scheduler returns existing hot instance whose `region` and `labels` match the current create call, so a user reopening their tab lands back on the same warm instance.
 - **Pre-install the customer's app.** Reference an uploaded build (or an [App Store catalog entry like Expo Go](/docs/platform/asset-storage#working-with-expo-go)) via `spec.initialAssets`, and the embedded simulator is launched with the app pre-installed during provisioning. See [Asset Storage](/docs/platform/asset-storage).
-- **Session lifecycle.** `inactivityTimeout` defaults to `3m`, almost always too short for an embedded UI; set `10m`–`30m`. `hardTimeout` is a forced-termination safety cap, default `'0'` (no cap). Always wire up an explicit `delete` on tab close.
+- **Session lifecycle.** `inactivityTimeout` defaults to `3m`, almost always too short for an embedded UI; set 10 to 30 minutes. `hardTimeout` is a forced-termination safety cap, default `'0'` (no cap). Always wire up an explicit `delete` on tab close.
 
 ## Install `@limrun/ui`
 

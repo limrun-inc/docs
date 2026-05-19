@@ -8,12 +8,10 @@ icon: "database"
 
 Asset Storage is the binary store that backs every Limrun instance. It lets you:
 
-1. **Pre-install an app build** (Android, iOS, iPadOS or watchOS) at boot so the embedded simulator starts with the app ready
+1. **Pre-install an app build** (Android, iOS, iPadOS or watchOS) at boot so the embedded simulator starts with the app ready.
 2. **Hot-deploy a fresh build** into a *running* embedded session on rebuilds.
 
-This page describes how a coding agent platform should implement the UX for their customers to install their apps on Limrun instances.
-
-For how to get platform users to connect and control to these instances, see [Embed the simulator](/docs/platform/embed-simulator).
+For how to connect platform users to those instances, see [Embed the simulator](/docs/platform/embed-simulator).
 
 ## What are Assets?
 
@@ -118,7 +116,7 @@ const asset = await lim.assets.getOrUpload({
 ```go
 asset, err := lim.Assets.GetOrUpload(ctx, limrun.AssetGetOrUploadParams{
     Path: "./build/MyApp.app.tar.gz",
-    Name: limrun.String("my-app-v1.2.3.tar.gz"), // optional
+    Name: param.NewOpt("my-app-v1.2.3.tar.gz"), // optional
 })
 // asset.ID, asset.Name, asset.SignedDownloadURL, asset.MD5
 ```
@@ -259,24 +257,24 @@ const instance = await lim.iosInstances.create({
 
 ```go
 inst, _ := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
-    Wait: limrun.Bool(true),
+    Wait: param.NewOpt(true),
     Spec: limrun.IosInstanceNewParamsSpec{
         InitialAssets: []limrun.IosInstanceNewParamsSpecInitialAsset{
             {
                 Kind:       "App",
                 Source:     "AssetName",
-                AssetName:  limrun.String("my-app-v1.2.3.tar.gz"),
+                AssetName:  param.NewOpt("my-app-v1.2.3.tar.gz"),
                 LaunchMode: "ForegroundIfRunning",
             },
             {
                 Kind:   "App",
                 Source: "URL",
-                URL:    limrun.String("https://example.com/builds/123.tar.gz"),
+                URL:    param.NewOpt("https://example.com/builds/123.tar.gz"),
             },
             {
                 Kind:    "App",
                 Source:  "AssetID",
-                AssetID: limrun.String("asset_01j..."),
+                AssetID: param.NewOpt("asset_01j..."),
             },
         },
     },
@@ -365,23 +363,23 @@ const multipleApps = await lim.androidInstances.create({
 
 ```go
 inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
-    Wait: limrun.Bool(true),
+    Wait: param.NewOpt(true),
     Spec: limrun.AndroidInstanceNewParamsSpec{
         InitialAssets: []limrun.AndroidInstanceNewParamsSpecInitialAsset{
             {
                 Kind:      "App",
                 Source:    "AssetName",
-                AssetName: limrun.String("my-app-v1.2.3.apk"),
+                AssetName: param.NewOpt("my-app-v1.2.3.apk"),
             },
             {
                 Kind:   "App",
                 Source: "URL",
-                URL:    limrun.String("https://example.com/builds/123.apk"),
+                URL:    param.NewOpt("https://example.com/builds/123.apk"),
             },
             {
                 Kind:    "App",
                 Source:  "AssetID",
-                AssetID: limrun.String("asset_01j..."),
+                AssetID: param.NewOpt("asset_01j..."),
             },
         },
     },
@@ -501,7 +499,7 @@ await android.sendAsset(asset.signedDownloadUrl, 180_000);
 `sendAsset` is TypeScript-only today. From Go or Python, drive the install via `lim android install-app` (or push the APK through the ADB tunnel; see [ADB tunnel](/docs/android/run-emulator#adb-tunnel-the-main-door-in)).
 </Note>
 
-`sendAsset(url, timeoutMs?)` triggers a server-side download + `pm install`. The default client-side timeout is **120 s** (verified at `typescript-sdk/src/instance-client.ts:1038`); pass a higher value if your APK is large enough that the install can run past two minutes.
+`sendAsset(url, timeoutMs?)` triggers a server-side download + `pm install`. The default client-side timeout is **120 s**; pass a higher value if your APK is large enough that the install can run past two minutes.
 
 </Tab>
 </Tabs>
@@ -537,7 +535,7 @@ await lim.androidInstances.create({
 
 ```go
 inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
-    Wait: limrun.Bool(true),
+    Wait: param.NewOpt(true),
     Spec: limrun.AndroidInstanceNewParamsSpec{
         InitialAssets: []limrun.AndroidInstanceNewParamsSpecInitialAsset{
             {
@@ -612,7 +610,7 @@ A successful `create` returns the full instance resource. The fields you'll typi
 }
 ```
 
-`state` cycles through `'unknown' \| 'creating' \| 'assigned' \| 'ready' \| 'terminated'` (verified at `typescript-sdk/src/resources/android-instances.ts:96`). `spec.inactivityTimeout` is returned as a Go duration string (`"10m0s"`, not the `"10m"` you pass in).
+`state` cycles through `'unknown' \| 'creating' \| 'assigned' \| 'ready' \| 'terminated'`.
 
 The iOS shape is identical with these differences:
 
@@ -753,13 +751,13 @@ await lim.assets.delete(assetId);
 
 ```go
 assets, err := lim.Assets.List(ctx, limrun.AssetListParams{
-    Limit:              limrun.Int(50),
-    NameFilter:         limrun.String("my-app-v1.2.3.tar.gz"),
-    IncludeDownloadURL: limrun.Bool(true),
+    Limit:              param.NewOpt(int64(50)),
+    NameFilter:         param.NewOpt("my-app-v1.2.3.tar.gz"),
+    IncludeDownloadURL: param.NewOpt(true),
 })
 
 single, err := lim.Assets.Get(ctx, assetID, limrun.AssetGetParams{
-    IncludeDownloadURL: limrun.Bool(true),
+    IncludeDownloadURL: param.NewOpt(true),
 })
 
 err = lim.Assets.Delete(ctx, assetID)
