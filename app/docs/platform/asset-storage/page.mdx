@@ -610,7 +610,11 @@ A successful `create` returns the full instance resource. The fields you'll typi
 }
 ```
 
-`state` cycles through `'unknown' \| 'creating' \| 'assigned' \| 'ready' \| 'terminated'`. `spec.inactivityTimeout` round-trips through the API in Go's struct-repr format (`"&Duration{Duration:10m0s,}"`), not the `"10m"` you passed in. Match it as a string blob or rely on the value you sent rather than parsing it.
+`state` cycles through `'unknown' \| 'creating' \| 'assigned' \| 'ready' \| 'terminated'`.
+
+<Note>
+  `spec.inactivityTimeout` currently round-trips as `"&Duration{Duration:10m0s,}"`. This looks like a backend serialization bug, the field should probably come back as a plain duration string. Until it's fixed, rely on the value you sent rather than parsing what the API returns.
+</Note>
 
 The iOS shape is identical with these differences:
 
