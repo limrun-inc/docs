@@ -8,9 +8,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "@farming-labs/docs": "0.1.104",
-    "@farming-labs/next": "0.1.104",
-    "@farming-labs/theme": "0.1.104",
+    "@farming-labs/docs": "0.1.108",
+    "@farming-labs/next": "0.1.108",
+    "@farming-labs/theme": "0.1.108",
     "fumadocs-ui": "^16.7.16",
     "lucide-react": "^0.564.0",
     "next": "16.2.6",
