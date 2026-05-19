@@ -494,7 +494,7 @@ figure.shiki,
 }
 
 #nd-docs-layout .docs-code-tabs figure.shiki {
-  margin: -1rem !important;
+  margin: 0 -1rem -1rem !important;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
@@ -502,6 +502,7 @@ figure.shiki,
 
 #nd-docs-layout .docs-code-tabs [role="tabpanel"] {
   margin-top: 0 !important;
+  padding-top: 0 !important;
   border-top: 0 !important;
   background: var(--color-fd-card) !important;
   outline: none !important;
