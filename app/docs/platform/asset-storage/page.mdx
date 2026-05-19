@@ -594,7 +594,7 @@ A successful `create` returns the full instance resource. The fields you'll typi
     "labels": { "tenant": "acme", "user": "user_42" }
   },
   "spec": {
-    "inactivityTimeout": "&Duration{Duration:10m0s,}",
+    "inactivityTimeout": "10m0s",
     "region": "us-west"
   },
   "status": {
@@ -610,7 +610,7 @@ A successful `create` returns the full instance resource. The fields you'll typi
 }
 ```
 
-`state` cycles through `'unknown' \| 'creating' \| 'assigned' \| 'ready' \| 'terminated'`. `spec.inactivityTimeout` round-trips through the API in Go's struct-repr format (`"&Duration{Duration:10m0s,}"`), not the `"10m"` you passed in. Match it as a string blob or rely on the value you sent rather than parsing it.
+`state` cycles through `'unknown' \| 'creating' \| 'assigned' \| 'ready' \| 'terminated'`. `spec.inactivityTimeout` is returned as a Go duration string (`"10m0s"`, not the `"10m"` you pass in).
 
 The iOS shape is identical with these differences:
 
