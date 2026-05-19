@@ -31,6 +31,9 @@ export function useMDXComponents(components?: MDXComponents): MDXComponents {
       ),
       // Mintlify's <CodeGroup> renders each child fence as a tab.
       CodeGroup,
+      // Tab groups for mixed content (e.g. iOS / Android tables and prose).
+      Tabs,
+      Tab,
       Frame: ({ children }: { children: React.ReactNode }) => (
         <div className="docs-frame">{children}</div>
       ),
