@@ -30,7 +30,7 @@ Same create call you'd use for any build-and-test flow, with `sandbox.xcode.enab
 
 <CodeGroup>
 ```bash title="CLI"
-lim ios create --xcode --reuse-if-exists --region us-east --label name=iap-test
+lim ios create --xcode --reuse-if-exists --region us-west --label name=iap-test
 ```
 
 ```ts title="TypeScript"
@@ -47,7 +47,7 @@ const instance = await lim.iosInstances.create({
   reuseIfExists: true,
   metadata: { labels: { name: 'iap-test' } },
   spec: {
-    region: 'us-east',
+    region: 'us-west',
     sandbox: { xcode: { enabled: true } },
   },
 });
@@ -59,21 +59,22 @@ import (
     "os"
     limrun "github.com/limrun-inc/go-sdk"
     "github.com/limrun-inc/go-sdk/option"
+    "github.com/limrun-inc/go-sdk/packages/param"
 )
 
 lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
 
 instance, err := lim.IosInstances.New(context.TODO(), limrun.IosInstanceNewParams{
-    Wait:          limrun.Bool(true),
-    ReuseIfExists: limrun.Bool(true),
+    Wait:          param.NewOpt(true),
+    ReuseIfExists: param.NewOpt(true),
     Metadata: limrun.IosInstanceNewParamsMetadata{
         Labels: map[string]string{"name": "iap-test"},
     },
     Spec: limrun.IosInstanceNewParamsSpec{
-        Region: limrun.String("us-east"),
+        Region: param.NewOpt("us-west"),
         Sandbox: limrun.IosInstanceNewParamsSpecSandbox{
             Xcode: limrun.IosInstanceNewParamsSpecSandboxXcode{
-                Enabled: limrun.Bool(true),
+                Enabled: param.NewOpt(true),
             },
         },
     },
@@ -91,7 +92,7 @@ instance = limrun.ios_instances.create(
     reuse_if_exists=True,
     metadata={"labels": {"name": "iap-test"}},
     spec={
-        "region": "us-east",
+        "region": "us-west",
         "sandbox": {"xcode": {"enabled": True}},
     },
 )
@@ -241,16 +242,16 @@ await ios.tapElement({ AXLabel: 'Confirm' });
 **State persists across app relaunches.** The simulator remembers the purchase as long as the local config is active. To clear it between test cases without dropping the config, soft-reset the app's data container:
 
 ```ts
-// 'data' (default): terminate the app + wipe its data container. Fast.
+// 'data' (default): terminate the app + wipe its data container. No reinstall.
 await ios.softReset(bundleId);
 
 // 'full': terminate + uninstall + clear keychain + clear privacy grants
 // + drop NSUserDefaults + wipe shared App Group containers + reinstall
-// from the cached source .app. Takes a few seconds longer.
+// from the cached source .app.
 await ios.softReset(bundleId, { strategy: 'full' });
 ```
 
-To roll the whole environment back to "no local config," see the next section.
+To roll the whole environment back to "no local config," see [Clear or replace the config](#clear-or-replace-the-config).
 
 ## Clear or replace the config
 
