@@ -1,48 +1,76 @@
 ---
 title: "Test In-App Purchases"
-description: "Drive real StoreKit purchase flows on a remote iOS simulator with a local `.storekit` config. No Apple Account, no sandbox tester."
+description: "Test in-app purchases on a remote iOS simulator using StoreKit's local test environment. Register a `.storekit` config, or let Limrun snapshot one from your App Store Connect sandbox products."
 order: 4
-icon: "credit-card"
+icon: credit-card
 ---
+
 # Test In-App Purchases
 
-Limrun's iOS instances support [StoreKit's local test environment](https://developer.apple.com/documentation/storekit/in-app_purchase/testing_at_all_stages_of_development_with_xcode_and_sandbox_environments). You provision a `.storekit` configuration file on the device and StoreKit serves products, prices, and purchase prompts from it. No real Apple Account, no sandbox tester credentials, no real money.
+StoreKit can serve in-app purchase products from a local `.storekit` configuration file instead of from App Store Connect. Limrun's iOS instances expose this [local test environment](https://developer.apple.com/documentation/storekit/setting-up-storekit-testing-in-xcode) through three SDK calls: register a config, auto-generate one from your sandbox products, or clear it. Your app makes the same StoreKit calls it does in production; the simulator answers them from your file.
 
-Two flows are supported: **explicit** (you have the `.storekit` file already) and **discover** (let Limrun auto-generate one by watching what StoreKit fetches at runtime).
+## Before you start
 
-## Prerequisites
+- A Limrun API key in `LIM_API_KEY`. If you haven't used the CLI before, walk through the [Quickstart](/docs/quickstart) first.
+- An iOS app that uses StoreKit (or StoreKit 2) for in-app purchases.
+- Either a `.storekit` configuration file (the kind Xcode generates via *File → New → File → StoreKit Configuration File*), or a bundle ID that already has IAPs registered in App Store Connect sandbox. You pick which flow to use later on this page; both are supported.
 
-StoreKit local testing requires the Xcode toolchain to be present on the device. Provision an iOS instance with the Xcode sandbox enabled:
+## How the local test environment works
 
-<CodeGroup labels={["TypeScript","Python","Go","CLI"]}>
-```ts
+`storekitd` is the iOS daemon that brokers every StoreKit request between your app and Apple's servers. In the local test environment, it reads products from a JSON-shaped file (a `.storekit` configuration) instead of contacting App Store Connect. Xcode uses this same mechanism when you run a scheme with a StoreKit config selected; Limrun exposes it remotely through three SDK methods (`setStoreKitConfig`, `discoverStoreKitConfig`, `clearStoreKitConfig`).
+
+Two practical consequences:
+
+- The simulator needs to be set up so it accepts a local config. That means provisioning it with the **Xcode sandbox attached** (the same sandbox you use for [Build with remote Xcode](/docs/ios/build-with-xcode)), and ad-hoc-signing the build so the simulator runs it without an Apple Developer account.
+- The config is keyed by bundle ID. Setting it for `com.example.MyApp` doesn't affect any other bundle on the same simulator, and clearing it sends StoreKit back to real-sandbox behavior for that bundle only.
+
+## Provision an instance with the Xcode sandbox
+
+Same create call you'd use for any build-and-test flow, with `sandbox.xcode.enabled` switched on:
+
+<CodeGroup>
+```bash title="CLI"
+lim ios create --xcode --reuse-if-exists --region us-east --label name=iap-test
+```
+
+```ts title="TypeScript"
+import { Limrun, Ios } from '@limrun/api';
+
+const lim = new Limrun({ apiKey: process.env.LIM_API_KEY });
+
+// `wait: true` blocks until the instance is `ready` and the Xcode sandbox URL
+// is populated on `status.sandbox.xcode.url`. `reuseIfExists` keeps you on the
+// same warm instance on re-runs; pin a region if you want that to be reliable
+// across networks (see Run an iOS Simulator).
 const instance = await lim.iosInstances.create({
   wait: true,
   reuseIfExists: true,
   metadata: { labels: { name: 'iap-test' } },
   spec: {
+    region: 'us-east',
     sandbox: { xcode: { enabled: true } },
   },
 });
 ```
 
-```python
-instance = client.ios_instances.create(
-    wait=True,
-    reuse_if_exists=True,
-    metadata={"labels": {"name": "iap-test"}},
-    spec={"sandbox": {"xcode": {"enabled": True}}},
+```go title="Go"
+import (
+    "context"
+    "os"
+    limrun "github.com/limrun-inc/go-sdk"
+    "github.com/limrun-inc/go-sdk/option"
 )
-```
 
-```go
-instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
+lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
+
+instance, err := lim.IosInstances.New(context.TODO(), limrun.IosInstanceNewParams{
     Wait:          limrun.Bool(true),
     ReuseIfExists: limrun.Bool(true),
     Metadata: limrun.IosInstanceNewParamsMetadata{
         Labels: map[string]string{"name": "iap-test"},
     },
     Spec: limrun.IosInstanceNewParamsSpec{
+        Region: limrun.String("us-east"),
         Sandbox: limrun.IosInstanceNewParamsSpecSandbox{
             Xcode: limrun.IosInstanceNewParamsSpecSandboxXcode{
                 Enabled: limrun.Bool(true),
@@ -52,28 +80,68 @@ instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
 })
 ```
 
-```bash
-lim ios create --xcode --reuse-if-exists --label name=iap-test
+```python title="Python"
+import os
+from limrun_api import Limrun
+
+limrun = Limrun(api_key=os.environ["LIM_API_KEY"])
+
+instance = limrun.ios_instances.create(
+    wait=True,
+    reuse_if_exists=True,
+    metadata={"labels": {"name": "iap-test"}},
+    spec={
+        "region": "us-east",
+        "sandbox": {"xcode": {"enabled": True}},
+    },
+)
 ```
+
 </CodeGroup>
 
-The StoreKit helpers (`setStoreKitConfig`, `discoverStoreKitConfig`, `clearStoreKitConfig`) are TypeScript-only today. Python and Go users who need them have to drive the `.storekit` upload through raw REST against the instance's `apiUrl` until the SDK helpers ship in those languages.
+When the call resolves, two URLs on the returned object matter for IAP work:
 
-Then build and install your app the [usual way](/docs/ios/build-with-xcode):
+- **The Xcode sandbox URL** (`instance.status.sandbox.xcode.url`). The Xcode client connects here to sync source and run `xcodebuild`.
+- **The device control-plane URL** (`instance.status.apiUrl`). The iOS client connects here to call the StoreKit helpers and drive the UI.
 
-```ts
+Both authenticate with the same `instance.status.token`.
+
+## Build and install the app
+
+Sync your source to the Xcode sandbox and run `xcodebuild`. Critically, the build must be **ad-hoc-signed** so StoreKit's local test environment accepts the bundle. Simulator-target `xcodebuild` does ad-hoc signing by default when you don't pass certificate parameters, so you don't need to provision anything signing-related yourself. After a successful build, the app auto-installs on the attached simulator.
+
+<CodeGroup>
+```bash title="CLI"
+# Syncs the source folder and runs xcodebuild in one step. --id targets the
+# iOS instance with the Xcode sandbox attached (created above).
+lim xcode build ./MyApp --id <instance-id> --scheme MyApp --sdk iphonesimulator
+```
+
+```ts title="TypeScript"
 const xcode = await lim.xcodeInstances.createClient({
   apiUrl: instance.status.sandbox!.xcode!.url!,
   token: instance.status.token,
 });
 
-await xcode.sync('./my-app', { watch: false });
-const build = xcode.xcodebuild({ scheme: 'MyApp' });
-build.stdout.on('data', (line) => process.stdout.write(line));
-await build;
+await xcode.sync('./MyApp', { watch: false });
+
+// `xcodebuild()` with no signing params produces an ad-hoc-signed simulator
+// build. After it succeeds, the build is auto-installed on the attached
+// simulator on the same instance.
+const build = xcode.xcodebuild();
+build.stdout.on('data', (line) => process.stdout.write(line.toString()));
+build.stderr.on('data', (line) => process.stderr.write(line.toString()));
+const { exitCode } = await build;
+if (exitCode !== 0) throw new Error(`xcodebuild failed (${exitCode})`);
 ```
 
-Open an iOS device-control client for the StoreKit calls:
+</CodeGroup>
+
+The Xcode sync + build pipeline isn't exposed in the Python or Go SDKs today. From those languages, drive the build through `lim xcode build` as a subprocess. See [Build with remote Xcode](/docs/ios/build-with-xcode) for the full surface (workspace, scheme, real-device signing, log streaming, artifact upload).
+
+## Pick a flow
+
+The three StoreKit helpers below live on the iOS device-control client:
 
 ```ts
 import { Ios } from '@limrun/api';
@@ -84,9 +152,20 @@ const ios = await Ios.createInstanceClient({
 });
 ```
 
+From here, you have two ways to populate the local config: register a file you already have, or auto-generate one from your existing App Store Connect setup.
+
+The second option, *discover*, leans on what you've already done in App Store Connect. When you set up an iOS app for distribution, you also register every in-app purchase there: a product ID, a price tier, localized titles and descriptions, and (for subscriptions) groups and durations. App Store Connect mirrors this data into a *sandbox* storefront, a parallel pre-production environment that real devices can fetch from when signed into a sandbox-tester Apple ID. Discover skips the tester sign-in: it has the simulator make one sandbox product request (when you open the paywall during a `discoverStoreKitConfig` call), captures the response from the StoreKit cache on the device, and turns it into a `.storekit` file. You get a config that exactly matches what App Store Connect has for that bundle, without authoring or maintaining a separate file.
+
+| Flow | What you need | When to use |
+|---|---|---|
+| **Explicit** (`setStoreKitConfig`) | A `.storekit` file on disk | You already maintain a config in Xcode, or you want the test environment to be deterministic across runs. |
+| **Discover** (`discoverStoreKitConfig`) | IAPs registered in App Store Connect sandbox for your bundle | You have a working App Store Connect setup but no `.storekit` file. Limrun captures the sandbox response and converts it for you. |
+
+These two flows aren't mutually exclusive. Discover is convenient for the first run; explicit is what most teams settle on once they want their tests reproducible.
+
 ## Explicit flow: upload a `.storekit` file
 
-If you already have a `.storekit` config (Xcode → File → New → File → StoreKit Configuration), upload it from disk. The SDK accepts a `Buffer` or `Uint8Array`.
+If you already have a `.storekit` (Xcode generates one via *File → New → File → StoreKit Configuration File*; you can also write one by hand), read the bytes and register them against the bundle ID:
 
 ```ts
 import fs from 'node:fs';
@@ -97,64 +176,124 @@ const bytes = fs.readFileSync('./Products.storekit');
 await ios.setStoreKitConfig(bundleId, bytes);
 ```
 
-The config is associated with the bundle ID, not the global StoreKit daemon. From this point on, any in-app purchase the app initiates serves products from your file. Relaunch the app to pick up the config:
+`setStoreKitConfig` takes the raw file bytes (`Buffer` or `Uint8Array`). The simulator wires the config to `bundleId` immediately. The app's next StoreKit fetch will hit the local test environment instead of Apple's servers.
+
+If your app is already running, restart it so it picks up the new config:
 
 ```ts
 await ios.terminateApp(bundleId);
 await ios.launchApp(bundleId);
 ```
 
-## Discover flow: auto-generate the config
+## Discover flow: auto-generate from a sandbox response
 
-If you don't have a `.storekit` file but your app fetches products from App Store Connect at runtime, Limrun can snapshot StoreKit's local cache and produce a `.storekit` for you.
+If you don't have a `.storekit` on hand but your bundle ID already has IAPs registered in App Store Connect sandbox, Limrun can read the cached sandbox response from `storekitd` and turn it into a `.storekit` for you:
 
 ```ts
 const result = await ios.discoverStoreKitConfig(bundleId, {
-  timeoutSeconds: 120,  // 1..300, default 120, capped server-side
+  timeoutSeconds: 120,  // default 120; server caps at 300
 });
 
-console.log('Items discovered:', result.itemsFound);
-console.log('Products:', result.productsCount);
-console.log('Subscriptions:', result.subscriptionsCount);
-console.log('Subscription groups:', result.subscriptionGroupsCount);
+console.log(`Found ${result.itemsFound} items: ` +
+  `${result.productsCount} products, ` +
+  `${result.subscriptionsCount} subscriptions in ` +
+  `${result.subscriptionGroupsCount} groups.`);
 ```
 
-While `discoverStoreKitConfig` waits, your app must trigger at least one StoreKit fetch (typically by opening the in-app paywall) so StoreKit pulls product metadata from Apple's servers and the local cache is populated. Limrun reads from that cache and emits a `.storekit` config.
+The call **blocks server-side** until either a sandbox response gets cached or the timeout fires. While it's waiting, your app needs to trigger at least one StoreKit product fetch, which usually means opening the in-app paywall. Watch the simulator via `instance.status.signedStreamUrl` and drive the app there yourself, or automate it with the [device-control tap and element-tree APIs](/docs/ios/run-simulator#tap).
 
-After discovery succeeds, future purchases on the same bundle ID are served from the auto-generated local config; you don't need to call `setStoreKitConfig` separately.
+If discover times out, it's almost always because either the bundle has no IAPs registered in sandbox yet, or the app didn't actually fetch products during the window. Re-running with a longer `timeoutSeconds` won't help in either case.
 
-## Test a purchase
+After discovery succeeds, the generated config is automatically registered for the bundle, exactly as if you'd called `setStoreKitConfig`. You don't need a second call.
 
-Drive the UI through your paywall:
+## Run a purchase
 
-```ts
-await ios.openUrl('myapp://settings/upgrade');                // or however your app gets there
+Both flows leave the simulator in the same state: products and prices come from the local config. Drive your paywall and complete a purchase the same way you would for any other UI test:
+
+<CodeGroup>
+```bash title="CLI"
+lim ios launch-app --id <instance-id> com.example.MyApp
+lim ios open-url   --id <instance-id> "myapp://settings/upgrade"
+lim ios tap-element --id <instance-id> --ax-label "Subscribe Monthly"
+# StoreKit shows its purchase sheet. Tap the confirm button to complete.
+lim ios tap-element --id <instance-id> --ax-label "Confirm"
+```
+
+```ts title="TypeScript"
+await ios.launchApp(bundleId);
+
+// However your app reaches the paywall: a deep link, a tab, a button tree.
+await ios.openUrl('myapp://settings/upgrade');
 await ios.tapElement({ AXLabel: 'Subscribe Monthly' });
-// StoreKit shows its purchase sheet, populated from your local config
+
+// StoreKit shows its purchase sheet. Tap the confirm button to complete.
 await ios.tapElement({ AXLabel: 'Confirm' });
 ```
 
-StoreKit's `Transaction.updates` and `purchase()` results behave identically to the real sandbox, so your app code doesn't need to know it's running against a local config. Stub out receipt-validation servers separately if your app talks to one.
+</CodeGroup>
+
+**What you'll see on screen.** The StoreKit purchase sheet looks identical to the production one, except the bottom of the sheet shows `[Environment: Xcode]` instead of `[Environment: Production]` or `[Environment: Sandbox]`. There's no Apple ID prompt, no sandbox-tester sign-in, and the confirmation step completes immediately rather than waiting on a network call to Apple.
+
+**What your app code sees.** From your app's perspective the purchase is real. You await the purchase call, get back a signed transaction, and the listeners and entitlement checks you've already wired up run unchanged. The only thing that differs from a real-device purchase is the certificate that signs the transaction: it's Apple's local-test certificate, not their production one.
+
+**The one caveat: server-side receipt validation.** If your backend verifies receipts by calling Apple's production or sandbox `verifyReceipt` / App Store Server API, those calls will reject the local-environment transaction because the signing certificate isn't Apple's production one. Stub the validation server out in your test environment, or short-circuit it when the build is ad-hoc-signed.
+
+**State persists across app relaunches.** The simulator remembers the purchase as long as the local config is active. To clear it between test cases without dropping the config, soft-reset the app's data container:
+
+```ts
+// 'data' (default): terminate the app + wipe its data container. Fast.
+await ios.softReset(bundleId);
+
+// 'full': terminate + uninstall + clear keychain + clear privacy grants
+// + drop NSUserDefaults + wipe shared App Group containers + reinstall
+// from the cached source .app. Takes a few seconds longer.
+await ios.softReset(bundleId, { strategy: 'full' });
+```
+
+To roll the whole environment back to "no local config," see the next section.
 
 ## Clear or replace the config
 
-Switch back to real sandbox or production behavior with `clearStoreKitConfig`. You can also overwrite with another `.storekit` file using `setStoreKitConfig` again; the latest call wins.
+Two ways to undo `setStoreKitConfig`:
 
 ```ts
+// Wipe the local config for this bundle. Future StoreKit requests fall back
+// to the real sandbox (or fail if no sandbox account is signed in).
 await ios.clearStoreKitConfig(bundleId);
+
+// Or overwrite with a different .storekit. The latest call wins.
+await ios.setStoreKitConfig(bundleId, fs.readFileSync('./OtherProducts.storekit'));
 ```
 
-## CLI
+`clearStoreKitConfig` is safe to call when nothing is registered, so you can put it in a test teardown without checking state first.
 
-The CLI does not expose StoreKit commands directly today. Use the TypeScript SDK for the explicit and discover flows, or the [Python](/docs/reference#python) / [Go](/docs/reference#go) SDKs once those operations land in your language of choice.
+## Troubleshooting
+
+<Accordions>
+  <Accordion title="discoverStoreKitConfig times out">
+    Two common causes. First, the bundle ID has no IAPs registered in App Store Connect sandbox; discover has nothing to read. Second, the app never fetched products during the wait window; open the paywall (or any screen that calls `Product.products(for:)` or the StoreKit 1 equivalent) while discover is running. Increasing `timeoutSeconds` doesn't fix either cause.
+  </Accordion>
+  <Accordion title="StoreKit prompts for an Apple ID even after setStoreKitConfig">
+    The app picked up the config before the build was ad-hoc-signed, or the build was signed with a real developer team. Re-run `xcodebuild` without certificate parameters (server-side ad-hoc signing) and reinstall. Confirm the bundle ID on `setStoreKitConfig` matches your app's `CFBundleIdentifier` exactly.
+  </Accordion>
+  <Accordion title="Products show up but prices are wrong or missing">
+    Your `.storekit` file is out of sync with what the app expects. Open it in Xcode (or any JSON editor) and confirm every product ID your app calls `Product.products(for:)` with is present, with localized prices set for the storefront the test runs in.
+  </Accordion>
+  <Accordion title="Purchase sheet shows Environment: Xcode but Transaction.updates never fires">
+    StoreKit 2 transactions are delivered through the same channel they would be in production, but they need an active listener. Confirm your app starts an `await for await transaction in Transaction.updates` loop early in its lifecycle, not lazily on the paywall.
+  </Accordion>
+</Accordions>
 
 ## Next steps
 
 <Cards>
-  <Card title="Run an iOS Simulator" icon="smartphone" href="/docs/ios/run-simulator">
-    The full device-control surface for driving the purchase flow.
+  <Card title="Run an iOS Simulator" href="/docs/ios/run-simulator">
+    The full device-control surface: taps, element queries, screenshots, app lifecycle.
   </Card>
-  <Card title="Build with remote Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
-    Build and install the app under test on this instance.
+  <Card title="Build with remote Xcode" href="/docs/ios/build-with-xcode">
+    The build options behind `xcodebuild()`: schemes, signing, log streaming, IPA output.
+  </Card>
+  <Card title="Automatic PR Previews" href="/docs/ios/pr-previews">
+    Ship every PR with a built app and a live preview link from GitHub Actions.
   </Card>
 </Cards>
