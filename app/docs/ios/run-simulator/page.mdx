@@ -40,8 +40,8 @@ import (
 
 lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
 inst, _ := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
-    Wait:          limrun.Bool(true),
-    ReuseIfExists: limrun.Bool(true),
+    Wait:          param.NewOpt(true),
+    ReuseIfExists: param.NewOpt(true),
 })
 
 client, err := iosws.NewClient(inst.Status.APIURL, inst.Status.Token)
@@ -55,8 +55,7 @@ Or from the CLI:
 
 ```bash
 # The CLI maintains its own connection per command. No explicit client step.
-# Persistent sessions reduce per-command latency:
-lim session start
+lim ios screenshot ./out.png
 ```
 
 The TypeScript and Go clients initialize differently:
@@ -74,7 +73,7 @@ The instance status carries everything you need:
 | `token` | Per-instance bearer for `apiUrl`, `endpointWebSocketUrl`, and `sandbox.xcode.url`. Embedded in `signedStreamUrl`. |
 | `endpointWebSocketUrl` | WebSocket endpoint for the [`<RemoteControl />` web component](/docs/platform/embed-simulator) (pass with `?token=`). |
 | `signedStreamUrl` | Console-hosted watch URL with the token embedded; open in a browser without your API key. |
-| `mcpUrl` | Per-instance MCP HTTP endpoint. Auth with your org API key, not `status.token`. See [MCP](/docs/agents/mcp). |
+| `mcpUrl` | Per-instance MCP HTTP endpoint. Auth with the per-instance `status.token`, not your org API key. See [MCP](/docs/agents/mcp). |
 | `sandbox.xcode.url` | Xcode sandbox API URL (only when `spec.sandbox.xcode.enabled: true`). |
 | `targetHttpPortUrlPrefix` | Reverse-proxy prefix for tunneled HTTP ports on the device. |
 | `state` | `unknown` → `creating` → `assigned` → `ready` → `terminated`. |
@@ -395,7 +394,7 @@ lim ios record stop --presigned-url "<url>"
 
 ## Reverse-tunnel a local service
 
-Expose a TCP service on your machine to the simulator. Use it for anything the app inside the simulator needs to call into: a mock backend, a debug proxy, a test runner.
+Expose a TCP service on your machine to the simulator. Use it for anything the app inside the simulator needs to call into: a mock backend, a debug proxy, a test runner, or a local Expo dev server so a React Native app on the remote simulator can hot-reload from your laptop without a public tunnel.
 
 ```ts
 const tunnel = await client.startReverseTunnel({
@@ -414,7 +413,7 @@ lim ios reverse 57090:4000             # expose local :4000 as simulator :57090
 lim ios reverse 57091 --local-host 0.0.0.0
 ```
 
-The remote port must be in **57090-57099**. That range is reserved for tunneled services.
+The remote port must be in **57090-57099**. That range is reserved for tunneled services. Tooling that picks its own port (the canonical `expo start` CLI defaults to `8081`, for example) needs the port made configurable before the tunnel works; the [Expo PR-preview Action](https://github.com/limrun-inc/ios-preview-action) wraps full app builds instead of dev-server hot-reload, so it doesn't go through this path.
 
 ## Drop into macOS dev tools
 
@@ -468,6 +467,8 @@ lim ios lsof
 ## Reuse and clean up instances
 
 Each iOS instance is single-tenant. Only one client should drive it at a time, so scope instances per user, per PR, or per session with labels. `reuseIfExists` returns the same instance on the next call with the same labels, which keeps a long-running agent on one warm pod instead of churning through fresh ones.
+
+The pattern matters when a platform integrator triggers `create` from a UI action: without `reuseIfExists`, a tight loop on the user's side fans out into hundreds of instances (and a real-world bill). With it, repeated clicks settle on the same warm pod.
 
 ```ts
 // Reuse the same instance for the same session across multiple agent runs
@@ -563,18 +564,18 @@ instance = client.ios_instances.create(
 // The Go SDK does not expose `model` on the create params yet.
 // Instances default to iPhone. To pick iPad or Apple Watch, use the CLI or REST.
 instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
-    Wait:          limrun.Bool(true),
-    ReuseIfExists: limrun.Bool(true),
+    Wait:          param.NewOpt(true),
+    ReuseIfExists: param.NewOpt(true),
     Metadata: limrun.IosInstanceNewParamsMetadata{
         Labels: map[string]string{"app": "my-app", "session": "demo"},
     },
     Spec: limrun.IosInstanceNewParamsSpec{
-        Region:            limrun.String("us-west"),
-        InactivityTimeout: limrun.String("10m"),
-        HardTimeout:       limrun.String("0"),
+        Region:            param.NewOpt("us-west"),
+        InactivityTimeout: param.NewOpt("10m"),
+        HardTimeout:       param.NewOpt("0"),
         Sandbox: limrun.IosInstanceNewParamsSpecSandbox{
             Xcode: limrun.IosInstanceNewParamsSpecSandboxXcode{
-                Enabled: limrun.Bool(true),
+                Enabled: param.NewOpt(true),
             },
         },
     },
@@ -609,31 +610,13 @@ lim ios create --reuse-if-exists \
 
 `metadata.labels` is free-form `key=value` and powers `reuseIfExists`, listing, and cleanup queries.
 
+<Note>
+  **For platform integrators:** pass the end user's IP as a `ClientIP` clue (`clues: [{ kind: 'ClientIP', clientIp: '203.0.113.42' }]`). The scheduler places the instance in a region close to that IP, which is the difference between a snappy embedded simulator and a laggy one across continents.
+</Note>
+
 <Frame>
   <img src="/images/console/03-ios-models.png" alt="Console Playground iOS model picker showing iPhone, iPad, and Apple Watch options" />
 </Frame>
-
-<Accordions>
-<Accordion title="Manage the WebSocket connection">
-
-The TypeScript client exposes lifecycle hooks for long-running drivers and connection debugging:
-
-```ts
-client.getConnectionState();
-// 'connecting' | 'connected' | 'disconnected' | 'reconnecting'
-
-const unsubscribe = client.onConnectionStateChange((state) => {
-  console.log('state →', state);
-});
-
-client.keepAlive();   // explicit ping (the client also auto-pings)
-client.disconnect();  // close cleanly, do not auto-reconnect
-```
-
-The SDK auto-reconnects on transient failures with exponential backoff (defaults: 6 attempts, 1 s base, 30 s cap). `disconnect()` is final; no further auto-reconnects after it.
-
-</Accordion>
-</Accordions>
 
 ## Next steps
 
