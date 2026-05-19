@@ -6,8 +6,6 @@ icon: "bookopen"
 ---
 # SDK reference
 
-This page is the language-agnostic reference for the Limrun REST API. Each operation is shown with code-group tabs for cURL, the three official SDKs (TypeScript, Python, Go), and the `lim` CLI.
-
 The OpenAPI spec is the source of truth. Stainless generates each SDK from it, so method names and parameter shapes are consistent across languages once you account for casing conventions (camelCase in TypeScript, snake_case in Python, PascalCase in Go).
 
 ## Base URL
@@ -232,14 +230,14 @@ The four resources (`iosInstances`, `androidInstances`, `xcodeInstances`, `asset
 
 <CodeGroup labels={["cURL","TypeScript","Python","Go","CLI"]}>
 ```bash
-curl -X POST https://api.limrun.com/v1/ios_instances?wait=true&reuseIfExists=true \
+curl -X POST "https://api.limrun.com/v1/ios_instances?wait=true&reuseIfExists=true" \
   -H "Authorization: Bearer $LIM_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "metadata": { "labels": { "session": "demo" } },
     "spec": {
       "model": "iphone",
-      "region": "eu-north1",
+      "region": "us-west",
       "sandbox": { "xcode": { "enabled": true } }
     }
   }'
@@ -252,7 +250,7 @@ const instance = await lim.iosInstances.create({
   metadata: { labels: { session: 'demo' } },
   spec: {
     model: 'iphone',
-    region: 'eu-north1',
+    region: 'us-west',
     sandbox: { xcode: { enabled: true } },
   },
 });
@@ -265,7 +263,7 @@ instance = client.ios_instances.create(
     metadata={"labels": {"session": "demo"}},
     spec={
         "model": "iphone",
-        "region": "eu-north1",
+        "region": "us-west",
         "sandbox": {"xcode": {"enabled": True}},
     },
 )
@@ -280,7 +278,7 @@ instance, err := client.IosInstances.New(ctx, limrun.IosInstanceNewParams{
     },
     Spec: limrun.IosInstanceNewParamsSpec{
         Model:  limrun.IosInstanceNewParamsSpecModelIphone,
-        Region: param.NewOpt("eu-north1"),
+        Region: param.NewOpt("us-west"),
         Sandbox: limrun.IosInstanceNewParamsSpecSandbox{
             Xcode: limrun.IosInstanceNewParamsSpecSandboxXcode{
                 Enabled: param.NewOpt(true),
@@ -384,9 +382,9 @@ The TypeScript and Python SDKs expose a top-level `xcodeInstances` / `xcode_inst
 
 ### Assets
 
-Assets use `getOrCreate` (upsert) and `getOrUpload` (upsert plus actual upload) instead of `create`. The `os` field on `Asset` is optional; leaving it unset means the asset is available for both platforms. The **`getOrUpload` helper** that handles MD5 dedup and the signed PUT ships in the TypeScript and Go SDKs; Python callers do the two-step pattern manually (call `getOrCreate`, then PUT the bytes to `signedUploadUrl` if `md5` is missing or doesn't match).
+Assets use `getOrCreate` (upsert; named `GetOrNew` in Go) and `getOrUpload` (upsert plus actual upload) instead of `create`. The `os` field on `Asset` is optional; leaving it unset means the asset is available for both platforms. The **`getOrUpload` helper** that handles MD5 dedup and the signed PUT ships in the TypeScript and Go SDKs; Python callers do the two-step pattern manually (call `get_or_create`, then PUT the bytes to `signedUploadUrl` if `md5` is missing or doesn't match).
 
-<CodeGroup labels={["cURL","TypeScript","Python","Go","npm CLI"]}>
+<CodeGroup labels={["cURL","TypeScript","Python","Go","CLI"]}>
 ```bash
 # Two-step upload: get-or-create returns a signed PUT URL, then push the bytes to it.
 curl -X PUT https://api.limrun.com/v1/assets \
