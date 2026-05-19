@@ -21,8 +21,8 @@ This page covers:
 
 - **Install the `lim` CLI or one of the SDKs**
 
-  <CodeGroup>
-  ```bash title="CLI"
+  <CodeGroup labels={["CLI", "TypeScript", "Go", "Python"]}>
+  ```bash
   # npm
   npm install --global @limrun/cli
 
@@ -33,7 +33,7 @@ This page covers:
   bun add --global @limrun/cli
   ```
 
-  ```bash title="TypeScript"
+  ```bash
   # npm
   npm install @limrun/api
 
@@ -44,11 +44,11 @@ This page covers:
   bun add @limrun/api
   ```
 
-  ```bash title="Go"
+  ```bash
   go get -u github.com/limrun-inc/go-sdk@latest
   ```
 
-  ```bash title="Python"
+  ```bash
   pip install limrun_api
   ```
   </CodeGroup>
@@ -82,8 +82,8 @@ The three SDKs cover different slices of the Android surface. TypeScript ships t
 
 With the CLI or SDK set up and authenticated, provisioning is a simple command:
 
-<CodeGroup>
-```bash title="CLI"
+<CodeGroup labels={["CLI", "TypeScript", "Go", "Python"]}>
+```bash
 # Boot an instance and open an ADB tunnel (defaults: --connect=true).
 lim android create
 
@@ -97,7 +97,7 @@ lim android create --install ./build.apk
 lim android create --install-asset chrome-stable
 ```
 
-```ts title="TypeScript"
+```ts
 import { Limrun } from '@limrun/api';
 
 const lim = new Limrun();   // reads LIM_API_KEY from the environment
@@ -117,7 +117,7 @@ const instance = await lim.androidInstances.create({
 console.log(instance.metadata.id, instance.status.state);
 ```
 
-```go title="Go"
+```go
 import (
     "context"
     "os"
@@ -145,7 +145,7 @@ inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
 })
 ```
 
-```python title="Python"
+```python
 from limrun_api import Limrun
 
 lim = Limrun()  # reads LIM_API_KEY
@@ -215,8 +215,8 @@ Set `initialAssets` at provisioning time to install one or more APKs while the p
 
 For local files, the CLI's `--install` and the TypeScript/Go SDK's `assets.getOrUpload({ path })` upload to Asset Storage first and hand the daemon a signed URL. Python's SDK doesn't ship that helper. Upload manually with `assets.get_or_create` plus a PUT to the returned upload URL before calling `create`. See [Asset Storage](/platform/asset-storage/).
 
-<CodeGroup>
-```bash title="CLI"
+<CodeGroup labels={["CLI", "TypeScript", "Go", "Python"]}>
+```bash
 # Local APK uploaded to Asset Storage on the fly, then installed.
 lim android create --install ./build.apk
 
@@ -227,7 +227,7 @@ lim android create --install ./app-a.apk --install ./app-b.apk
 lim android create --install-asset chrome-stable
 ```
 
-```ts title="TypeScript"
+```ts
 const instance = await lim.androidInstances.create({
   wait: true,
   reuseIfExists: true,
@@ -250,7 +250,7 @@ const instance = await lim.androidInstances.create({
 });
 ```
 
-```go title="Go"
+```go
 inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
     Wait:          param.NewOpt(true),
     ReuseIfExists: param.NewOpt(true),
@@ -285,7 +285,7 @@ inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
 })
 ```
 
-```python title="Python"
+```python
 instance = lim.android_instances.create(
     wait=True,
     reuse_if_exists=True,
@@ -316,8 +316,8 @@ If you ship your app as **split APKs**, ie a `base.apk` plus a few `config.*` AP
 
 **Split APKs are SDK-only.** Each CLI `--install` / `--install-asset` becomes its own `initialAssets[]` entry, so the set installs as separate apps rather than a grouped install. Use an SDK to keep them in one entry.
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript", "Go", "Python"]}>
+```ts
 await lim.androidInstances.create({
   wait: true,
   spec: {
@@ -338,7 +338,7 @@ await lim.androidInstances.create({
 });
 ```
 
-```go title="Go"
+```go
 inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
     Wait: param.NewOpt(true),
     Spec: limrun.AndroidInstanceNewParamsSpec{
@@ -362,7 +362,7 @@ inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
 })
 ```
 
-```python title="Python"
+```python
 lim.android_instances.create(
     wait=True,
     spec={
@@ -388,8 +388,8 @@ Use separate entries in `initialAssets` when you want to install unrelated apps 
 #### Set up custom Chrome Flags
 You can use Android's local Chrome's experimental features by turning on a specific flag. This is SDK-only. To do this, add an entry to `initialAssets` array with `kind: 'Configuration'`:
 
-<CodeGroup>
-```ts title="TypeScript"
+<CodeGroup labels={["TypeScript", "Go", "Python"]}>
+```ts
 {
   kind: 'Configuration',
   configuration: {
@@ -399,7 +399,7 @@ You can use Android's local Chrome's experimental features by turning on a speci
 }
 ```
 
-```go title="Go"
+```go
 limrun.AndroidInstanceNewParamsSpecInitialAsset{
     Kind: "Configuration",
     Configuration: limrun.AndroidInstanceNewParamsSpecInitialAssetConfiguration{
@@ -409,7 +409,7 @@ limrun.AndroidInstanceNewParamsSpecInitialAsset{
 }
 ```
 
-```python title="Python"
+```python
 {
     "kind": "Configuration",
     "configuration": {
@@ -580,13 +580,13 @@ Three primitives for inspecting the device using the SDK. All of these require a
 
 `screenshot` captures the current frame as a base64-encoded PNG. The CLI writes the decoded bytes to a path you supply; the SDK returns a data URI that you decode yourself.
 
-<CodeGroup>
-```bash title="CLI"
+<CodeGroup labels={["CLI", "TypeScript"]}>
+```bash
 lim android screenshot screen.png
 lim android screenshot screen.png --id <ID>
 ```
 
-```ts title="TypeScript"
+```ts
 const shot = await client.screenshot();
 // { dataUri: 'data:image/png;base64,iVBORw0K...' }
 
@@ -601,8 +601,8 @@ writeFileSync('screen.png', png);
 
 Recording is server-side and writes to the emulator's filesystem. Start a recording, drive the UI, then stop. The output is H.264 in an mp4 container.
 
-<CodeGroup>
-```bash title="CLI"
+<CodeGroup labels={["CLI", "TypeScript"]}>
+```bash
 lim android record start --quality 5
 
 # ...drive the UI...
@@ -614,7 +614,7 @@ lim android record stop -o demo.mp4
 lim android record stop --presigned-url https://example.com/upload
 ```
 
-```ts title="TypeScript"
+```ts
 await client.startRecording({ quality: 5 });
 
 // ...drive the UI...
@@ -635,8 +635,8 @@ On the SDK, pick the sink that matches where the file should live:
 
 ### Get the element tree
 
-<CodeGroup>
-```bash title="CLI"
+<CodeGroup labels={["CLI", "TypeScript"]}>
+```bash
 # Print the raw XML.
 lim android element-tree
 
@@ -644,7 +644,7 @@ lim android element-tree
 lim android element-tree --json
 ```
 
-```ts title="TypeScript"
+```ts
 const tree = await client.getElementTree();
 // tree.xml    raw UIAutomator XML
 // tree.nodes  flattened AndroidElementNode[]
@@ -722,8 +722,8 @@ Prefer selectors. Layouts shift between OS versions; coordinates don't survive t
 
 The CLI's `lim android install-app` accepts either a path or a URL: paths are uploaded to Asset Storage first (MD5-deduplicated), URLs are passed straight to the daemon. From TypeScript / Go, upload local files with `assets.getOrUpload({ path })` and pass the returned `signedDownloadUrl` to `sendAsset`. Python users upload manually with `assets.get_or_create` plus a PUT before calling `sendAsset`. See [Asset Storage](/platform/asset-storage/).
 
-<CodeGroup>
-```bash title="CLI"
+<CodeGroup labels={["CLI", "TypeScript"]}>
+```bash
 # Local path: uploaded to Asset Storage first, then installed.
 lim android install-app ./build.apk
 
@@ -731,7 +731,7 @@ lim android install-app ./build.apk
 lim android install-app https://example.com/build.apk --id <ID>
 ```
 
-```ts title="TypeScript"
+```ts
 // Local file: upload once, then install via the returned signed URL.
 const asset = await lim.assets.getOrUpload({ path: './build.apk' });
 await client.sendAsset(asset.signedDownloadUrl);
@@ -750,8 +750,8 @@ await client.sendAsset(asset.signedDownloadUrl, 180_000);
 
 `findElement` queries the tree without you having to parse it. Every non-empty selector field is ANDed together.
 
-<CodeGroup>
-```bash title="CLI"
+<CodeGroup labels={["CLI", "TypeScript"]}>
+```bash
 # Find by text, return up to 5 matches as JSON.
 lim android find-element --text "Sign In" --limit 5 --json
 
@@ -762,7 +762,7 @@ lim android find-element --resource-id com.example:id/submit
 lim android find-element --class-name android.widget.Button --clickable --enabled
 ```
 
-```ts title="TypeScript"
+```ts
 const r = await client.findElement({ text: 'Chrome' }, 5);
 // { count: 1, elements: [ { ... AndroidElementNode } ] }
 ```
@@ -786,8 +786,8 @@ Selector fields (SDK key on the left, equivalent CLI flag on the right):
 
 ### Tap, type, or press
 
-<CodeGroup>
-```bash title="CLI"
+<CodeGroup labels={["CLI", "TypeScript"]}>
+```bash
 # Tap by selector (preferred). Pass any selector flag from the table above.
 lim android tap-element --resource-id com.example.app:id/login
 lim android tap-element --text "Sign In"
@@ -807,7 +807,7 @@ lim android press-key enter
 lim android press-key a --modifier shift
 ```
 
-```ts title="TypeScript"
+```ts
 // Tap by selector (preferred)
 await client.tap({ selector: { resourceId: 'com.example.app:id/login' } });
 await client.tap({ selector: { text: 'Chrome' } });
@@ -837,8 +837,8 @@ await client.pressKey('a', ['shift']);         // modifiers: shift, ctrl/control
 
 `scrollScreen` performs a finger-swipe gesture from the screen center. `scrollElement` (CLI: pass selector flags to `lim android scroll`) scrolls inside a specific scrollable node such as a list, ViewPager, or ScrollView. Both take a direction and an `amount` in Android scroll units.
 
-<CodeGroup>
-```bash title="CLI"
+<CodeGroup labels={["CLI", "TypeScript"]}>
+```bash
 # Scroll the screen. --amount defaults to 300 in the CLI.
 lim android scroll down --amount 500
 lim android scroll up
@@ -848,7 +848,7 @@ lim android scroll down --resource-id com.example:id/list --amount 500
 lim android scroll up --x 120 --y 500 --amount 250
 ```
 
-```ts title="TypeScript"
+```ts
 // SDK amount defaults to 6.
 await client.scrollScreen('down', 6);
 await client.scrollScreen('up');
@@ -874,13 +874,13 @@ The SDK defaults `amount` to `6` (small flick); the CLI defaults to `300` (a hef
 
 `openUrl` resolves the intent the same way `am start -a android.intent.action.VIEW -d <url>` would. It works for web URLs and registered deeplink schemes.
 
-<CodeGroup>
-```bash title="CLI"
+<CodeGroup labels={["CLI", "TypeScript"]}>
+```bash
 lim android open-url https://example.com
 lim android open-url myapp://orders/42 --id <ID>
 ```
 
-```ts title="TypeScript"
+```ts
 await client.openUrl('https://example.com');           // launches in the default browser
 await client.openUrl('myapp://orders/42');             // routes to your app's deeplink handler
 ```
@@ -923,15 +923,15 @@ unsubscribe();         // drop the state callback if you no longer need it
 
 Each Android instance is single-tenant: only one client should drive it at a time. Scope instances per user, per PR, or per session with labels, then let `reuseIfExists` return the same warm pod on the next call. Tear down explicitly when you're done, or clean up by label selector across a tenant.
 
-<CodeGroup>
-```bash title="CLI"
+<CodeGroup labels={["CLI", "TypeScript", "Go"]}>
+```bash
 lim android list                       # all ready instances (use --all for every state)
 lim android list --label-selector user=alice
 lim android delete <ID>                # tear down a specific instance
 lim android delete                     # tear down the last-created instance
 ```
 
-```ts title="TypeScript"
+```ts
 // Single instance
 await lim.androidInstances.delete(instance.metadata.id);
 
@@ -944,7 +944,7 @@ for await (const inst of lim.androidInstances.list({
 }
 ```
 
-```go title="Go"
+```go
 // Single instance
 _ = lim.AndroidInstances.Delete(ctx, inst.Metadata.ID)
 ```
