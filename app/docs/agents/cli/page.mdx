@@ -1,44 +1,14 @@
 ---
 title: "CLI for coding agents"
-description: "Install the `lim` CLI in your coding agent's environment. The agent then builds your iOS app on a remote Mac, drives the simulator, and posts preview links on PRs."
+description: "Install the `lim` CLI and Limrun skill in your coding agent's environment. The agent builds, runs, inspects, and shares your iOS app through Limrun."
 order: 1
 icon: "terminal"
 ---
 # CLI for coding agents
 
-Coding agents drive Limrun through the `lim` CLI. Once it's installed and authenticated, the agent can create a simulator, build your app, tap through it, record video, and share a preview link without leaving its shell.
+Set up the `lim` CLI and Limrun skill where your coding agent runs. Then ask the agent to make a change and verify it on a remote iOS simulator.
 
-<Accordions>
-<Accordion icon="sparkles" title="Copy this prompt for your coding agent">
-```text
-You're helping me build and test an iOS app on Limrun. For every task that runs the app:
-
-1. Check `lim --version`. If it's missing, ask me to install `lim` first.
-2. Check that `LIM_API_KEY` is set. If not, ask me.
-3. Create or reuse an instance:
-   lim ios create --xcode --reuse-if-exists --label issue=<ID>
-   Share the Signed Stream URL from the output so I can watch.
-4. Build with `lim xcode build .`. Never use local `xcodebuild`. For multi-scheme projects, add `--scheme` and `--workspace`. If the build fails, read the errors and fix the code; don't bounce them back to me.
-5. Before each tap, read the screen with `lim ios element-tree`. Prefer accessibility selectors:
-   lim ios tap-element --ax-unique-id startButton
-   lim ios tap-element --ax-label "Save"
-6. For anything involving motion, record video:
-   lim ios record start
-   lim ios record stop -o /tmp/demo.mp4
-   Attach the video to the PR.
-7. When the work is ready, upload the build and share a preview link:
-   ASSET_NAME=<pr-or-task-id>.zip
-   lim xcode build . --upload "${ASSET_NAME}"
-   Post https://console.limrun.com/preview?asset=${ASSET_NAME}&platform=ios in your final message and the PR description.
-8. Clean up with `lim ios delete`. If you created more than one instance, list first:
-   lim ios list --label-selector "issue=<ID>"
-
-For MCP-based device control instead of the CLI, see /agents/mcp.md.
-```
-</Accordion>
-</Accordions>
-
-Setup is short: install the CLI, set your API key, hand the agent the prompt above (or install the bundled skill). The rest of this page is the same guide the skill gives your agent, plus the command reference behind it.
+The skill gives the agent the Limrun workflow. Use the command reference below when you want to see the commands it will run.
 
 ## One-time setup
 
@@ -55,21 +25,29 @@ Needs Node.js 20 LTS or newer.
 
 ### 2. Set your API key
 
-Set `LIM_API_KEY` in the environment your agent runs in. The CLI also picks up `.env` files in the working directory.
+Set `LIM_API_KEY` in the shell your agent uses. The CLI also picks up `.env` files in the working directory.
 
 ```bash
 export LIM_API_KEY=lim_...
 ```
 
-### 3. Give your agent the instructions
+### 3. Install the Limrun skill
 
-Either copy the prompt at the top of this page into your agent, or install the bundled skill so the agent picks it up automatically:
+From your project root, install the skill:
 
 ```bash
 lim skills install
 ```
 
-The CLI detects which coding agents you have on the machine (Claude Code, Cursor, Codex), asks which ones to set up, then asks whether to install into the current project or globally. The default skill is `limrun-ios`, one short Markdown file you can read at [`typescript-sdk/packages/cli/skills/limrun-ios/SKILL.md`](https://github.com/limrun-inc/typescript-sdk/blob/main/packages/cli/skills/limrun-ios/SKILL.md).
+The command fetches the latest skills from `limrun-inc/skills`, then prompts for the target agent, skill, and install scope. Keep the catalog defaults unless you are setting up a different workflow.
+
+### 4. Start a coding session
+
+Open the same project in the agent you installed the skill for, then ask for the product change you want. Include that it should build and run the app on Limrun:
+
+```text
+Update the onboarding screen, build the app with Limrun, run it on the remote simulator, and share the Signed Stream URL so I can review it.
+```
 
 ## What the agent does
 
