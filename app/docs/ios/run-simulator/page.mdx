@@ -450,8 +450,8 @@ Copy that host into the commands below in place of `<host>`. Open the dev client
 REACT_NATIVE_PACKAGER_HOSTNAME=<host> npx expo start --dev-client --host lan --port 57090
 
 # Once both are running, open the dev client pointed at the tunnel.
-URL="$(node -e 'console.log(encodeURIComponent("http://<host>:57090"))')"
-lim ios open-url "<scheme>://expo-development-client/?url=$URL"
+# The url query is the URL-encoded form of http://<host>:57090.
+lim ios open-url "<scheme>://expo-development-client/?url=http%3A%2F%2F<host>%3A57090"
 ```
 
 For CI, this is more reliable than `expo start --tunnel` (ngrok): no external service, and none of the `session closed` failures. Limrun's [automatic PR preview Action](/docs/ios/pr-previews) installs full app builds rather than running dev-server hot-reload, so it does not use this path.
