@@ -349,21 +349,21 @@ await client.softReset('com.example.MyApp', { strategy: 'full' }); // also clear
 
 ## Carry keychain state between simulators
 
-If your app stores login or session state in the iOS keychain, export that state after signing in and import it into later simulators. The default asset name is `keychain/login.tar.gz`.
+If your app stores login or session state in the iOS keychain, save that state after signing in and restore it into later simulators. The default asset name is `keychain/login.tar.gz`.
 
-Export from the signed-in simulator:
-
-```bash
-lim ios keychain export
-```
-
-The command creates a `Keychain` asset, generates an encryption key, and prints the matching import command. Save that key with your test secrets, then import into another simulator:
+Save from the signed-in simulator:
 
 ```bash
-lim ios keychain import --encryption-key <key>
+lim ios keychain save
 ```
 
-You can also import the keychain while creating a fresh simulator:
+The command creates a `Keychain` asset, generates an encryption key, and prints the matching restore command. Save that key with your test secrets, then restore into another simulator:
+
+```bash
+lim ios keychain restore --encryption-key <key>
+```
+
+You can also restore the keychain while creating a fresh simulator:
 
 ```bash
 lim ios create --reuse-if-exists \
@@ -376,8 +376,8 @@ If you want to manage the encryption key yourself, generate one and pass it on s
 
 ```bash
 lim ios keychain generate-key > keychain.key
-lim ios keychain export keychain/login.tar.gz --encryption-key-stdin < keychain.key
-lim ios keychain import keychain/login.tar.gz --encryption-key-stdin < keychain.key
+lim ios keychain save keychain/login.tar.gz --encryption-key-stdin < keychain.key
+lim ios keychain restore keychain/login.tar.gz --encryption-key-stdin < keychain.key
 ```
 
 ## Read app logs
