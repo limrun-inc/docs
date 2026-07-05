@@ -1,6 +1,6 @@
 ---
 title: "Run an iOS Simulator"
-description: "Drive a running iOS simulator from code or shell: taps, typing, screenshots, recordings, app lifecycle, logs, and reverse tunnels."
+description: "Drive a running iOS simulator from code or shell: taps, typing, screenshots, recordings, app lifecycle, keychain state, logs, and reverse tunnels."
 order: 2
 icon: "smartphone"
 ---
@@ -347,6 +347,39 @@ await client.softReset('com.example.MyApp', { strategy: 'full' }); // also clear
 // returns: { strategy, bundleId, itemsCleared?, durationMs }
 ```
 
+## Carry keychain state between simulators
+
+If your app stores login or session state in the iOS keychain, export that state after signing in and import it into later simulators. The default asset name is `keychain/login.tar.gz`.
+
+Export from the signed-in simulator:
+
+```bash
+lim ios keychain export
+```
+
+The command creates a `Keychain` asset, generates an encryption key, and prints the matching import command. Save that key with your test secrets, then import into another simulator:
+
+```bash
+lim ios keychain import --encryption-key <key>
+```
+
+You can also import the keychain while creating a fresh simulator:
+
+```bash
+lim ios create --reuse-if-exists \
+  --label app=my-app --label scenario=logged-in \
+  --keychain keychain/login.tar.gz \
+  --encryption-key <key>
+```
+
+If you want to manage the encryption key yourself, generate one and pass it on stdin:
+
+```bash
+lim ios keychain generate-key > keychain.key
+lim ios keychain export keychain/login.tar.gz --encryption-key-stdin < keychain.key
+lim ios keychain import keychain/login.tar.gz --encryption-key-stdin < keychain.key
+```
+
 ## Read app logs
 
 Tail the last N lines once, or stream live. The stream emits one `line` event per log line (batched ~500ms server-side), plus `error` and `close`.
@@ -648,7 +681,7 @@ lim ios create --reuse-if-exists \
 | `inactivityTimeout` | duration string | `1m`, `10m`, `3h`. Default comes from your org settings. Passing `0` is equivalent to omitting it. |
 | `hardTimeout` | duration string | Forced termination. Default `0` = no hard cap. |
 | `clues` | array | Scheduling hints. `{ kind: 'ClientIP', clientIp }` picks a region close to the end user. |
-| `initialAssets` | array | Apps to install at boot. See [Asset Storage](/docs/platform/asset-storage). |
+| `initialAssets` | array | Apps or keychain state to apply at boot. See [Asset Storage](/docs/platform/asset-storage). |
 | `sandbox.xcode.enabled` | boolean | Attach an Xcode build sandbox. See [Build with remote Xcode](/docs/ios/build-with-xcode). |
 
 `metadata.labels` is free-form `key=value` and powers `reuseIfExists`, listing, and cleanup queries.
