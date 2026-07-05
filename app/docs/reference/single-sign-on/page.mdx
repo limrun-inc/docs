@@ -12,11 +12,17 @@ Limrun supports OpenID Connect (OIDC) SSO at the organization level. An organiza
 
 You need admin access in Limrun and permission to create an OIDC application in your identity provider.
 
+## Verify your email domain
+
+Open [console.limrun.com](https://console.limrun.com), go to **Settings → Single Sign-On**, and add the email domains that should use SSO.
+
+Each domain must be verified before users with that domain can sign in through the OIDC connection. Limrun uses the verified domain to decide which SSO connection should handle a user's work email.
+
+## Create the OIDC application
+
 In your identity provider, create a web OIDC application for Limrun. Use authorization code flow, and make sure the application can return the user's `email` claim in the ID token.
 
-## Add the redirect URI
-
-Add this sign-in redirect URI to the OIDC application in your identity provider:
+Add this sign-in redirect URI:
 
 ```text
 https://api.limrun.com/authn/oidc/callback
@@ -24,29 +30,13 @@ https://api.limrun.com/authn/oidc/callback
 
 This is where the provider sends the authorization code after the user authenticates.
 
-If your provider asks for an initiate login URI, use:
+If your provider asks for an initiate login URI, add:
 
 ```text
 https://api.limrun.com/authn/oidc/login
 ```
 
 For SP-initiated login, users normally start from the Limrun Console and enter their work email. Limrun uses the email domain to find the right SSO connection.
-
-## Configure Limrun
-
-Open [console.limrun.com](https://console.limrun.com), go to **Settings → Single Sign-On**, and configure the connection.
-
-Add the email domains that should use SSO first. Each domain must be verified before users with that domain can sign in through the OIDC connection.
-
-Then add the OIDC connection fields:
-
-| Field | Value |
-|---|---|
-| Issuer URL | The issuer from the provider's OpenID configuration. |
-| Client ID | The OIDC client ID from your identity provider. |
-| Client Secret | The OIDC client secret from your identity provider. |
-
-Limrun discovers the provider from the issuer URL and requests the `openid`, `email`, and `profile` scopes.
 
 ## Find the issuer URL
 
@@ -65,6 +55,18 @@ https://your-org.okta.com
 ```
 
 If your Okta organization uses a custom domain, use that custom domain instead.
+
+## Save the connection in Limrun
+
+Return to **Settings → Single Sign-On** in the Limrun Console and add the OIDC connection fields:
+
+| Field | Value |
+|---|---|
+| Issuer URL | The issuer from the provider's OpenID configuration. |
+| Client ID | The OIDC client ID from your identity provider. |
+| Client Secret | The OIDC client secret from your identity provider. |
+
+Limrun discovers the provider from the issuer URL and requests the `openid`, `email`, and `profile` scopes.
 
 ## User provisioning
 
