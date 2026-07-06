@@ -25,6 +25,7 @@ Limrun supports:
 - SP-initiated SSO
 - IdP-initiated SSO through OIDC third-party initiated login
 - Just-In-Time provisioning
+- Single Logout
 - Universal Logout through Global Token Revocation
 
 ## Configuration steps
@@ -99,6 +100,18 @@ https://your-org.okta.com
 5. Click **Save**.
 
 Limrun discovers the provider from the issuer URL and requests the `openid`, `email`, and `profile` scopes.
+
+### Optional: configure Single Logout
+
+If your identity provider supports OIDC Single Logout, add the **Post Logout Redirect URI** shown in Limrun to your OIDC application's allowed logout redirect URIs.
+
+For production, this value is:
+
+```text
+https://console.limrun.com/authn/login
+```
+
+When a user signs out of Limrun, Limrun revokes the user's Limrun token and redirects through the provider's `end_session_endpoint` when the provider publishes one.
 
 ### Optional: configure Universal Logout
 
