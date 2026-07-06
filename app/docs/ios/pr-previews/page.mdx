@@ -1,7 +1,7 @@
 ---
 title: "Automatic PR Previews with GitHub Actions"
 description: "On every pull request, build the iOS app on Limrun, upload it to Asset Storage, and post a live preview link as a PR comment."
-order: 3
+order: 4
 icon: "rocket"
 ---
 # Automatic PR Previews with GitHub Actions
@@ -48,9 +48,21 @@ jobs:
           api-key: ${{ secrets.LIM_API_KEY }}
 ```
 
-Inputs: `project-path`, `project`, `workspace`, `scheme`, `sdk`, `api-key`, `github-token`. Outputs: `preview-url` and `asset-name`.
+Inputs: `project-path`, `project`, `workspace`, `scheme`, `sdk`, `bazel-target`, `api-key`, `github-token`. Outputs: `preview-url` and `asset-name`.
 
 The Action posts a markdown-table comment with the platform, the short SHA, and the preview link. `closed` in the `on.pull_request.types` array triggers the post-step cleanup when the PR merges or closes.
+
+### Bazel projects
+
+The same Action handles Bazel workspaces: when `project-path` is a Bazel workspace root (has `MODULE.bazel` or `WORKSPACE` directly in it), it builds with [remote build execution](/docs/ios/build-with-bazel) instead of xcodebuild and uploads the built app as the preview asset. Set `bazel-target` (e.g. `//App`) when the workspace has more than one app target; single-app workspaces are inferred.
+
+```yaml
+- uses: limrun-inc/ios-preview-action@main
+  with:
+    project-path: .
+    bazel-target: //App
+    api-key: ${{ secrets.LIM_API_KEY }}
+```
 
 ## Custom workflow
 

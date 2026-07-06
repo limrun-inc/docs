@@ -8,6 +8,8 @@ icon: "hammer"
 
 Limrun lets you compile iOS apps on a remote Mac. Your laptop or CI runner doesn't need to be one. After a successful build, you either run the app on a remote simulator or download a signed IPA to ship.
 
+If your app builds with Bazel instead of `xcodebuild`, use [remote build execution](/docs/ios/build-with-bazel): no source sync, and Bazel keeps running on your side.
+
 The flow:
 
 1. **Provision** an Xcode sandbox.
