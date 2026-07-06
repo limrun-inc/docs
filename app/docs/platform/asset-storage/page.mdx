@@ -21,11 +21,12 @@ An asset is a single installable binary, such as an iOS simulator build (`.app`,
 interface Asset {
   id:                string;
   name:              string;
+  kind:              'App' | 'Keychain';               // defaults to App
   displayName?:      string;
-  md5?:              string;             // present only once bytes are uploaded
-  os?:               'ios' | 'android';  // unset = usable on either platform
-  signedDownloadUrl?: string;            // returned when includeDownloadUrl=true
-  signedUploadUrl?:   string;            // returned when includeUploadUrl=true
+  md5?:              string;                           // present only once bytes are uploaded
+  platform?:         'ios' | 'android' | 'xcode';      // unset = usable on any platform
+  signedDownloadUrl?: string;                          // returned when includeDownloadUrl=true
+  signedUploadUrl?:   string;                          // returned when includeUploadUrl=true
 }
 ```
 
@@ -33,15 +34,16 @@ interface Asset {
 |---|---|
 | `id` | Stable auto-generated identifier. |
 | `name` | Customizable identifier. Names need to be unique globally in your org. To organise for multi-tenancy, [use prefixes](#asset-organisation-for-multi-tenancy). |
+| `kind` | `App` (default) for installable binaries, `Keychain` for keychain archives used by Xcode build sandboxes. |
 | `displayName` | Optional human-readable label surfaced in the console; falls back to `name`. |
 | `md5` | Set once the bytes have been uploaded. Unique hash used by `getOrUpload` to skip re-uploads for duplicates and by `installApp` to enable server-side caching. |
-| `os` | Limits which platform can install the asset. Useful when the same logical name (e.g. `acme/my-app-v1.2.3`) covers both an iOS sim build and an Android APK. |
+| `platform` | Limits which platform can install the asset. Useful when the same logical name (e.g. `acme/my-app-v1.2.3`) covers both an iOS sim build and an Android APK. Responses also include `os`, a deprecated alias that mirrors this field. |
 | `signedDownloadUrl` / `signedUploadUrl` | Time-limited URLs. Only returned when you ask for them on `list`/`get`, or always on `getOrCreate`. |
 
 
 ### Configuration entries on `initialAssets`
 
-Stored assets are always binaries. That's the only thing the `Asset` record models, and there's no `kind` field on it. But `spec.initialAssets` accepts a second flavour of entry, `kind: 'Configuration'`, which carries an instance-level setting instead of pointing at Asset Storage. The `kind` field lives on the [`initialAsset` shape](#pre-install-on-boot), not on the `Asset` record.
+Stored assets are always files: `kind: 'App'` installables or `kind: 'Keychain'` archives. But `spec.initialAssets` accepts another flavour of entry, `kind: 'Configuration'`, which carries an instance-level setting instead of pointing at Asset Storage. That value exists only on the [`initialAsset` shape](#pre-install-on-boot); an `Asset` record is never `Configuration`.
 
 The only configuration today is `ChromeFlag`, used to enable Chrome's command-line on non-rooted Android emulators so [Playwright](/docs/testing/playwright) can attach. **SDK-only**: the `lim` CLI doesn't expose a `--chrome-flag` flag, so this entry has to come from the SDK directly.
 
@@ -713,14 +715,16 @@ for (const a of stale) {
 }
 ```
 
-The `os` field on each `Asset` lets you further split a tenant's namespace by platform when the same logical name covers both an iOS sim build and an Android APK:
+The `platform` field on each `Asset` lets you further split a tenant's namespace by platform when the same logical name covers both an iOS sim build and an Android APK:
 
 ```ts
 const list = await lim.assets.list({ namePrefixFilter: 'acme/' });
-const iosOnly     = list.filter((a) => a.os === 'ios');
-const androidOnly = list.filter((a) => a.os === 'android');
-const universal   = list.filter((a) => !a.os);
+const iosOnly     = list.filter((a) => a.platform === 'ios');
+const androidOnly = list.filter((a) => a.platform === 'android');
+const universal   = list.filter((a) => !a.platform);
 ```
+
+Integrations written before the field was named `platform` may still read `os`; it is returned as a deprecated alias with the same value.
 
 ### Filtering options
 

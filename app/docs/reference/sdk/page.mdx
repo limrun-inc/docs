@@ -383,7 +383,7 @@ The TypeScript and Python SDKs expose a top-level `xcodeInstances` / `xcode_inst
 
 ### Assets
 
-Assets use `getOrCreate` (upsert; named `GetOrNew` in Go) and `getOrUpload` (upsert plus actual upload) instead of `create`. The `os` field on `Asset` is optional; leaving it unset means the asset is available for both platforms. The **`getOrUpload` helper** that handles MD5 dedup and the signed PUT ships in the TypeScript and Go SDKs; Python callers do the two-step pattern manually (call `get_or_create`, then PUT the bytes to `signedUploadUrl` if `md5` is missing or doesn't match).
+Assets use `getOrCreate` (upsert; named `GetOrNew` in Go) and `getOrUpload` (upsert plus actual upload) instead of `create`. The `platform` field on `Asset` is optional; leaving it unset means the asset is available for all platforms. The **`getOrUpload` helper** that handles MD5 dedup and the signed PUT ships in the TypeScript and Go SDKs; Python callers do the two-step pattern manually (call `get_or_create`, then PUT the bytes to `signedUploadUrl` if `md5` is missing or doesn't match).
 
 <CodeGroup labels={["cURL","TypeScript","Python","Go","CLI"]}>
 ```bash
