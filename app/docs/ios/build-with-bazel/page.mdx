@@ -1,0 +1,131 @@
+---
+title: "Build with Bazel"
+description: "Point `bazel build` at Limrun's remote build execution: Apple actions run on a remote Mac fleet while Bazel runs wherever your code lives. No local Xcode."
+order: 2
+icon: "zap"
+---
+# Build with Bazel
+
+If your iOS app builds with Bazel (`rules_apple` / `rules_swift`), you don't need to sync sources or run `xcodebuild` remotely. Limrun ships a Bazel **remote build execution (RBE)** backend: Bazel keeps running on your laptop or CI runner, and every Apple action (Swift compilation, asset catalogs, codesigning, bundling) executes on Limrun's Mac fleet. Linux, Windows, and macOS clients all work, and none of them needs Xcode installed.
+
+The flow:
+
+1. **Start the RBE endpoint** with `lim xcode rbe`. It provisions an Xcode sandbox, starts the remote execution stack on it, and bridges it to a local port.
+2. **Run the printed build command.** Bazel sends actions through the tunnel; results land in the remote cache.
+3. **Run, upload, or preview** the built app: auto-install it on an attached simulator, or publish it as an Asset Storage asset.
+
+## Quick start
+
+From the root of your Bazel workspace (the directory with `MODULE.bazel` or `WORKSPACE`):
+
+```bash
+npm install --global lim
+lim login   # or export LIM_API_KEY
+
+lim xcode rbe
+```
+
+The command sets everything up and prints the exact build command for your workspace, for example:
+
+```bash
+bazelisk --digest_function=sha256 build --config=limrun //App
+```
+
+Run it. That's the whole loop: the tunnel keeps running in the background, so from here on you just build.
+
+What `lim xcode rbe` did:
+
+- Provisioned an Xcode sandbox (or reused your most recent one) and started the RBE stack on it.
+- Opened a tunnel so the endpoint is reachable at `grpc://127.0.0.1:8980` (change with `--port`).
+- Generated a `.limrun/` directory in your workspace with the `--config=limrun` Bazel configuration matched to the fleet's Xcode version, and wired a `try-import` into your `.bazelrc`.
+
+Don't hand-edit `.limrun/`; it is regenerated on the next `lim xcode rbe`. To add your own flags to the Limrun build path, put them in **`user.limrun.bazelrc`** at the workspace root. The generated config imports it last, so your `build:limrun --...` lines win and survive regeneration.
+
+<Callout type="info">
+Always keep `--digest_function=sha256` in front of `build`, exactly as the printed command has it. The Limrun cache is SHA256-only while Bazel 9 defaults to BLAKE3, and it's a startup flag, so it can't live inside `--config=limrun`.
+</Callout>
+
+## Run it on a simulator
+
+`lim xcode rbe` is build-only until you attach a simulator. Attach one at startup with `--ios`, or at any point later:
+
+```bash
+lim xcode rbe --ios      # attach at startup; torn down on --stop
+# or later:
+lim ios create --attach  # attach to the running RBE instance
+```
+
+With a simulator attached, every successful `--config=limrun` build **auto-installs and relaunches** the built app on it. There is no separate install step; attaching also installs the last successful build immediately.
+
+## Upload builds as assets
+
+To publish builds to [Asset Storage](/docs/platform/asset-storage) (for [PR previews](/docs/ios/pr-previews), installing on other simulators, or CI artifacts), arm uploads when you start the tunnel:
+
+```bash
+lim xcode rbe --auto-upload preview/my-app --upload-ttl 24h
+```
+
+Every successful build then refreshes the `preview/my-app` asset automatically, with no post-build step. Upload results are written to `.limrun/rbe.log`. To upload a single build after the fact instead:
+
+```bash
+lim xcode rbe upload preview/my-app --ttl 24h
+```
+
+TTLs are optional Go durations (`24h`, `30m`). Anyone in your organization can then open the build in a browser at `https://console.limrun.com/preview?asset=preview/my-app&platform=ios`.
+
+## Use it in CI
+
+The same two commands work in CI. Arm the upload at startup so the job needs no extra step after the build:
+
+```yaml title=".github/workflows/ios-build.yml"
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --global lim
+      - name: Build on Limrun RBE
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+        run: |
+          lim xcode rbe --auto-upload my-app-pr-${{ github.event.number }}
+          bazelisk --digest_function=sha256 build --config=limrun //App
+          lim xcode rbe --stop
+```
+
+For pull request previews with a comment on the PR, use [`limrun-inc/ios-preview-action`](https://github.com/limrun-inc/ios-preview-action) instead: it detects a Bazel workspace automatically and does the build, upload, comment, and cleanup in one step. See [Automatic PR Previews](/docs/ios/pr-previews).
+
+## Teardown
+
+```bash
+lim xcode rbe --stop     # stops the tunnel and the remote stack (~20s)
+lim xcode delete <id>    # delete the instance when you're done with it
+```
+
+## Good to know
+
+- **The built `.ipa` doesn't land on your machine.** The generated config carries `--remote_download_outputs=minimal`: Bazel prints its usual `Target //App:App up-to-date: .../App.ipa` line, but the artifact stays in the instance's cache, where auto-install and uploads read it from. If you genuinely need the file locally, add `--remote_download_outputs=toplevel` to the build command.
+- **Run `lim xcode rbe` from the workspace root**, not a subdirectory; it writes `.limrun/` there and fails fast otherwise.
+- **Re-run after fleet Xcode upgrades.** The generated config pins the fleet's Xcode version; `lim xcode rbe --stop` followed by `lim xcode rbe` refreshes it.
+- **Changing `--auto-upload` needs a restart.** The CLI refuses to re-arm a running tunnel with a different upload config rather than silently ignoring it; `--stop` and re-run.
+
+## Next steps
+
+<Cards>
+  <Card title="Automatic PR Previews" icon="git-pull-request" href="/docs/ios/pr-previews">
+    Post a live preview link on every pull request, for Bazel and xcodebuild projects alike.
+  </Card>
+  <Card title="Run an iOS Simulator" icon="smartphone" href="/docs/ios/run-simulator">
+    Drive the simulator your build auto-installs onto: taps, screenshots, recordings, logs.
+  </Card>
+  <Card title="Asset Storage" icon="package" href="/docs/platform/asset-storage">
+    Manage uploaded build artifacts and pre-install apps at boot.
+  </Card>
+  <Card title="Build with remote Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
+    The `xcodebuild` path for non-Bazel projects: sync, build, sign, ship.
+  </Card>
+</Cards>
