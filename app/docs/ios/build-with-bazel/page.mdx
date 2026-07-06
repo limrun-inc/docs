@@ -78,6 +78,10 @@ TTLs are optional Go durations (`24h`, `30m`). Anyone in your organization can t
 The same two commands work in CI. Arm the upload at startup so the job needs no extra step after the build:
 
 ```yaml title=".github/workflows/ios-build.yml"
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
 jobs:
   build:
     runs-on: ubuntu-latest
