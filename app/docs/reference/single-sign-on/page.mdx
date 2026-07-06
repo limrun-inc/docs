@@ -8,6 +8,8 @@ icon: "bookopen"
 
 Configure Limrun as an OIDC service provider. Limrun uses the user's verified email domain to select the organization's OIDC connection.
 
+For the Okta Integration Network setup, see [Okta SSO](/docs/reference/single-sign-on/okta).
+
 ## Prerequisites
 
 Before you configure SSO, make sure you have:
@@ -32,6 +34,11 @@ Limrun supports:
 
 ### Verify your email domain
 
+Each SSO domain must be verified before users with that domain can sign in through the OIDC connection.
+
+It requires access to your DNS records. If this is not viable,
+reach out to us for manual verification.
+
 1. Open [console.limrun.com](https://console.limrun.com).
 2. Go to **Settings**.
 3. In **Domain Verification**, add the email domain that should use SSO.
@@ -45,7 +52,7 @@ Limrun supports:
 
 5. After the DNS record is published, click **Verify DNS** in Limrun.
 
-Each SSO domain must be verified before users with that domain can sign in through the OIDC connection.
+
 
 ### Create the OIDC application
 

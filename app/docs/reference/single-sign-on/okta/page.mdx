@@ -1,0 +1,105 @@
+---
+title: "Okta SSO"
+description: "Configure Limrun OIDC SSO through the Okta Integration Network."
+order: 1
+icon: "bookopen"
+---
+# Okta SSO
+
+Use this guide when you add Limrun from the Okta Integration Network. The Okta app integration already contains the Limrun redirect and logout settings. You only need to install the app, copy the Okta connection values into Limrun, verify your email domain, and test sign-in.
+
+## Prerequisites
+
+Before you start, make sure you have:
+
+- Admin access to your Okta org.
+- Admin access to the Limrun organization.
+- Access to the DNS provider for the email domain your users sign in with.
+
+## Supported features
+
+Limrun supports:
+
+- SP-initiated SSO
+- IdP-initiated SSO
+- Just-In-Time provisioning
+- Single Logout
+- Universal Logout through Global Token Revocation
+
+## Configuration steps
+
+### Verify your domain in Limrun
+
+Each SSO domain must be verified before users with that domain can sign in through the OIDC connection.
+
+It requires access to your DNS records. If this is not viable,
+reach out to us for manual verification.
+
+1. Open [console.limrun.com](https://console.limrun.com).
+2. Go to **Settings**.
+3. In **Domain Verification**, add the email domain that should use Okta SSO.
+4. Create the TXT record shown in the verification dialog:
+
+   | DNS field | Value |
+   |---|---|
+   | Type | `TXT` |
+   | Host / Name | Copy from Limrun. |
+   | Value | Copy from Limrun. |
+
+5. After the DNS record is published, click **Verify DNS** in Limrun.
+
+### Add Limrun in Okta
+
+1. In the Okta Admin Console, go to **Applications > Browse App Catalog**.
+2. Search for `Limrun`.
+3. Add the Limrun app integration from the catalog.
+4. Assign the users or groups that should be able to sign in to Limrun.
+
+### Gather information from Okta
+
+Open the Limrun app integration in Okta and go to the **Sign On** tab. Copy these values:
+
+| Limrun field | Okta value |
+|---|---|
+| Client ID | The app's client ID. |
+| Client Secret | The app's client secret. |
+| Issuer URL | The `issuer` from Okta's OpenID Provider Metadata. |
+
+To find the issuer, open the **OpenID Provider Metadata** link in Okta and copy the `issuer` value from the JSON document.
+
+For most Okta orgs, the issuer looks like:
+
+```text
+https://your-org.okta.com
+```
+
+### Save the Okta connection in Limrun
+
+1. In Limrun, go to **Settings > Single Sign-On**.
+2. Enter the **Issuer URL**, **Client ID**, and **Client Secret** from Okta.
+3. Click **Save**.
+
+## Log in with Okta
+
+Users can start from Limrun:
+
+1. Go to [console.limrun.com/authn/login](https://console.limrun.com/authn/login).
+2. Click **Continue with SSO**.
+3. Enter your work email address.
+4. Complete authentication in Okta.
+
+Users can also start from the Limrun app tile in Okta.
+
+## Troubleshoot
+
+**Users see "SSO not configured".** Confirm the user's email domain is added under **Settings > Domain Verification** and shows **Verified**.
+
+**Okta says the client cannot use a custom authorization server.** Use the Okta org issuer, for example `https://your-org.okta.com`, instead of `https://your-org.okta.com/oauth2/default`.
+
+**A user authenticates in Okta but cannot enter Limrun.** Confirm the user's email domain is verified in Limrun and assigned to the same organization as the OIDC connection.
+
+## Notes
+
+- The Limrun Okta app configures the redirect URI, initiate login URI, logout redirect URI, and Universal Logout endpoint.
+- A Limrun organization has one OIDC connection.
+- If a user signs in through Okta and does not already have a Limrun account, Limrun creates the user and adds them to the organization for that OIDC connection.
