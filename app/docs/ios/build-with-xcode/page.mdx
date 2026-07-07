@@ -260,6 +260,31 @@ Match what you'd pass to local `xcodebuild`:
 | `scheme` | Required for multi-scheme apps. |
 | `sdk` | `iphonesimulator` (default for the simulator), `iphoneos` for device builds, `watchsimulator` / `watchos` for watchOS. |
 
+To pass a custom build setting, repeat `--build-setting KEY=VALUE` on the CLI or set `buildSettings` on the SDK call. Only allowlisted keys are accepted: any `APP_CONFIG_*` key, plus `SWIFT_ACTIVE_COMPILATION_CONDITIONS`. Other keys are rejected. `APP_CONFIG_*` values are treated as app configuration and redacted from build logs.
+
+<CodeGroup labels={["CLI","TypeScript"]}>
+```bash
+lim xcode build . --scheme MyApp \
+  --build-setting APP_CONFIG_API_URL=https://staging.example.com \
+  --build-setting SWIFT_ACTIVE_COMPILATION_CONDITIONS=STAGING
+```
+
+```ts
+xcode.xcodebuild(
+  { scheme: 'MyApp' },
+  {
+    buildSettings: {
+      APP_CONFIG_API_URL: 'https://staging.example.com',
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: 'STAGING',
+    },
+  },
+);
+```
+
+</CodeGroup>
+
+Settings outside the allowlist, like `CURRENT_PROJECT_VERSION`, can't be passed here. Bump those in the Xcode project itself.
+
 ## Sign for real-device builds
 
 To produce a signed IPA for distribution, switch the target SDK to `iphoneos`, pass a P12 certificate, and pass a provisioning profile. Add an upload target so the IPA lands in Asset Storage with a downloadable URL.
@@ -295,7 +320,23 @@ const { exitCode, signedDownloadUrl } = await build;
 
 </CodeGroup>
 
+Limrun verifies the signed app with Apple's code-signing verifier before uploading it. A signature that Apple's tooling would reject fails the build with a clear error instead of producing a broken IPA, so a signed build that succeeds has already passed Apple's verification.
+
+Export your p12 with its certificate chain included, so signing works regardless of which Apple WWDR intermediate issued your certificate. Keychain Access exports include the chain; with OpenSSL, pass the chain via `-certfile`:
+
+```bash
+openssl pkcs12 -export -inkey dist.key -in dist.pem -certfile wwdr.pem -out dist-chain.p12
+```
+
 The build result includes a signed download URL when you've configured an upload. Store it in your PR comment or pipeline output. Anyone with the URL can download the IPA without a Limrun API key. The signature expires after 15 minutes; if you need it later, re-fetch a fresh URL with `lim asset list --name <asset> --download-url`.
+
+### Troubleshooting signing failures
+
+| Build output | What it means | Fix |
+|---|---|---|
+| `Unknown issuer hash` | The certificate's issuing CA isn't recognized and the p12 carries no CA chain. | Re-export the p12 with the certificate chain included (see the OpenSSL command above). |
+| `code signature verification failed` | The produced signature failed Apple's verifier. | Retry the build; contact support if it persists. |
+| `MAC verification failed` or other password errors | The certificate password doesn't match the p12. | Check the value you pass as the certificate password. |
 
 ## Upload the build artifact
 
