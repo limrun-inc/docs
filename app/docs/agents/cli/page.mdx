@@ -116,6 +116,8 @@ lim xcode build . --workspace MyApp.xcworkspace --scheme MyApp
 | `--upload <asset_name>` | Save the build artifact to Asset Storage under this name. Used for preview links. |
 | `--signed-upload-url <url>` | Upload to your own pre-signed URL (S3, GCS, etc). |
 | `--certificate-p12 path.p12` `--certificate-password ...` `--provisioning-profile path.mobileprovision` | Sign for a real-device build. |
+| `--asc-key-id ...` `--asc-issuer-id ...` `--asc-key path.p8` | Upload the signed IPA to TestFlight after the build. Requires the signing flags. |
+| `--asc-wait-timeout N` | Seconds to watch App Store Connect's processing verdict (default 120, 0 skips, max 1800). |
 | `--build-setting KEY=VALUE` | Pass an allowlisted build setting (any `APP_CONFIG_*` key or `SWIFT_ACTIVE_COMPILATION_CONDITIONS`). Repeatable. |
 | `--additional-file local=remote` | Sync an extra file (like `~/.netrc`) into the sandbox on every build. Repeatable. |
 | `--ignore 'regex'` | Skip paths during sync. Repeatable. |
