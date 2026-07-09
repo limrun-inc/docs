@@ -340,7 +340,7 @@ The build result includes a signed download URL when you've configured an upload
 
 ## Ship to TestFlight
 
-A signed build can go straight from the build machine to App Store Connect. Pass `--upload-to-testflight` with your App Store Connect API key alongside the signing flags, and the freshly signed IPA uploads to TestFlight as part of the build, no downloading, no Transporter, no separate upload step.
+A signed build can go straight from the Xcode sandbox to App Store Connect. Pass `--upload-to-testflight` with your App Store Connect API key alongside the signing flags, and the freshly signed IPA uploads to TestFlight as part of the build, no downloading, no Transporter, no separate upload step.
 
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
@@ -376,20 +376,21 @@ const build = xcode.xcodebuild(
 );
 
 const { exitCode, testflight } = await build;
-// testflight.state: 'accepted' | 'processing' | 'failed'
+// testflight.state: 'uploading' | 'processing' | 'accepted' | 'failed' | 'unknown'.
+// The field is absent when the instance predates the feature.
 ```
 
 </CodeGroup>
 
 The build log streams the upload progress and App Store Connect's verdict. After the upload commits, we watch Apple's processing for up to two minutes by default: a rejection in that window (a reused build number, a missing entitlement) fails the build with Apple's own error text, and a build still processing when the window closes is a success, with the upload ID printed so you can check App Store Connect later. Tune the window with `--asc-wait-timeout <seconds>` (`waitTimeoutSeconds` in the SDK): `0` returns as soon as the upload commits, and values up to `1800` wait longer for the full verdict. Combine with `--upload` if you also want the IPA in Asset Storage.
 
-Your API key travels with the build request over TLS, is held in memory only for the duration of the build, and is never written to disk on the build machine.
+Your API key travels with the build request over TLS, is held in memory only for the duration of the build, and is never written to disk on the sandbox.
 
 ### One-time App Store Connect setup
 
-Three account-side settings make TestFlight delivery fully hands-off. You set them once per app:
+Three App Store Connect settings make TestFlight delivery fully hands-off:
 
-1. **Create an API key with the Developer role** in App Store Connect under Users and Access, then Integrations, then Team Keys. Developer is the least-privileged role that can upload builds; don't hand the build a broader key than it needs. Download the `.p8` once and note the Key ID and Issuer ID.
+1. **Create an API key with the Developer role** in App Store Connect under Users and Access, then Integrations, then Team Keys. Developer is the least-privileged role that can upload builds; don't hand the build a broader key than it needs. Download the `.p8` once and note the Key ID and Issuer ID. The key is team-level: one key serves all your apps.
 2. **Answer the encryption question at build time** by setting `ITSAppUsesNonExemptEncryption` to `NO` in your Info.plist (for Expo apps: `ios.config.usesNonExemptEncryption: false` in `app.json`). Without it, every build stalls in App Store Connect with "Missing Compliance" until someone answers manually. If your app uses non-exempt encryption, answer accordingly in App Store Connect instead.
 3. **Enable automatic distribution on an internal beta group** when creating the group in TestFlight. Members then receive every new build with no per-build assignment. The setting is create-only in Apple's API, so if your existing group lacks it, create a new group with it enabled.
 
