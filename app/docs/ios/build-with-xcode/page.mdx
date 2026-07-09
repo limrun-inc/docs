@@ -340,7 +340,7 @@ The build result includes a signed download URL when you've configured an upload
 
 ## Ship to TestFlight
 
-A signed build can go straight from the build machine to App Store Connect. Pass your App Store Connect API key alongside the signing flags and the freshly signed IPA uploads to TestFlight as part of the build, no downloading, no Transporter, no separate upload step.
+A signed build can go straight from the build machine to App Store Connect. Pass `--upload-to-testflight` with your App Store Connect API key alongside the signing flags, and the freshly signed IPA uploads to TestFlight as part of the build, no downloading, no Transporter, no separate upload step.
 
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
