@@ -340,7 +340,7 @@ The build result includes a signed download URL when you've configured an upload
 
 ## Ship to TestFlight
 
-A signed build can go straight from the build machine to App Store Connect. Pass your App Store Connect API key alongside the signing flags and the freshly signed IPA uploads to TestFlight as part of the build, no downloading, no Transporter, no separate upload step. Like signing, there is no extra toggle: passing the `asc` flags is the intent.
+A signed build can go straight from the build machine to App Store Connect. Pass your App Store Connect API key alongside the signing flags and the freshly signed IPA uploads to TestFlight as part of the build, no downloading, no Transporter, no separate upload step.
 
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
@@ -350,6 +350,7 @@ lim xcode build . \
   --certificate-p12 ./signing/dist.p12 \
   --certificate-password "$P12_PASSWORD" \
   --provisioning-profile ./signing/MyApp.mobileprovision \
+  --testflight \
   --asc-key-id 2X9R4HXF34 \
   --asc-issuer-id "$ASC_ISSUER_ID" \
   --asc-key ./signing/AuthKey_2X9R4HXF34.p8
