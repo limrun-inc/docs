@@ -390,9 +390,25 @@ Your API key travels with the build request over TLS, is held in memory only for
 
 Three App Store Connect settings make TestFlight delivery fully hands-off:
 
-1. **Create an API key with the Developer role** in App Store Connect under Users and Access, then Integrations, then Team Keys. Developer is the least-privileged role that can upload builds; don't hand the build a broader key than it needs. Download the `.p8` once and note the Key ID and Issuer ID. The key is team-level: one key serves all your apps.
-2. **Answer the encryption question at build time** by setting `ITSAppUsesNonExemptEncryption` to `NO` in your Info.plist (for Expo apps: `ios.config.usesNonExemptEncryption: false` in `app.json`). Without it, every build stalls in App Store Connect with "Missing Compliance" until someone answers manually. If your app uses non-exempt encryption, answer accordingly in App Store Connect instead.
-3. **Enable automatic distribution on an internal beta group** when creating the group in TestFlight. Members then receive every new build with no per-build assignment. The setting is create-only in Apple's API, so if your existing group lacks it, create a new group with it enabled.
+1. **Create an API key with the Developer role.** In [App Store Connect](https://appstoreconnect.apple.com), go to Users and Access, open the Integrations tab, select App Store Connect API, and generate a Team Key with the Developer role (you need an Admin account to create team keys). Developer is the least-privileged role that can upload builds; don't hand the build a broader key than it needs. One team key serves all your apps. Collect the three values the build flags need:
+   - `--asc-key-id`: the Key ID shown next to the new key.
+   - `--asc-issuer-id`: the Issuer ID shown at the top of the Integrations page (it belongs to the team, not to the key).
+   - `--asc-key`: the `.p8` file from the key's Download link. Download it right away and store it like a password: Apple keeps no copy, and the link disappears once you leave the page.
+2. **Answer the encryption question at build time**, or every build stalls in App Store Connect with "Missing Compliance" until someone answers manually. If your app only uses exempt encryption (HTTPS and the like), declare it in your project:
+
+   ```json
+   // Expo: app.json
+   { "expo": { "ios": { "config": { "usesNonExemptEncryption": false } } } }
+   ```
+
+   ```xml
+   <!-- Native: Info.plist -->
+   <key>ITSAppUsesNonExemptEncryption</key>
+   <false/>
+   ```
+
+   If your app does use non-exempt encryption, answer the compliance questions in App Store Connect instead.
+3. **Enable automatic distribution on an internal beta group.** In your app's TestFlight tab, create an internal group and choose automatic distribution (the option that gives the group access to all builds). Members then receive every new build with no per-build assignment. The setting is create-only, so if your existing group lacks it, create a new group with it enabled.
 
 With these in place, one build command puts the app on your testers' devices as soon as Apple finishes processing.
 
