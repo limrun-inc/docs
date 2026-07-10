@@ -121,9 +121,12 @@ lim xcode build . --workspace MyApp.xcworkspace --scheme MyApp
 | `--build-setting KEY=VALUE` | Pass an allowlisted build setting (any `APP_CONFIG_*` key or `SWIFT_ACTIVE_COMPILATION_CONDITIONS`). Repeatable. |
 | `--additional-file local=remote` | Sync an extra file (like `~/.netrc`) into the sandbox on every build. Repeatable. |
 | `--ignore 'regex'` | Skip paths during sync. Repeatable. |
-| `--basis-cache-dir path` `--max-patch-bytes N` | Tune the local sync cache. |
+| `--include 'regex'` | Force-sync paths your `.gitignore` excludes, like generated sources the build needs. Repeatable. |
+| `--basis-cache-dir path` | Tune the local sync cache. |
 
-The sync skips `.git`, `.DS_Store`, the basis cache, and anything in your `.gitignore`. `.xcconfig` files are always synced. If your `.gitignore` doesn't cover `DerivedData/` or `xcuserdata/`, add them with `--ignore`.
+The sync skips `.git`, `.DS_Store`, the basis cache, and anything in your `.gitignore` files. `.xcconfig` files are always synced. If your `.gitignore` doesn't cover `DerivedData/` or `xcuserdata/`, add them with `--ignore`.
+
+If the project's `.xcodeproj` is gitignored and a `project.yml` exists (the standard XcodeGen setup), the sandbox generates the project with XcodeGen before building, no flags needed; see [Build with remote Xcode](/docs/ios/build-with-xcode#generated-xcode-projects).
 
 ## Read the screen, then act
 
