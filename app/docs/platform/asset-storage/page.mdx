@@ -253,7 +253,7 @@ const instance = await lim.iosInstances.create({
  * launchMode controls behaviour after the install completes:
  *  - 'ForegroundIfRunning': bring to foreground if already running, otherwise launch
  *  - 'RelaunchIfRunning':   kill and relaunch if already running
- *  - undefined:             don't launch after installation
+ *  - undefined:             defaults to 'ForegroundIfRunning', i.e. the app is launched
  */
 ```
 
@@ -317,7 +317,7 @@ instance = lim.ios_instances.create(
 | `kind` | `'App'` | iOS only supports App assets at boot. There is **no `'Configuration'` variant** on iOS. |
 | `source` | `'URL' \| 'AssetName' \| 'AssetID'` | How to resolve the asset. |
 | `url` / `assetName` / `assetId` | string | The matching identifier. |
-| `launchMode` | `'ForegroundIfRunning' \| 'RelaunchIfRunning'` | Launch behavior post-install. Omit to install without launching. |
+| `launchMode` | `'ForegroundIfRunning' \| 'RelaunchIfRunning'` | Launch behavior post-install. Defaults to `ForegroundIfRunning`, i.e. the app is launched. |
 
 </Tab>
 <Tab value="Android">
