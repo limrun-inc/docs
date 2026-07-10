@@ -199,7 +199,13 @@ lim xcode build . --include '^ios/GeneratedKit/'
 lim xcode build . --include '^Carthage/Build/'
 ```
 
-Like `--ignore`, the pattern is a regular expression, not gitignore syntax. To reach files inside a directory that is ignored as a whole, the pattern must also match the directory path itself, as both examples do. On the SDK, pass an `include` predicate alongside `ignore`.
+```ts
+await xcode.sync('./my-app', {
+  include: (relPath) => relPath.startsWith('ios/GeneratedKit/'),
+});
+```
+
+Like `--ignore`, the pattern is a regular expression, not gitignore syntax. To reach files inside a directory that is ignored as a whole, the pattern must also match the directory path itself, as both examples do.
 
 ### Additional files
 
