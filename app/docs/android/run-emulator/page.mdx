@@ -211,7 +211,7 @@ Flags for `lim android create`:
 
 ### Pre-install APKs
 
-Set `initialAssets` at provisioning time to install one or more APKs while the pod boots. Each APK must come from a publicly reachable HTTPS URL (a GitHub release asset, an S3 presigned URL) or Limrun's [Asset Storage](/platform/asset-storage/).
+Set `initialAssets` at provisioning time to install one or more APKs while the pod boots. Each APK must come from a publicly reachable HTTPS URL (a GitHub release asset, an S3 presigned URL) or Limrun's [Asset Storage](/platform/asset-storage/). After a successful installation, the app is launched automatically so the instance is ready to interact with on first connect.
 
 For local files, the CLI's `--install` and the TypeScript/Go SDK's `assets.getOrUpload({ path })` upload to Asset Storage first and hand the daemon a signed URL. Python's SDK doesn't ship that helper. Upload manually with `assets.get_or_create` plus a PUT to the returned upload URL before calling `create`. See [Asset Storage](/platform/asset-storage/).
 
@@ -422,6 +422,30 @@ limrun.AndroidInstanceNewParamsSpecInitialAsset{
 </CodeGroup>
 
 Anything you want to upload once and reuse goes through [Asset Storage](/docs/platform/asset-storage) first. For builds you want to push to an already-running pod, see [Install an APK](#install-an-apk).
+
+### Sync APK rebuilds
+
+`lim android sync` uses differential patching to update an APK on a running emulator. It transfers an xdelta3 patch against the APK already available on the instance, then installs the updated APK. This avoids uploading the full APK after every rebuild.
+
+First, upload a base APK to Asset Storage. The asset name defaults to the filename:
+
+```bash
+lim asset push ./app-debug.apk
+```
+
+Pre-install that base APK when you create each emulator:
+
+```bash
+lim android create --install-asset app-debug.apk
+```
+
+After rebuilding the APK locally or in a cloud development environment, sync it to the last-created Android instance:
+
+```bash
+lim android sync ./app-debug.apk
+```
+
+To target a specific instance, pass `--id <ID>`. Add `--watch` to keep watching the APK file and sync each new build automatically.
 
 ### Example response
 
