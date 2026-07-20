@@ -286,17 +286,26 @@ Awaiting the call resolves to a result object with `exitCode`, `status` (`SUCCEE
 
 Builds can outlive the process that triggered them: a CI step hits its own timeout, an agent gets recycled, a bot fires the build and moves on. Instead of holding the log stream open, pass a webhook with the build request. The sandbox calls your endpoint once, when the build reaches a terminal state (`SUCCEEDED`, `FAILED`, or `CANCELLED`).
 
-The build request takes a `webhook` object with a `url` and optional `headers`. Use a header to authenticate the call to your endpoint:
+The build request takes a webhook `url` and optional `headers`. Use a header to authenticate the call to your endpoint:
 
-```json
-{
-  "command": "xcodebuild",
-  "webhook": {
-    "url": "https://ci.example.com/hooks/limrun-build",
-    "headers": { "Authorization": "Bearer <your-webhook-secret>" }
-  }
-}
+<CodeGroup labels={["CLI","TypeScript"]}>
+```bash
+lim xcode build . --webhook-url https://ci.example.com/hooks/limrun-build --webhook-header Authorization="Bearer $HOOK_SECRET"
 ```
+
+```ts
+const build = xcode.xcodebuild(
+  { scheme: 'MyApp' },
+  {
+    webhook: {
+      url: 'https://ci.example.com/hooks/limrun-build',
+      headers: { Authorization: 'Bearer <your-webhook-secret>' },
+    },
+  },
+);
+```
+
+</CodeGroup>
 
 When the build finishes, the sandbox POSTs a JSON payload to that URL with your headers set:
 
