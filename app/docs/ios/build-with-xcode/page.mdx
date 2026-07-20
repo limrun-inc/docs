@@ -417,6 +417,8 @@ const { exitCode, testflight } = await build;
 
 The build log streams the upload progress and App Store Connect's verdict. After the upload commits, we watch Apple's processing for up to two minutes by default: a rejection in that window (a reused build number, a missing entitlement) fails the build with Apple's own error text, and a build still processing when the window closes is a success, with the upload ID printed so you can check App Store Connect later. Tune the window with `--asc-wait-timeout <seconds>` (`waitTimeoutSeconds` in the SDK): `0` returns as soon as the upload commits, and values up to `1800` wait longer for the full verdict. Combine with `--upload` if you also want the IPA in Asset Storage.
 
+Every upload needs a `CFBundleVersion` higher than the last one for that version. Pass `--auto-build-number` (`autoIncrementBuildNumber: true` in the SDK's testflight options) and the build sets it for you: the build number becomes one more than the highest already in App Store Connect, or 1 for a brand-new app. The lookup runs server-side with the same API key the upload uses, and it takes effect for projects using Xcode's standard versioning (`CFBundleVersion = $(CURRENT_PROJECT_VERSION)`), which modern Xcode templates and Expo prebuilds do.
+
 Your API key travels with the build request over TLS, is held in memory only for the duration of the build, and is never written to disk on the sandbox.
 
 ### One-time App Store Connect setup
@@ -451,7 +453,7 @@ TestFlight delivery requires a signed device build (`--sdk iphoneos` plus the si
 
 | Build output | What it means | Fix |
 |---|---|---|
-| `bundle version must be higher` (or similar Apple text) | The `CFBundleVersion` was already used by an earlier upload. | Bump the build number and rebuild. |
+| `bundle version must be higher` (or similar Apple text) | The `CFBundleVersion` was already used by an earlier upload. | Rebuild with `--auto-build-number`, or bump the build number manually. |
 | `HTTP 401` from App Store Connect | The key ID, issuer ID, and `.p8` don't belong together, or the key was revoked. | Re-check the trio in App Store Connect; team keys need the issuer ID, individual keys must omit it. |
 | `HTTP 403` from App Store Connect | The key's role can't upload builds. | Use a key with the Developer role or higher. |
 | `no App Store Connect app with bundle id ...` | No app record exists for the bundle ID you built. | Create the app record in App Store Connect first (Apps, then the plus button). |
