@@ -282,6 +282,46 @@ While the build runs, the call exposes three event-emitter channels you can subs
 
 Awaiting the call resolves to a result object with `exitCode`, `status` (`SUCCEEDED`, `FAILED`, or `CANCELLED`), and a `signedDownloadUrl` when you asked for an upload. Share that URL with a teammate or reviewer.
 
+### Get notified when the build finishes
+
+Builds can outlive the process that triggered them: a CI step hits its own timeout, an agent gets recycled, a bot fires the build and moves on. Instead of holding the log stream open, pass a webhook with the build request. The sandbox calls your endpoint once, when the build reaches a terminal state (`SUCCEEDED`, `FAILED`, or `CANCELLED`).
+
+The build request takes a `webhook` object with a `url` and optional `headers`. Use a header to authenticate the call to your endpoint:
+
+```json
+{
+  "command": "xcodebuild",
+  "webhook": {
+    "url": "https://ci.example.com/hooks/limrun-build",
+    "headers": { "Authorization": "Bearer <your-webhook-secret>" }
+  }
+}
+```
+
+When the build finishes, the sandbox POSTs a JSON payload to that URL with your headers set:
+
+```json
+{
+  "execId": "build-1700000000000000000",
+  "command": "xcodebuild",
+  "status": "SUCCEEDED",
+  "exitCode": 0,
+  "startedAt": "2026-07-20T19:00:00Z",
+  "finishedAt": "2026-07-20T19:03:25Z",
+  "buildDurationMs": 205000,
+  "logsUrl": "https://..."
+}
+```
+
+`logsUrl` is a presigned link to the full build log, valid for 24 hours. Fetch it from your webhook handler to attach logs to a PR comment or a failure report without keeping any connection to the sandbox open. On failure the payload also carries an `error` field with the message the build recorded.
+
+What to know:
+
+- The URL must be HTTPS on a public DNS host. IP literals and private or internal addresses are rejected when you submit the build.
+- Up to 16 headers are allowed. `Host`, `Content-Length`, `Transfer-Encoding`, and `Connection` are rejected.
+- Any 2xx response from your endpoint counts as delivered. Anything else is retried up to two more times, then dropped. A webhook failure never fails the build.
+- Cancelled builds notify too. Triggering a new build cancels the one in flight, so an endpoint that only expects success and failure should handle `CANCELLED` as well.
+
 ### Build settings
 
 Match what you'd pass to local `xcodebuild`:
