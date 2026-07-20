@@ -309,11 +309,15 @@ When the build finishes, the sandbox POSTs a JSON payload to that URL with your 
   "startedAt": "2026-07-20T19:00:00Z",
   "finishedAt": "2026-07-20T19:03:25Z",
   "buildDurationMs": 205000,
+  "instanceId": "sandbox_someid",
+  "consoleUrl": "https://console.limrun.com/builds/sandbox_someid",
   "logsUrl": "https://..."
 }
 ```
 
 `logsUrl` is a presigned link to the full build log, valid for 24 hours. Fetch it from your webhook handler to attach logs to a PR comment or a failure report without keeping any connection to the sandbox open. On failure the payload also carries an `error` field with the message the build recorded.
+
+`instanceId` is the sandbox instance the build ran on, and `consoleUrl` opens that instance's builds page in the Limrun Console. Put the link in your PR comment or failure notification so whoever picks it up lands directly on the build to debug.
 
 What to know:
 
