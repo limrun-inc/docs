@@ -189,7 +189,7 @@ Prerequisites:
 - The app listing exists in [Play Console](https://play.google.com/console). Google's API cannot create listings.
 - Your Google account has release permission for the app in Play Console.
 - The AAB is in Asset Storage, signed with the app's upload key (a `--sign --upload` build).
-- The AAB's `versionCode` has never been uploaded to this app before. Bump `versionCode` in `app/build.gradle(.kts)` (Expo: `expo.android.versionCode` in `app.json`) before the build.
+- The AAB's `versionCode` has never been uploaded to this app before. Pass `--auto-version-code` on the build (with `--upload-to-playstore`) and the server resolves the next free code from Google Play and stamps it before building: into `expo.android.versionCode` for Expo projects, or the single literal `versionCode` in the conventional `app/` module build script for native projects (computed or flavor-split versionCodes are rejected at request time). Without it, bump `versionCode` in `app/build.gradle(.kts)` (Expo: `expo.android.versionCode` in `app.json`) before the build.
 
 Steps:
 
@@ -198,7 +198,7 @@ Steps:
 3. Go to the **Registry** page. Assets ending in `.aab` carry a **Publish to Play Store** action.
 4. Click it, enter the **Package name** (the app's application ID), and publish. The upload targets the internal testing track and the dialog reports Google's verdict.
 
-If a publish reports that the version code already exists, it may already be live from an earlier attempt; check Play Console before bumping the versionCode and publishing again. Google Play registers your upload key from the app's first upload and requires the same key on every upload after that, which is exactly what the escrowed `--sign` key guarantees.
+If a publish reports that the version code already exists, it may already be live from an earlier attempt; check Play Console before bumping the versionCode and publishing again (builds with `--auto-version-code` avoid this class of failure entirely). Google Play registers your upload key from the app's first upload and requires the same key on every upload after that, which is exactly what the escrowed `--sign` key guarantees.
 
 ## Full example: a signed AAB on every push
 
