@@ -334,6 +334,7 @@ What to know:
 - Up to 16 headers are allowed. `Host`, `Content-Length`, `Transfer-Encoding`, and `Connection` are rejected.
 - Any 2xx response from your endpoint counts as delivered. Anything else is retried up to two more times, then dropped. A webhook failure never fails the build.
 - Cancelled builds notify too. Triggering a new build cancels the one in flight, so an endpoint that only expects success and failure should handle `CANCELLED` as well.
+- Android Gradle builds support the same webhook: pass the same flags to `lim gradle build` (or `webhook` in the TypeScript SDK's `gradlebuild` options). The payload carries `"command": "gradlebuild"` and no `logsUrl`.
 
 ### Build settings
 
