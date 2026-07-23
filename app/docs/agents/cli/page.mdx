@@ -118,6 +118,9 @@ lim xcode build . --workspace MyApp.xcworkspace --scheme MyApp
 | `--certificate-p12 path.p12` `--certificate-password ...` `--provisioning-profile path.mobileprovision` | Sign for a real-device build. |
 | `--upload-to-testflight` `--asc-key-id ...` `--asc-issuer-id ...` `--asc-key path.p8` | Upload the signed IPA to TestFlight after the build. Requires the signing flags. Omit `--asc-issuer-id` for individual API keys. |
 | `--asc-wait-timeout N` | Seconds to watch App Store Connect's processing verdict (default 120, 0 skips, max 1800). |
+| `--webhook-url URL` `--webhook-header NAME=VALUE` | POST the terminal build result and persisted-log URL to an HTTPS callback. Repeat the header flag as needed. |
+| `--detach` | Return once limbuild accepts the build instead of streaming until completion. Requires `--webhook-url`. |
+| `--inactivity-timeout 3s` | Create a fresh instance for this build and reap it shortly after its last activity. Cannot be combined with `--id`. |
 | `--build-setting KEY=VALUE` | Pass an allowlisted build setting (any `APP_CONFIG_*` key or `SWIFT_ACTIVE_COMPILATION_CONDITIONS`). Repeatable. |
 | `--additional-file local=remote` | Sync an extra file (like `~/.netrc`) into the sandbox on every build. Repeatable. |
 | `--ignore 'regex'` | Skip paths during sync. Repeatable. |
