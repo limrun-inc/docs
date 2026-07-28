@@ -461,7 +461,7 @@ The remote port must be in **57090-57099**. That range is reserved for tunneled 
 
 - **Client-first services only.** The app inside the simulator initiates the connection. Server-first protocols, where the server speaks first, aren't supported.
 - **No auto-reconnect.** The tunnel is fail-closed: if the underlying WebSocket drops, the listener and its active connections tear down. Restart the tunnel to recover.
-- **Idle tunnels don't keep the instance alive.** Only traffic that actually flows through a tunnel counts as instance activity. An open but quiet tunnel lets the instance's [inactivity timeout](#configure-the-instance) fire as usual, so agents that leave tunnels behind stop accruing instance time.
+- **Idle tunnels don't keep the instance alive.** Opening a tunnel counts as activity once; after that, only traffic that actually flows through it does. An open but quiet tunnel lets the instance's [inactivity timeout](#configure-the-instance) fire as usual, so agents that leave tunnels behind stop accruing instance time.
 - **Vanished clients lose their port.** If the tunnel client stops responding without closing (a suspended VM, a frozen process), the server closes the session and frees the remote port within about two minutes. A port held by a *live* tunnel stays reserved, and a second tunnel on it fails with `already in use`.
 - **TypeScript SDK and CLI only.** Not available in the Go or Python SDKs. See the [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix).
 - **Android equivalent.** This primitive is iOS-only. On Android, use `adb reverse` over the [ADB tunnel](/docs/testing/appium#open-the-adb-tunnel).
