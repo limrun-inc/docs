@@ -1,0 +1,91 @@
+---
+title: "Maestro"
+description: "Run stock Maestro YAML flows against Limrun iOS simulators with a single CLI command, from any host including Linux CI runners."
+order: 2
+icon: flask-conical
+---
+
+# Maestro
+
+Run your existing [Maestro](https://docs.maestro.dev) flows against a Limrun iOS simulator with `lim ios maestro`. Your flows and the Maestro CLI stay completely stock; the `lim` CLI wires Maestro's driver to the remote simulator transparently.
+
+## Before you start
+
+- A Limrun API key in `LIM_API_KEY` (get one from [console.limrun.com](https://console.limrun.com)). If you've never used the CLI before, walk through the [Quickstart](/docs/quickstart) first.
+- `lim` CLI 0.22.0 or newer: `npm i --location=global lim`.
+- The Maestro CLI on your PATH: `curl -fsSL https://get.maestro.mobile.dev | bash`. Maestro needs Java 17 or newer. Maestro 2.5.x and 2.6+ both work; `lim` adapts to the installed version.
+
+## How the integration works
+
+Maestro drives iOS through a small XCTest runner app that serves HTTP inside the simulator, and through `xcrun simctl` calls for app lifecycle. `lim ios maestro` provides both against a remote instance:
+
+- It installs and launches our build of the Maestro runner on the instance the first time you use it (or you preinstall it at create time to skip that step).
+- It runs your local `maestro test` with the driver traffic routed to the remote runner over an authenticated connection, and `simctl` calls answered by the Limrun API.
+
+Maestro's exit codes, console output, and report flags work exactly as they do locally, so existing CI wiring carries over.
+
+## Run a flow
+
+Create an instance and install the app under test, then run your flow:
+
+```bash
+lim ios create --install ./MyApp.app \
+  --install-asset appstore/maestro-ios-runner-2.5.1.tar.gz
+
+lim ios maestro test flow.yaml
+```
+
+The `--install-asset` line preinstalls the Maestro runner so the first run starts faster; without it, `lim ios maestro` installs the runner on first use.
+
+`lim ios maestro` targets the most recently created instance in the current directory's workspace. Pass `--id <ios-id>` explicitly in scripts and CI. Extra Maestro flags go after `--`:
+
+```bash
+lim ios maestro -- test flows/ --include-tags smoke --test-output-dir artifacts
+```
+
+Don't pass `--platform`, `--device`, `--udid`, `--no-reinstall-driver`, or `--driver-host-port`; `lim` sets those itself and rejects duplicates to avoid confusing failures.
+
+## Testing Expo apps with Expo Go
+
+Preinstall Expo Go alongside the runner and open your project URL from the flow. Environment variables must be prefixed with `MAESTRO_` to be visible inside flows:
+
+```bash
+lim ios create \
+  --install-asset appstore/Expo-Go-54.0.6.tar.gz \
+  --install-asset appstore/maestro-ios-runner-2.5.1.tar.gz
+
+MAESTRO_EXPO_URL='exp://<your-tunnel-host>' lim ios maestro test flow.yaml
+```
+
+```yaml
+appId: host.exp.Exponent
+---
+- openLink: ${MAESTRO_EXPO_URL}
+- runFlow:
+    when:
+      visible: Open
+    commands:
+      - tapOn: Open
+- extendedWaitUntil:
+    visible: My App Home
+    timeout: 90000
+```
+
+## Differences from local Maestro
+
+- `startRecording`/`stopRecording` flow commands are not supported because the simulator is remote. Record around the run instead: `lim ios record start` before, `lim ios record stop -o video.mp4` after.
+- `addMedia` and other commands that reference local simulator file paths are not supported.
+- HTTP calls from `runScript`/`evalScript` must use `https://` URLs; plain `http://` requests are refused.
+- When a flow runs against an app that is already open (Expo Go especially), start with `- stopApp` before `openLink` or `launchApp`. Deep links can be dropped by an app that is mid-foreground, and a stale screen fails early assertions.
+
+<Note>
+  Debugging a failing selector? `lim ios element-tree` prints the live accessibility tree of the remote simulator, and Maestro's own debug output directory with screenshots and hierarchy dumps is printed on every failure.
+</Note>
+
+## Clean up
+
+Delete the instance when the suite is done:
+
+```bash
+lim ios delete <ios-id>
+```
