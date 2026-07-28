@@ -623,7 +623,7 @@ For the full field reference, see [Status URL surface](/docs/reference/sdk#statu
 
 ## Working with Expo Go
 
-Limrun maintains a small curated catalog of pre-built apps under the `appstore/` name prefix. Currently, only Expo Go is available, which lets React Native users on your platform open a Snack or a local Expo project on a remote device without uploading anything.
+Limrun maintains a small curated catalog of pre-built apps under the `appstore/` name prefix: Expo Go, which lets React Native users on your platform open a Snack or a local Expo project on a remote device without uploading anything, and the Maestro XCTest runner used by [the Maestro integration](/docs/testing/maestro).
 
 <Frame>
   <img src="/images/console/04-apps-picker.png" alt="Console Playground Apps picker showing Upload and App Store entries for Expo Go 55 and Expo Go 54" />
@@ -637,6 +637,7 @@ App Store asset reference:
 | `appstore/Expo-Go-55-iOS-latest.tar.gz` | iOS | Expo Go 55, latest (iOS Simulator build) |
 | `appstore/Expo-Go-54.0.6.apk` | Android | Expo Go 54.0.6 (APK) |
 | `appstore/Expo-Go-55-latest.apk` | Android | Expo Go 55, latest (APK) |
+| `appstore/maestro-ios-runner-2.5.1.tar.gz` | iOS | Maestro XCTest runner for [Maestro flows](/docs/testing/maestro) |
 
 Install at boot the same way as one of your own assets. The `appstore/` prefix is just part of the name:
 

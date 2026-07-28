@@ -1,0 +1,184 @@
+---
+title: "Maestro"
+description: "Run stock Maestro YAML flows against Limrun iOS simulators. A patched XCTest runner on the instance lets the unmodified Maestro CLI drive the remote simulator from any host, including Linux CI runners."
+order: 2
+icon: flask-conical
+---
+
+# Maestro
+
+Point your existing [Maestro](https://docs.maestro.dev) flows at a Limrun iOS simulator with `lim ios maestro`. Your flows and the Maestro CLI are unmodified; the `lim` CLI points Maestro's iOS driver at the remote simulator and the flow runs as if the simulator were local.
+
+Maestro on Limrun covers iOS simulator instances today. For Android UI automation, use [Appium over the ADB tunnel](/docs/testing/appium#run-an-android-test).
+
+## Before you start
+
+- A Limrun API key in `LIM_API_KEY` (get one from [console.limrun.com](https://console.limrun.com)). If you've never used the CLI before, walk through the [Quickstart](/docs/quickstart) first.
+- `lim` CLI 0.22.0 or newer: `npm install --global lim`.
+- The Maestro CLI on your PATH, which needs a Java runtime. See [Installing Maestro](https://docs.maestro.dev/getting-started/installing-maestro). Maestro 2.5.x and 2.6+ both work; `lim` adapts to the installed version.
+- A Maestro flow you can already run locally. We won't cover authoring flows, only pointing them at Limrun.
+- The app under test as a simulator build in an archive (`MyApp.app.zip` or `.tar.gz`), for example from [Build with Xcode](/docs/ios/build-with-xcode).
+
+## How the integration works
+
+Maestro drives iOS through a small XCTest runner app that serves HTTP inside the simulator, plus `xcrun simctl` calls for app lifecycle. `lim ios maestro` provides both against a remote instance:
+
+- It installs Limrun's patched build of the Maestro runner on the instance the first time you use it, or you preinstall it at create time to skip that step.
+- It runs your local `maestro test` with the driver's HTTP routed to the runner over an authenticated HTTPS tunnel (the instance's bearer token, the same mechanism the [Appium integration](/docs/testing/appium) uses for WebDriverAgent), and with `simctl` calls answered by the Limrun API.
+
+Maestro's exit codes, console output, and report flags work exactly as they do locally, so existing CI wiring carries over. Only the `test` subcommand is wrapped; `maestro studio`, `record`, and `hierarchy` are not available against remote instances.
+
+## Run a flow
+
+Create an instance with the runner preinstalled and the app under test, then run your flow:
+
+```bash
+lim ios create --install ./MyApp.app.zip \
+  --install-asset appstore/maestro-ios-runner-2.5.1.tar.gz
+
+lim ios maestro test flow.yaml
+```
+
+Without the `--install-asset` line, `lim ios maestro` installs the runner on first use; the first run on an instance takes a few extra seconds either way while the runner launches. If you run the same app often, [upload it as an asset once](/docs/platform/asset-storage) instead of re-uploading with `--install` on every create.
+
+`lim ios maestro` targets the last iOS instance the CLI created for this repo. Pass `--id <id>` (before `test`) in scripts and CI:
+
+```bash
+lim ios maestro --id <id> test flow.yaml
+```
+
+Extra Maestro flags go after `--`:
+
+```bash
+lim ios maestro -- test flows/ --include-tags smoke --test-output-dir artifacts
+```
+
+Don't pass `--platform`, `--device`, `--udid`, `--no-reinstall-driver`, or `--driver-host-port`; `lim` sets those itself and rejects duplicates.
+
+The full runnable example, including driving the same wiring from the TypeScript SDK with `prepareMaestroRun`, is at [`typescript-sdk/examples/maestro-ios`](https://github.com/limrun-inc/typescript-sdk/tree/main/examples/maestro-ios).
+
+## Run an Expo Go flow
+
+Preinstall Expo Go alongside the runner and open your project URL from the flow. Environment variables must be prefixed with `MAESTRO_` to be visible inside flows:
+
+```bash
+lim ios create \
+  --install-asset appstore/Expo-Go-54.0.6.tar.gz \
+  --install-asset appstore/maestro-ios-runner-2.5.1.tar.gz
+
+MAESTRO_EXPO_URL='exp://<your-tunnel-host>' lim ios maestro test flow.yaml
+```
+
+The flow opens the project and waits out the first bundle load:
+
+```yaml title="flow.yaml"
+appId: host.exp.Exponent
+---
+- openLink: ${MAESTRO_EXPO_URL}
+- runFlow:
+    when:
+      visible: Open
+    commands:
+      - tapOn: Open
+- extendedWaitUntil:
+    visible: My App Home
+    timeout: 90000
+```
+
+## Differences from local Maestro
+
+`lim` answers a fixed subset of `simctl` for Maestro through a shim; commands that take or return host filesystem paths are rejected. In practice:
+
+- `startRecording`/`stopRecording` flow commands are not supported. Record around the run instead: `lim ios record start` before the flow, `lim ios record stop -o video.mp4` after. See [Record a video](/docs/ios/run-simulator#record-a-video).
+- `addMedia` and `clearKeychain` are not supported.
+- `takeScreenshot` works and saves the PNG locally into the working directory (or `--test-output-dir`), like stock Maestro.
+- HTTP calls from `runScript`/`evalScript` must use `https://` URLs. Maestro's plain-HTTP traffic is routed to the remote simulator's driver, so `https` calls go out directly while plain `http` calls are refused.
+- When a flow runs against an app that is already open (Expo Go especially), start with `- stopApp` before `openLink` or `launchApp`. Deep links can be dropped by an app that is mid-foreground, and a stale screen fails early assertions.
+
+## Run from a Linux CI runner
+
+No macOS host is needed; the Mac lives on Limrun's side. A standard `ubuntu-latest` GitHub Actions job is enough:
+
+```yaml title=".github/workflows/maestro-ios.yml"
+name: Maestro iOS
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install lim and Maestro
+        run: |
+          npm install --global lim
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Run flows
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+        run: |
+          ID=$(lim ios create --install ./MyApp.app.zip \
+            --install-asset appstore/maestro-ios-runner-2.5.1.tar.gz \
+            --label session=${{ github.run_id }} \
+            --no-open --quiet --json | jq -r .metadata.id)
+          echo "INSTANCE_ID=$ID" >> "$GITHUB_ENV"
+          lim ios maestro --id "$ID" -- test flows/ --test-output-dir artifacts
+
+      - name: Delete instance
+        if: always()
+        run: lim ios delete "$INSTANCE_ID"
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+```
+
+<Note>
+  Label instances with the run id as above and tear them down at job end, including on failure. Inactivity timeouts handle the rest if a job crashes. See [Reuse and clean up instances](/docs/ios/run-simulator#reuse-and-clean-up-instances).
+</Note>
+
+## Troubleshooting
+
+<Accordions>
+  <Accordion title="`Failed to run maestro --version`">
+    The Maestro CLI isn't on PATH (or its Java runtime is missing). Install it per [Installing Maestro](https://docs.maestro.dev/getting-started/installing-maestro) and re-run; `lim` detects the version automatically.
+  </Accordion>
+  <Accordion title="`Only the test subcommand is supported`">
+    `lim ios maestro` wraps `maestro test` only. Run `maestro studio` and friends against a local simulator, or drive the remote instance directly with [`lim ios` commands](/docs/ios/run-simulator).
+  </Accordion>
+  <Accordion title="`--device is set by lim automatically`">
+    Remove `--platform`, `--device`/`--udid`, `--no-reinstall-driver`, and `--driver-host-port` from your Maestro arguments; `lim` injects them and duplicate flags would make Maestro's parser fail.
+  </Accordion>
+  <Accordion title="`The Maestro runner did not become ready in time`">
+    The runner was installed or launched but didn't answer within 15 seconds. Retry once; if it persists, check the instance is `ready` with `lim ios get` and recreate it with the runner preinstalled via `--install-asset`.
+  </Accordion>
+  <Accordion title="`limrun xcrun shim does not support simctl ...`">
+    Your flow used a command outside the supported subset (see [Differences from local Maestro](#differences-from-local-maestro)). Recording and media commands have `lim ios` equivalents.
+  </Accordion>
+  <Accordion title="A selector fails and you can't see why">
+    Maestro prints its debug output directory on failure. For the live screen, `lim ios element-tree` shows the accessibility tree of the remote simulator and `lim ios screenshot` captures it. See [Read the screen](/docs/ios/run-simulator#read-the-screen).
+  </Accordion>
+</Accordions>
+
+## Next steps
+
+<Cards>
+  <Card title="Run an iOS Simulator" href="/docs/ios/run-simulator">
+    Provision, configure, and drive iOS instances directly. The control surface Maestro sits on top of.
+  </Card>
+  <Card title="Appium" href="/docs/testing/appium">
+    The WebDriver alternative, including Android automation over the ADB tunnel.
+  </Card>
+  <Card title="Asset Storage" href="/docs/platform/asset-storage">
+    Upload the app under test once and reference it from every instance create.
+  </Card>
+</Cards>
