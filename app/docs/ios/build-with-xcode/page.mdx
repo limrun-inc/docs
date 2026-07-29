@@ -341,9 +341,58 @@ While the build runs, the call exposes three event-emitter channels you can subs
 
 Awaiting the call resolves to a result object with `exitCode`, `status` (`SUCCEEDED`, `FAILED`, or `CANCELLED`), and a `signedDownloadUrl` when you asked for an upload. Share that URL with a teammate or reviewer.
 
-### Detached CI builds
+### Build-completion webhooks and detached builds
 
-When a webhook is the source of truth, the CLI does not need to hold an SSE log stream open for the full build. `--detach` returns after limbuild accepts the execution; the build continues remotely and the webhook reports its terminal result.
+Pass a webhook when a CI job, agent, or backend needs the terminal result without relying on the live log stream. Limrun calls the endpoint when the build reaches `SUCCEEDED`, `FAILED`, or `CANCELLED`. The CLI and TypeScript SDK accept the same URL and optional authentication headers:
+
+<CodeGroup labels={["CLI","TypeScript"]}>
+```bash
+lim xcode build . \
+  --webhook-url https://ci.example.com/hooks/limrun \
+  --webhook-header Authorization="Bearer $HOOK_SECRET"
+```
+
+```ts
+const build = xcode.xcodebuild(
+  { workspace: 'MyApp.xcworkspace', scheme: 'MyApp' },
+  {
+    webhook: {
+      url: 'https://ci.example.com/hooks/limrun',
+      headers: { Authorization: 'Bearer <your-webhook-secret>' },
+    },
+  },
+);
+```
+</CodeGroup>
+
+The webhook is sent whether the caller keeps streaming or detaches. Limrun POSTs a JSON payload with the build result and debugging links:
+
+```json
+{
+  "execId": "build-1700000000000000000",
+  "command": "xcodebuild",
+  "status": "SUCCEEDED",
+  "exitCode": 0,
+  "startedAt": "2026-07-29T12:00:00Z",
+  "finishedAt": "2026-07-29T12:03:25Z",
+  "buildDurationMs": 205000,
+  "instanceId": "xcode_usw1_...",
+  "consoleUrl": "https://console.limrun.com/builds/xcode_usw1_...",
+  "logsUrl": "https://..."
+}
+```
+
+`logsUrl` is a time-limited link to the persisted plain-text build log. Read that log for build diagnostics when `status` is `FAILED`. The instance, console, log, timing, and exit-code fields are omitted when they are unavailable.
+
+Webhook delivery follows these rules:
+
+- The URL must use HTTPS on a public DNS host. IP literals and private or cluster-internal targets are rejected when the build request is submitted.
+- Repeat `--webhook-header NAME=VALUE` to send multiple headers. At most 16 are accepted. `Host`, `Content-Length`, `Transfer-Encoding`, and `Connection` cannot be overridden.
+- Any 2xx response counts as delivered. Other responses and connection failures are retried up to two more times.
+- Delivery is best-effort. Exhausting retries does not change the build result.
+- Cancelled builds send a callback too. A new build on the same sandbox cancels the active one.
+
+Add `--detach` when the caller should return as soon as limbuild accepts the build instead of holding the SSE stream open:
 
 ```bash
 lim xcode build . \
@@ -353,17 +402,13 @@ lim xcode build . \
   --webhook-header Authorization="Bearer $HOOK_SECRET"
 ```
 
-Once the build is accepted, the CLI prints the instance ID, the console page where the build's progress and logs appear, and the webhook target. Pass `--json` to get the same summary as one JSON object with `instanceId`, `execId`, `consoleUrl`, and `webhookUrl` fields, ready for scripts to parse.
+Once the build is accepted, the CLI prints the instance ID, the console page where progress and logs appear, and the webhook target. Pass `--json` to receive one object with `instanceId`, `execId`, `consoleUrl`, and `webhookUrl` fields.
 
-`--detach` requires `--webhook-url`. `--inactivity-timeout` skips the cached Xcode target and creates a fresh instance with the requested lifecycle, so it cannot be combined with `--id`. Active builds continually report activity; the short timeout begins expiring only after build and upload work stops. The inactivity controller checks about every 15 seconds, so a `3s` timeout usually tears the instance down 3–18 seconds after its last activity rather than at exactly three seconds.
+`--detach` requires `--webhook-url`. `--inactivity-timeout` skips the cached Xcode target and creates a fresh instance with the requested lifecycle, so it cannot be combined with `--id`. Active builds continually report activity; the short timeout begins expiring only after build and upload work stops. The inactivity controller checks about every 15 seconds, so a `3s` timeout usually tears the instance down 3 to 18 seconds after its last activity rather than at exactly three seconds.
 
-The TypeScript SDK exposes the same non-blocking start:
+The TypeScript process can detach after the build request is accepted:
 
 ```ts
-const build = xcode.xcodebuild(
-  { workspace: 'MyApp.xcworkspace', scheme: 'MyApp' },
-  { webhook: { url: 'https://ci.example.com/hooks/limrun' } },
-);
 const execId = await build.detach();
 ```
 
@@ -502,6 +547,8 @@ const { exitCode, appstore } = await build;
 
 The build log streams the upload progress. By default the build succeeds as soon as the upload commits: Apple's processing routinely takes many minutes, so the verdict is left to App Store Connect, and the upload ID is printed so you can check it there. To watch for the verdict instead, pass `--asc-wait-timeout <seconds>` (`waitTimeoutSeconds` in the SDK, up to `1800`): a rejection within that window (a reused build number, a missing entitlement) fails the build with Apple's own error text, and expiry without a verdict is still a success with the build processing on Apple's side. Combine with `--upload` if you also want the IPA in Asset Storage.
 
+Every upload needs a `CFBundleVersion` higher than the last one for that version. Pass `--auto-build-number` (`autoIncrementBuildNumber: true` in the SDK's `appstore` options) to set it to one more than the highest build number already in App Store Connect, or 1 for a new app. The lookup runs server-side with the same API key used for the upload. It works for projects that use Xcode-standard versioning (`CFBundleVersion = $(CURRENT_PROJECT_VERSION)`), including modern Xcode templates and Expo prebuilds.
+
 Your API key travels with the build request over TLS, is held in memory only for the duration of the build, and is never written to disk on the sandbox.
 
 ### One-time App Store Connect setup
@@ -536,7 +583,7 @@ TestFlight delivery requires a signed device build (`--sdk iphoneos` plus the si
 
 | Build output | What it means | Fix |
 |---|---|---|
-| `bundle version must be higher` (or similar Apple text) | The `CFBundleVersion` was already used by an earlier upload. | Bump the build number and rebuild. |
+| `bundle version must be higher` (or similar Apple text) | The `CFBundleVersion` was already used by an earlier upload. | Rebuild with `--auto-build-number`, or bump the build number manually. |
 | `HTTP 401` from App Store Connect | The key ID, issuer ID, and `.p8` don't belong together, or the key was revoked. | Re-check the trio in App Store Connect; team keys need the issuer ID, individual keys must omit it. |
 | `HTTP 403` from App Store Connect | The key's role can't upload builds. | Use a key with the Developer role or higher. |
 | `no App Store Connect app with bundle id ...` | No app record exists for the bundle ID you built. | Create the app record in App Store Connect first (Apps, then the plus button). |

@@ -1,0 +1,311 @@
+---
+title: "Build with remote Gradle"
+description: "Sync your source, run Gradle in the cloud, stream the logs back, and install the APK on a remote emulator. Or ship a signed AAB to Google Play."
+order: 2
+icon: "hammer"
+---
+# Build with remote Gradle
+
+Limrun builds Android apps on remote Gradle sandboxes. Your laptop or CI runner needs no Android SDK, no JDK, and no keystore. After a successful build, you either install the APK on a remote emulator or take a signed AAB to Google Play.
+
+The flow:
+
+1. **Provision** a Gradle sandbox.
+2. **Sync** your source folder to it.
+3. **Run Gradle** remotely with the project's own wrapper. Logs stream back.
+4. **Install or ship.** Upload the APK for emulators, or sign an AAB for Google Play.
+
+### SDK coverage by language
+
+| Surface | TypeScript | Python | Go | CLI |
+|---|---|---|---|---|
+| Provision a Gradle instance | ✓ | via REST | via REST | ✓ |
+| Sync source and run Gradle | ✓ | not in SDK | not in SDK | ✓ |
+| [Escrow-backed release signing](#sign-a-release-aab) (`--sign`) | pass the material yourself | not in SDK | not in SDK | ✓ |
+
+The CLI is the complete surface. TypeScript users provision and build through the SDK; the escrowed-key convenience ([Sign a release AAB](#sign-a-release-aab)) is CLI-only, so SDK builds pass the signing material explicitly.
+
+## Provision and build
+
+The fastest path is one command. It creates a Gradle instance (or reuses the one remembered for your git worktree), syncs the current directory, and runs `assembleDebug` with the project's Gradle wrapper:
+
+```bash
+lim gradle build .
+```
+
+Pick different tasks with `--task`, repeatable for several:
+
+```bash
+lim gradle build . --task :app:assembleRelease
+```
+
+Bare React Native repos usually need nothing: the server finds `android/` on its own. If the Gradle root is nested and auto-discovery is still ambiguous, point at it with `--project-path`:
+
+```bash
+lim gradle build . --project-path android
+```
+
+From the TypeScript SDK, the same flow is explicit: create the instance, get a client, sync, build.
+
+```ts
+import Limrun from '@limrun/api';
+
+const lim = new Limrun({ apiKey: process.env['LIM_API_KEY'] });
+
+const instance = await lim.gradleInstances.create({
+  wait: true,
+  reuseIfExists: true,
+  metadata: { labels: { session: 'ci-build' } },
+});
+
+const gradle = await lim.gradleInstances.createClient({ instance });
+await gradle.sync('.');
+
+const build = gradle.gradlebuild({ tasks: [':app:assembleRelease'] });
+build.stdout.on('data', (line) => console.log(line));
+const { exitCode } = await build;
+```
+
+### React Native and Expo projects
+
+Expo managed-workflow projects have no `android/` directory. The sandbox detects them, installs dependencies, and runs `expo prebuild` before Gradle. Two flags tune that pipeline, and setting either forces it on (an error when no Expo app is detected):
+
+- `--expo-app-dir <path>`: the app directory inside a monorepo.
+- `--abi <abi>`: which Android ABIs to build, repeatable. Without it, Expo-pipeline builds target `x86_64` (what Limrun Android instances run), except release and bundle tasks, which keep the project's own ABI configuration.
+
+```bash
+lim gradle build ./my-monorepo --expo-app-dir apps/mobile
+```
+
+## Build-completion webhooks and detached builds
+
+Pass a webhook when a CI job, agent, or backend needs the terminal result without relying on the live log stream. Limrun calls the endpoint when the build reaches `SUCCEEDED`, `FAILED`, or `CANCELLED`. The CLI and TypeScript SDK accept the same URL and optional authentication headers:
+
+<CodeGroup labels={["CLI","TypeScript"]}>
+```bash
+lim gradle build . \
+  --webhook-url https://ci.example.com/hooks/limrun \
+  --webhook-header Authorization="Bearer $HOOK_SECRET"
+```
+
+```ts
+const build = gradle.gradlebuild({
+  tasks: [':app:assembleRelease'],
+  webhook: {
+    url: 'https://ci.example.com/hooks/limrun',
+    headers: { Authorization: 'Bearer <your-webhook-secret>' },
+  },
+});
+```
+</CodeGroup>
+
+The webhook is sent whether the caller keeps streaming or detaches. Limrun POSTs a JSON payload with the build result and debugging links:
+
+```json
+{
+  "execId": "build-1700000000000000000",
+  "command": "gradlebuild",
+  "status": "SUCCEEDED",
+  "exitCode": 0,
+  "startedAt": "2026-07-29T12:00:00Z",
+  "finishedAt": "2026-07-29T12:02:10Z",
+  "buildDurationMs": 130000,
+  "instanceId": "gradle_usw1_...",
+  "consoleUrl": "https://console.limrun.com/builds/gradle_usw1_...",
+  "logsUrl": "https://..."
+}
+```
+
+`logsUrl` is a time-limited link to the persisted plain-text build log. Read that log for build diagnostics when `status` is `FAILED`. The instance, console, log, timing, and exit-code fields are omitted when they are unavailable.
+
+Webhook delivery follows these rules:
+
+- The URL must use HTTPS on a public DNS host. IP literals and private or cluster-internal targets are rejected when the build request is submitted.
+- Repeat `--webhook-header NAME=VALUE` to send multiple headers. At most 16 are accepted. `Host`, `Content-Length`, `Transfer-Encoding`, and `Connection` cannot be overridden.
+- Any 2xx response counts as delivered. Other responses and connection failures are retried up to two more times.
+- Delivery is best-effort. Exhausting retries does not change the build result.
+- Cancelled builds send a callback too. A new build on the same sandbox cancels the active one.
+
+Add `--detach` when the caller should return as soon as the build is accepted instead of holding the SSE stream open:
+
+```bash
+lim gradle build . \
+  --detach \
+  --inactivity-timeout 3s \
+  --webhook-url https://ci.example.com/hooks/limrun \
+  --webhook-header Authorization="Bearer $HOOK_SECRET"
+```
+
+Once the build is accepted, the CLI prints the instance ID, the console page where progress and logs appear, and the webhook target. Pass `--json` to receive one object with `instanceId`, `execId`, `consoleUrl`, and `webhookUrl` fields.
+
+`--detach` requires `--webhook-url`. `--inactivity-timeout` creates a fresh Gradle instance with the requested lifecycle, so it cannot be combined with `--id`. Active builds count as activity, and the timeout starts expiring only after build and upload work stops.
+
+The TypeScript process can detach after the build request is accepted:
+
+```ts
+const execId = await build.detach();
+```
+
+## Upload the build artifact
+
+Two options for getting the artifact out.
+
+**Upload to Asset Storage.** The artifact lives in Limrun's managed storage and can be referenced by name in later `lim android create --install-asset <name>` calls. See [Asset Storage](/docs/platform/asset-storage).
+
+```bash
+lim gradle build . --upload myapp.apk
+lim android create --install-asset=myapp.apk
+```
+
+From the TypeScript SDK, set the upload on the build call:
+
+```ts
+const build = gradle.gradlebuild({ upload: { assetName: 'myapp.apk' } });
+const { exitCode, signedDownloadUrl } = await build;
+```
+
+The build result includes a signed download URL. Anyone with the URL can download the artifact without a Limrun API key. The signature expires after 15 minutes; if you need it later, re-fetch a fresh URL with `lim asset list --name <asset> --download-url`.
+
+**Upload to your own bucket.** Pass a pre-signed S3, GCS, or R2 URL and the artifact PUTs directly to it from the sandbox, without a round-trip through the machine that called the build:
+
+```bash
+lim gradle build . --signed-upload-url '<presigned-url>'
+```
+
+The SDK equivalent:
+
+```ts
+const build = gradle.gradlebuild({ upload: { signedUploadUrl: '<presigned-url>' } });
+```
+
+## Sign a release AAB
+
+Google Play accepts uploads only when they are signed with the app's registered upload key, the same key every time. Limrun escrows that key for your organization so no keystore file has to live on laptops or in CI secrets.
+
+```bash
+lim gradle build . --sign --upload myapp.aab
+```
+
+On the first `--sign` build of an app, Limrun generates an upload keystore and stores it as the organization's `androidSigningKey` secret, named by the Android application ID. Every later `--sign` build of that app, from any machine, resolves the same key. The build prints which case you are in:
+
+```text
+Signing with the organization's upload key for com.example.app (newly generated).
+Signing with the organization's upload key for com.example.app (existing).
+```
+
+`--sign` makes `bundleRelease` the default task. An explicit `--task` list must contain a bundle task, or the build is rejected before an instance is created.
+
+The application ID is detected from `app.json` (Expo) or the first uncommented `applicationId` in `app/build.gradle(.kts)`. When detection fails or your build flavors use different IDs, name the key explicitly:
+
+```bash
+lim gradle build . --sign --application-id com.example.app
+```
+
+The keystore and its passwords reach the build sandbox for the duration of the build only and never appear in the streamed output. Each sandbox serves a single organization and is destroyed with the instance.
+
+### Bring your own upload key
+
+If Google Play already knows your upload key, pass your keystore instead of `--sign`:
+
+```bash
+lim gradle build . \
+  --keystore ./signing/upload.jks \
+  --keystore-password "$KEYSTORE_PASSWORD" \
+  --key-alias upload \
+  --key-password "$KEY_PASSWORD" \
+  --upload myapp.aab
+```
+
+The passwords can come from the `LIM_KEYSTORE_PASSWORD` and `LIM_KEY_PASSWORD` environment variables instead of the command line.
+
+From the TypeScript SDK, pass the signing material on the build call:
+
+```ts
+import fs from 'node:fs';
+
+const build = gradle.gradlebuild({
+  tasks: ['bundleRelease'],
+  signing: {
+    keystoreBase64: fs.readFileSync('./signing/upload.jks').toString('base64'),
+    keystorePassword: process.env['KEYSTORE_PASSWORD']!,
+    keyAlias: 'upload',
+    keyPassword: process.env['KEY_PASSWORD']!,
+  },
+  upload: { assetName: 'myapp.aab' },
+});
+```
+
+Add `--save-key` to escrow the provided key, so later builds can drop the flags and use plain `--sign`. Escrow never overwrites: if a different key is already stored for the app, `--save-key` fails before any instance is created. This is also the migration path between environments or organizations: fetch the key through the organization secrets API, then `--save-key` it where it is missing.
+
+A successful signed build has already passed the server's signature check on the produced AAB; an unsigned or broken artifact fails the build instead of shipping.
+
+### Troubleshooting signing
+
+| Build output | What it means | Fix |
+|---|---|---|
+| `The organization already has a different upload key escrowed for ...` | `--save-key` found an existing, different key for this application ID. | Builds with `--sign` use the stored key. Drop `--save-key` to sign with your keystore for this build only, or delete the stored secret first if your keystore is the real upload key. |
+| `Cannot determine the Android application ID for signing` | Neither `app.json` nor `app/build.gradle(.kts)` yielded an application ID. | Pass `--application-id <id>`. |
+| `--sign produces a Play-ready signed AAB; include a bundle task` | The explicit `--task` list has no bundle task. | Add `bundleRelease` to `--task`, or omit `--task`. |
+| `signing ... contains an unsupported character` | The password or alias contains characters outside ISO-8859-1, which Gradle's properties file cannot carry. | Re-create the key with a Latin-1 password. |
+| `the built AAB carries no signature` | Gradle produced a bundle without applying the injected signing config. | Retry the build; contact support if it persists. |
+
+## Publish to Google Play
+
+Publishing runs in the console, in your browser, with your own Google account. Limrun never stores a Google credential: the browser mints a short-lived access token and the publish uses it for that one upload.
+
+Prerequisites:
+
+- The app listing exists in [Play Console](https://play.google.com/console). Google's API cannot create listings.
+- Your Google account has release permission for the app in Play Console.
+- The AAB is in Asset Storage, signed with the app's upload key (a `--sign --upload` build).
+- The AAB's `versionCode` has never been uploaded to this app before. Pass `--auto-version-code` on the build (with `--upload-to-playstore`) and the server resolves the next free code from Google Play and stamps it before building: into `expo.android.versionCode` for Expo projects, or the single literal `versionCode` in the conventional `app/` module build script for native projects (computed or flavor-split versionCodes are rejected at request time). Without it, bump `versionCode` in `app/build.gradle(.kts)` (Expo: `expo.android.versionCode` in `app.json`) before the build.
+
+Steps:
+
+1. Open [console.limrun.com](https://console.limrun.com) and select your organization.
+2. On the **Secrets** page, click **Connect Play Console** and sign in with the Google account that has release access. The session lives in this browser only; nothing is stored.
+3. Go to the **Registry** page. Assets ending in `.aab` carry a **Publish to Play Store** action.
+4. Click it, enter the **Package name** (the app's application ID), and publish. The upload targets the internal testing track and the dialog reports Google's verdict.
+
+If a publish reports that the version code already exists, it may already be live from an earlier attempt; check Play Console before bumping the versionCode and publishing again (builds with `--auto-version-code` avoid this class of failure entirely). Google Play registers your upload key from the app's first upload and requires the same key on every upload after that, which is exactly what the escrowed `--sign` key guarantees.
+
+## Full example: a signed AAB on every push
+
+A complete CI job that builds and signs, with no Android SDK, no JDK, and no keystore anywhere in the pipeline:
+
+```yaml title=".github/workflows/android-release.yml"
+name: Android release build
+on: { push: { branches: [main] } }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --global lim
+      - name: Build signed AAB
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+        run: lim gradle build . --sign --upload myapp-${{ github.sha }}.aab
+```
+
+What this workflow does, step by step:
+
+1. Checks out the code on a plain Ubuntu runner.
+2. Installs the Limrun CLI globally with `npm`.
+3. Runs a signed release build on a Limrun Gradle sandbox and uploads the AAB to Asset Storage under a name tied to the commit. The CLI prints the signed download URL to the runner log.
+
+The only secret in the pipeline is `LIM_API_KEY`. The upload keystore never exists on the runner, so there is nothing to rotate when a CI provider has a bad day.
+
+## Next steps
+
+<Cards>
+  <Card title="Run an Android Emulator" icon="smartphone" href="/docs/android/run-emulator">
+    Install the APK the build just uploaded and drive the device: taps, screenshots, recordings.
+  </Card>
+  <Card title="Asset Storage" icon="package" href="/docs/platform/asset-storage">
+    Manage uploaded build artifacts and pre-install apps at boot.
+  </Card>
+  <Card title="SDK Reference" icon="book-open" href="/docs/reference/sdk">
+    Authentication, errors, and the resources available from each SDK.
+  </Card>
+</Cards>

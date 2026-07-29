@@ -1,0 +1,323 @@
+---
+title: "Publish to App Store & Play Store"
+description: "Add App Store and Google Play publishing to your platform, including account connection, signing, remote builds, uploads, and completion tracking."
+order: 3
+icon: "rocket"
+---
+# Publish to App Store & Play Store
+
+## Why?
+
+Connecting the developer account once gives your platform the signing material and store authorization needed to support the app after the code is written.
+
+With those pieces, your platform can:
+
+- **Sign release builds.** Produce App Store IPAs with an Apple distribution certificate and provisioning profile, and Play-ready AABs with the app's Android upload key.
+- **Publish new builds.** Upload iOS builds to App Store Connect and TestFlight, or publish Android builds to a Google Play track.
+- **Install on an iPhone over WebUSB.** Create a development certificate and device-bound development profile, pair the phone in the browser, and install the signed IPA over USB.
+- **Install from a QR code.** Register the iPhone, create a device-bound ad-hoc profile, and serve an over-the-air installation link the user can open by scanning a QR code.
+- **Read sales trends and app statistics.** Use the store reporting APIs available to the connected account to collect sales, downloads, conversion, usage, and quality signals.
+- **Manage the store listing.** Upload metadata, localizations, screenshots, release notes, and other App Store or Google Play product-page fields exposed by the store APIs.
+- **Run an AI improvement loop.** Give an agent controlled access to store reports, listing metadata, app source, and the build and publish actions. It can correlate changes with sales and conversion, update the store page or app, publish the next version, measure the result, and repeat with your review gates.
+
+<Note>
+  The runnable reference is [`typescript-sdk/examples/publish-to-stores`](https://github.com/limrun-inc/typescript-sdk/tree/main/examples/publish-to-stores). It includes a React frontend, an Express backend, both store flows, and an authenticated build-completion webhook.
+</Note>
+
+## What your platform needs
+
+Before implementing either store flow, prepare:
+
+- A Limrun API key in your backend's `LIM_API_KEY` environment variable.
+- The `lim` CLI installed on the backend worker that starts builds.
+- App source available to that worker at a local project path.
+- A durable secret store for certificates, API keys, provisioning profiles, and Android upload keystores.
+- A public HTTPS webhook endpoint for build completion.
+- A browser frontend for the Apple and Google account connection flows.
+
+The example uses JSON files for secrets and an in-memory map for publish status. Those two parts are demo implementations. Replace them with your secret manager and database.
+
+## 1. Build the shared backend
+
+Both stores use the same backend responsibilities.
+
+<Steps>
+  <Step title="Keep the Limrun API key on the backend">
+    Create the Limrun client only in trusted server code. The frontend never needs the organization API key.
+
+    ```ts
+    import Limrun from '@limrun/api';
+
+    const limrun = new Limrun({
+      apiKey: process.env.LIM_API_KEY,
+    });
+    ```
+
+    For Apple connection, mint a short-lived token scoped to the Apple relay and return that token to the browser:
+
+    ```ts
+    const session = await limrun.scopedTokens.create({
+      scopes: ['applerelay:*:connect'],
+    });
+
+    res.json({
+      token: session.token,
+      expiresAt: session.expiresAt,
+      registryUrl: 'https://registry.limrun.com',
+    });
+    ```
+
+    See the example's [`POST /session` route](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/index.ts).
+  </Step>
+
+  <Step title="Implement signing-secret storage">
+    `@limrun/apple-auth` and `@limrun/play-auth` both accept the same `SigningSecretStore` shape:
+
+    ```ts
+    interface SigningSecretStore {
+      put(type: string, name: string, data: Record<string, string>): Promise<SigningSecret>;
+      get(type: string, name: string): Promise<SigningSecret | undefined>;
+      list(): Promise<SigningSecretMetadata[]>;
+      delete(type: string, name: string): Promise<void>;
+    }
+    ```
+
+    Back this interface with your existing database, KMS, or secret manager. Keep the names stable because later publish requests use them to resolve credentials:
+
+    - Apple distribution certificate: `<teamId>/DISTRIBUTION`
+    - App Store Connect API key: `<teamId>/APP_STORE_CONNECT_API_KEY`
+    - Apple provisioning profiles: metadata includes the team ID and bundle ID
+    - Android upload keystore: `<packageName>/UPLOAD`
+
+    The example's [`SigningSecretStore` adapter](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/frontend/src/lib/secret-store.ts) and [file-backed implementation](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/secret-store.ts) show the complete request and response shapes.
+  </Step>
+
+  <Step title="Expose an authenticated completion webhook">
+    A detached build finishes after the initial CLI process exits. Give each publish a random token and pass it as a custom webhook header:
+
+    ```ts
+    const publishId = crypto.randomUUID();
+    const webhookToken = crypto.randomBytes(32).toString('hex');
+
+    const callbackArgs = [
+      '--webhook-url', publicWebhookUrl,
+      '--webhook-header', `X-Publish-Token=${webhookToken}`,
+      '--detach',
+      '--json',
+    ];
+    ```
+
+    Store the token with the publish record. When Limrun calls the webhook, compare `X-Publish-Token`, persist the payload, and mark the publish as succeeded or failed. The callback URL must be publicly reachable over HTTPS. Do not expose your secret-store or token-minting routes with it.
+
+    The example runs the [webhook receiver](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/index.ts) on a separate port and performs [constant-time token matching](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/publish.ts).
+  </Step>
+</Steps>
+
+## 2. Add App Store connection
+
+The user needs an Apple Developer Program account with permission to create App Store Connect API keys. The Apple flow prepares four resources: a distribution certificate, an App Store provisioning profile, an App Store Connect app record, and an App Store Connect API key.
+
+<Steps>
+  <Step title="Sign the user in with Apple">
+    In the browser, initialize `useAppleIDLogin` with the scoped token returned by your backend:
+
+    ```tsx
+    import { useAppleIDLogin } from '@limrun/apple-auth/react';
+
+    const appleLogin = useAppleIDLogin({
+      registryApiUrl: session.registryUrl,
+      token: session.token,
+    });
+
+    const result = await appleLogin.startLogin({
+      accountName,
+      password,
+    });
+    ```
+
+    If `result.requiresTwoFactor` is true, collect the verification code and call `appleLogin.submitTwoFactorCode(code)`. After authentication, call `finalize()` and list the account's teams with `listAppleTeams`.
+
+    The example implements this state machine in [`useConnect.ts`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/frontend/src/hooks/useConnect.ts).
+  </Step>
+
+  <Step title="Select or register the bundle ID">
+    List the selected team's explicit bundle IDs with `listAppleBundleIDs`. Let the user select an existing ID or register one with `createAppleBundleID`.
+
+    Ask for the app's display name at the same time. It is required when you create the App Store Connect app record.
+  </Step>
+
+  <Step title="Prepare and store Apple credentials">
+    Run these actions after the user confirms the team and bundle ID:
+
+    1. Call `ensureAppleCertificateSecret` with `certificateKind: 'distribution'`.
+    2. Find or create an `appstore` provisioning profile that references the bundle ID and distribution certificate.
+    3. Save the downloaded profile with `saveAppleProfileSecret`.
+    4. Switch to the team's App Store Connect provider when the team has a provider ID.
+    5. Call `ensureAppStoreConnectApp` for the bundle ID and app name.
+    6. Call `ensureAppStoreConnectApiKeySecret` and save the result.
+
+    Reuse valid stored credentials when the user reconnects. The example's [Connect checklist](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/frontend/src/hooks/useConnect.ts) implements creation and reuse for every resource.
+  </Step>
+</Steps>
+
+## 3. Publish the iOS app
+
+When the user clicks publish, send the project path, team ID, bundle ID, optional scheme, and webhook URL to your backend.
+
+The backend then:
+
+1. Loads the distribution certificate, App Store profile, and App Store Connect API key from the secret store.
+2. Writes their bytes to a temporary directory with owner-only permissions.
+3. Starts a release build for the `iphoneos` SDK.
+4. Passes the signing material and App Store Connect key to the CLI.
+5. Requests automatic build-number selection, upload to App Store Connect, a completion webhook, and detached JSON output.
+6. Deletes the temporary files after the CLI exits.
+
+The resulting CLI invocation has this shape:
+
+```bash
+lim xcode build <project-path> \
+  --sdk iphoneos \
+  --configuration Release \
+  --certificate-p12 <certificate.p12> \
+  --certificate-password <password> \
+  --provisioning-profile <profile.mobileprovision> \
+  --upload-to-appstore \
+  --auto-build-number \
+  --asc-key-id <key-id> \
+  --asc-key <AuthKey.p8> \
+  --webhook-url <public-https-url> \
+  --webhook-header "X-Publish-Token=<random-token>" \
+  --inactivity-timeout 3s \
+  --detach \
+  --json
+```
+
+Add `--asc-issuer-id <issuer-id>` when the stored key has an issuer ID, and `--scheme <scheme>` when the project needs one. Spawn the CLI with an argument array instead of constructing a shell command.
+
+The complete implementation is in [`startPublish`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/publish.ts). A successful upload appears in App Store Connect and TestFlight. The user still attaches the processed build to an App Store version and submits that version for review in App Store Connect.
+
+## 4. Add Google Play connection
+
+Google requires the Play Console app listing to exist before an API client can publish to it. Ask the user to create the listing with the exact Android package name and grant their Google account release permission.
+
+<Steps>
+  <Step title="Configure Google browser sign-in">
+    Create a Google OAuth Web application client whose authorized JavaScript origins include your frontend origin. Pass its client ID to `requestGoogleAccessToken`:
+
+    ```ts
+    import { requestGoogleAccessToken } from '@limrun/play-auth';
+
+    const accessToken = await requestGoogleAccessToken({
+      clientId: GOOGLE_OAUTH_CLIENT_ID,
+    });
+    ```
+
+    Keep the access token in browser memory. Send it to your backend only with a publish request, and ask the user to sign in again after it expires.
+  </Step>
+
+  <Step title="Resolve and verify the package name">
+    Read `expo.android.package` from Expo projects or `applicationId` from `app/build.gradle` and `app/build.gradle.kts`. Let the user correct the detected value.
+
+    Use the Google token to verify that the listing exists and that the account can access it. If the listing is missing, link the user to Play Console and retry after they create it. The example contains both [package detection](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/publish-android.ts) and the [browser connection state](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/frontend/src/hooks/usePlay.ts).
+  </Step>
+
+  <Step title="Store the Play upload keystore">
+    First check your secret store for `<packageName>/UPLOAD`.
+
+    - For an app that already has an upload key, import that keystore and its alias and passwords.
+    - For a new app, call `generateAndroidUploadKeystore(packageName)` and store the returned values.
+    - Never replace an existing upload keystore without an explicit key-reset process. Future uploads signed by a different key will be rejected.
+
+    The stored data contains `keystoreBase64`, `keystorePassword`, `keyAlias`, and `keyPassword`. The example's [`usePlay` hook](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/frontend/src/hooks/usePlay.ts) checks again immediately before storing so concurrent requests cannot overwrite a key.
+  </Step>
+</Steps>
+
+## 5. Publish the Android app
+
+Send the project path, package name, Google access token, and webhook URL to your backend. The reference flow publishes to the internal track.
+
+The backend then:
+
+1. Loads `<packageName>/UPLOAD` from the secret store.
+2. Writes the keystore to a temporary owner-only file.
+3. Passes keystore and key passwords through environment variables.
+4. Starts a release AAB build with automatic `versionCode` selection.
+5. Publishes the AAB to Google Play's internal track.
+6. Deletes the temporary file after the CLI exits.
+
+The invocation has this shape:
+
+```bash
+LIM_KEYSTORE_PASSWORD=<keystore-password> \
+LIM_KEY_PASSWORD=<key-password> \
+LIM_PLAYSTORE_ACCESS_TOKEN=<google-access-token> \
+lim gradle build <project-path> \
+  --keystore <upload-keystore> \
+  --key-alias <alias> \
+  --upload-to-playstore \
+  --playstore-package <package-name> \
+  --playstore-track internal \
+  --auto-version-code \
+  --webhook-url <public-https-url> \
+  --webhook-header "X-Publish-Token=<random-token>" \
+  --inactivity-timeout 3s \
+  --detach \
+  --json
+```
+
+The reference UI supports only the `internal` track. Its backend accepts another track value, but it does not expose the release-status handling required for a complete production-track flow. Add that handling before offering other tracks in your product. The full internal-track implementation is in [`startAndroidPublish`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/publish-android.ts).
+
+## 6. Return progress to the frontend
+
+The initial publish endpoint should return as soon as the detached build is accepted:
+
+```json
+{
+  "publishId": "01k..."
+}
+```
+
+Store at least `publishId`, state, start time, webhook token, and the Limrun Console URL returned by the CLI's detached JSON output. Your frontend can poll a status endpoint or subscribe to your own event stream while the build runs.
+
+When the authenticated webhook arrives:
+
+1. Match it to the publish using the webhook token.
+2. Store the payload and its receipt time.
+3. Treat `status: "SUCCEEDED"` as success and other terminal statuses as failure.
+4. Surface `consoleUrl` and `logsUrl` when present. Use the persisted log for failure diagnostics.
+
+The example's [`usePublish`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/frontend/src/hooks/usePublish.ts) and [`usePlay`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/frontend/src/hooks/usePlay.ts) poll every three seconds. Its backend map is process-local, so restarting the example loses active publish records. Persist these records in your platform.
+
+## Production checklist
+
+- Keep `LIM_API_KEY` and signing secrets out of the browser.
+- Give the browser only a short-lived Apple relay token.
+- Keep Google access tokens in memory and avoid logging them.
+- Encrypt stored certificates, private keys, profiles, keystores, and passwords.
+- Do not expose secret-store endpoints to the public internet.
+- Authenticate and correlate every completion webhook.
+- Persist publish state before starting the detached build.
+- Delete materialized credential files after the CLI exits.
+- Preserve existing Android upload keys and Apple credentials across publishes.
+- Show users the Limrun Console and persisted log links for failed builds.
+
+## Run the reference implementation
+
+The example requires Node.js and Yarn 1. Clone the [TypeScript SDK repository](https://github.com/limrun-inc/typescript-sdk), then install and start both halves:
+
+```bash
+export LIM_API_KEY="lim_..."
+
+yarn --cwd examples/publish-to-stores/backend install
+yarn --cwd examples/publish-to-stores/frontend install
+yarn --cwd examples/publish-to-stores/backend dev
+```
+
+In another terminal:
+
+```bash
+yarn --cwd examples/publish-to-stores/frontend dev
+```
+
+Run a public HTTPS tunnel to the webhook receiver on port `3001`, paste that URL into the UI, and open `http://localhost:5173`. The [example README](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/README.md) covers its local ports, webhook behavior, secret-directory sharing, and both store tabs.
