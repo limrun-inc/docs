@@ -1,12 +1,24 @@
 ---
-title: "Publish to app stores"
+title: "Publish to App Store & Play Store"
 description: "Add App Store and Google Play publishing to your platform, including account connection, signing, remote builds, uploads, and completion tracking."
 order: 3
 icon: "rocket"
 ---
-# Publish to app stores
+# Publish to App Store & Play Store
 
-Let your users connect their Apple or Google account once, then build and publish iOS and Android apps from your platform. Limrun runs the release build and store upload. Your platform owns the account UI, signing-secret custody, project source, and publish status.
+## Why?
+
+Connecting the developer account once gives your platform the signing material and store authorization needed to support the app after the code is written.
+
+With those pieces, your platform can:
+
+- **Sign release builds.** Produce App Store IPAs with an Apple distribution certificate and provisioning profile, and Play-ready AABs with the app's Android upload key.
+- **Publish new builds.** Upload iOS builds to App Store Connect and TestFlight, or publish Android builds to a Google Play track.
+- **Install on an iPhone over WebUSB.** Create a development certificate and device-bound development profile, pair the phone in the browser, and install the signed IPA over USB.
+- **Install from a QR code.** Register the iPhone, create a device-bound ad-hoc profile, and serve an over-the-air installation link the user can open by scanning a QR code.
+- **Read sales trends and app statistics.** Use the store reporting APIs available to the connected account to collect sales, downloads, conversion, usage, and quality signals.
+- **Manage the store listing.** Upload metadata, localizations, screenshots, release notes, and other App Store or Google Play product-page fields exposed by the store APIs.
+- **Run an AI improvement loop.** Give an agent controlled access to store reports, listing metadata, app source, and the build and publish actions. It can correlate changes with sales and conversion, update the store page or app, publish the next version, measure the result, and repeat with your review gates.
 
 <Note>
   The runnable reference is [`typescript-sdk/examples/publish-to-stores`](https://github.com/limrun-inc/typescript-sdk/tree/main/examples/publish-to-stores). It includes a React frontend, an Express backend, both store flows, and an authenticated build-completion webhook.
@@ -103,7 +115,7 @@ Both stores use the same backend responsibilities.
 
 ## 2. Add App Store connection
 
-The Apple flow prepares four resources: a distribution certificate, an App Store provisioning profile, an App Store Connect app record, and an App Store Connect API key.
+The user needs an Apple Developer Program account with permission to create App Store Connect API keys. The Apple flow prepares four resources: a distribution certificate, an App Store provisioning profile, an App Store Connect app record, and an App Store Connect API key.
 
 <Steps>
   <Step title="Sign the user in with Apple">
@@ -176,6 +188,7 @@ lim xcode build <project-path> \
   --asc-key <AuthKey.p8> \
   --webhook-url <public-https-url> \
   --webhook-header "X-Publish-Token=<random-token>" \
+  --inactivity-timeout 3s \
   --detach \
   --json
 ```
@@ -222,7 +235,7 @@ Google requires the Play Console app listing to exist before an API client can p
 
 ## 5. Publish the Android app
 
-Send the project path, package name, Google access token, target track, and webhook URL to your backend.
+Send the project path, package name, Google access token, and webhook URL to your backend. The reference flow publishes to the internal track.
 
 The backend then:
 
@@ -230,7 +243,7 @@ The backend then:
 2. Writes the keystore to a temporary owner-only file.
 3. Passes keystore and key passwords through environment variables.
 4. Starts a release AAB build with automatic `versionCode` selection.
-5. Publishes the AAB to the requested Play track.
+5. Publishes the AAB to Google Play's internal track.
 6. Deletes the temporary file after the CLI exits.
 
 The invocation has this shape:
@@ -248,11 +261,12 @@ lim gradle build <project-path> \
   --auto-version-code \
   --webhook-url <public-https-url> \
   --webhook-header "X-Publish-Token=<random-token>" \
+  --inactivity-timeout 3s \
   --detach \
   --json
 ```
 
-Use `internal` as the initial track unless your product gives users a track selector. The full backend flow is in [`startAndroidPublish`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/publish-android.ts).
+The reference UI supports only the `internal` track. Its backend accepts another track value, but it does not expose the release-status handling required for a complete production-track flow. Add that handling before offering other tracks in your product. The full internal-track implementation is in [`startAndroidPublish`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/publish-android.ts).
 
 ## 6. Return progress to the frontend
 
@@ -271,7 +285,7 @@ When the authenticated webhook arrives:
 1. Match it to the publish using the webhook token.
 2. Store the payload and its receipt time.
 3. Treat `status: "SUCCEEDED"` as success and other terminal statuses as failure.
-4. Surface `error`, `consoleUrl`, and `logsUrl` when present.
+4. Surface `consoleUrl` and `logsUrl` when present. Use the persisted log for failure diagnostics.
 
 The example's [`usePublish`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/frontend/src/hooks/usePublish.ts) and [`usePlay`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/frontend/src/hooks/usePlay.ts) poll every three seconds. Its backend map is process-local, so restarting the example loses active publish records. Persist these records in your platform.
 
@@ -290,7 +304,7 @@ The example's [`usePublish`](https://github.com/limrun-inc/typescript-sdk/blob/m
 
 ## Run the reference implementation
 
-Clone the [TypeScript SDK repository](https://github.com/limrun-inc/typescript-sdk), then install and start both halves of the example:
+The example requires Node.js and Yarn 1. Clone the [TypeScript SDK repository](https://github.com/limrun-inc/typescript-sdk), then install and start both halves:
 
 ```bash
 export LIM_API_KEY="lim_..."
