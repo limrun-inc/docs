@@ -60,14 +60,26 @@ export LIM_API_KEY=lim_...
 
 ## Credentials
 
-Two credentials show up in most workflows. Mixing them up is the most common integration bug.
+Three credentials show up in SDK integrations.
 
 | Credential | Where you get it | Use for |
 |---|---|---|
 | **Org API key** (`lim_...`) | [console.limrun.com](https://console.limrun.com) → Settings → API Keys; `lim login`; or `LIM_API_KEY` | REST control plane (`api.limrun.com`), including create/list/delete. Also **MCP**: `Authorization: Bearer <org API key>` on `instance.status.mcpUrl`. |
 | **Per-instance token** (`instance.status.token`) | Returned in `status` when the instance is `ready` | `apiUrl` device daemon, `endpointWebSocketUrl` (append `?token=`), `adbWebSocketUrl`, `sandbox.xcode.url`, and SDK helpers like `Ios.createInstanceClient`. Embedded in `signedStreamUrl` for browser streaming. |
+| **Scoped registry token** (`lim_st_...`) | Minted by your backend with `scopedTokens.create` | Browser connections to the device-install and Apple relay endpoints. Its scopes limit which endpoints and assets the browser can use. |
 
 The org API key must never ship to a browser or end-user client. For embedded simulators, your backend holds the API key and passes only `endpointWebSocketUrl` + `status.token` to `<RemoteControl />`. See [Embed the simulator](/docs/platform/embed-simulator#authentication).
+
+For device installation or Apple account flows in a browser, mint a scoped registry token on your backend:
+
+```ts
+const session = await lim.scopedTokens.create({
+  scopes: ['device:*:install', `asset:${assetId}:read`],
+  ttlSeconds: 900,
+});
+```
+
+The token inherits the API key's organization. `ttlSeconds` defaults to 3600 and accepts values from 1 through 14400. Scoped tokens cannot be revoked, so hand them to the browser only when it starts a registry session.
 
 ## Install snippets
 
@@ -238,6 +250,7 @@ curl -X POST "https://api.limrun.com/v1/ios_instances?wait=true&reuseIfExists=tr
     "spec": {
       "model": "iphone",
       "region": "us-west",
+      "forceBundleId": "com.example.myapp",
       "sandbox": { "xcode": { "enabled": true } }
     }
   }'
@@ -251,6 +264,7 @@ const instance = await lim.iosInstances.create({
   spec: {
     model: 'iphone',
     region: 'us-west',
+    forceBundleId: 'com.example.myapp',
     sandbox: { xcode: { enabled: true } },
   },
 });
@@ -292,9 +306,12 @@ instance, err := client.IosInstances.New(ctx, limrun.IosInstanceNewParams{
 ```bash
 lim ios create --reuse-if-exists --xcode \
   --model iphone --region us-west \
+  --force-bundle-id com.example.myapp \
   --label session=demo
 ```
 </CodeGroup>
+
+`forceBundleId` does not launch the app when the instance starts. After the app first enters the foreground, Limrun brings it back whenever it is closed or backgrounded.
 
 ### List iOS instances
 

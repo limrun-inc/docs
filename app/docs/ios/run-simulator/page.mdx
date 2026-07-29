@@ -222,6 +222,7 @@ Or from the CLI:
 
 ```bash
 lim ios scroll down --amount 300
+lim ios scroll up --amount 300 --momentum 0.4
 ```
 
 ## Open URLs and deep links
@@ -303,6 +304,13 @@ const apps = await client.listApps();
 
 await client.launchApp('com.example.MyApp');
 await client.launchApp('com.example.MyApp', 'RelaunchIfRunning');
+await client.launchApp('com.example.MyApp', {
+  mode: 'RelaunchIfRunning',
+  onExit: async (logs) => {
+    console.log('App exited. Last lines from this launch:');
+    for (const line of logs) console.log(line);
+  },
+});
 await client.terminateApp('com.example.MyApp');
 
 // Install from a URL (md5 enables server-side caching)
@@ -327,7 +335,9 @@ result, err := client.InstallApp(ctx, "https://...build.zip", &iosws.AppInstalla
 
 </CodeGroup>
 
-Or from the CLI:
+In TypeScript, use `onExit` when your runner needs to react to a crash or termination. The callback receives the stdout and stderr lines that limulator recorded for that launch.
+
+Or from the CLI. `lim ios launch-app` streams the app's logs and exits when the app exits; pass `--detach` to return right after the launch instead, for example in scripts:
 
 ```bash
 lim ios list-apps
@@ -608,6 +618,7 @@ const instance = await lim.iosInstances.create({
     region: 'us-west',
     inactivityTimeout: '10m',           // '1m' | '10m' | '3h' | ...
     hardTimeout: '0',                   // '0' = no hard cap
+    forceBundleId: 'com.example.myapp',
     clues: [{ kind: 'ClientIP', clientIp: '203.0.113.42' }],
     initialAssets: [
       { kind: 'App', source: 'AssetName', assetName: 'my-app-build.zip', launchMode: 'ForegroundIfRunning' },
@@ -665,6 +676,10 @@ instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
 
 </CodeGroup>
 
+For iOS app assets, `launchMode` is the switch that launches the app after installation. Omit it when you only want the app installed before the instance becomes ready. Set it to `ForegroundIfRunning` or `RelaunchIfRunning` when the app should open during provisioning.
+
+`forceBundleId` does not launch the app during provisioning. After the app first enters the foreground, Limrun brings it back whenever it is closed or backgrounded.
+
 Or from the CLI:
 
 ```bash
@@ -672,6 +687,7 @@ lim ios create --reuse-if-exists \
   --model iphone \
   --region us-west \
   --inactivity-timeout 10m \
+  --force-bundle-id com.example.myapp \
   --label app=my-app --label session=demo \
   --install-asset my-app-build.zip \
   --xcode
@@ -685,6 +701,7 @@ lim ios create --reuse-if-exists \
 | `region` | string | Pin region (e.g. `us-west`). Otherwise scheduled by clues + availability. |
 | `inactivityTimeout` | duration string | `1m`, `10m`, `3h`. Default comes from your org settings. Passing `0` is equivalent to omitting it. |
 | `hardTimeout` | duration string | Forced termination. Default `0` = no hard cap. |
+| `forceBundleId` | string | After this app first enters the foreground, bring it back whenever it is closed or backgrounded. |
 | `clues` | array | Scheduling hints. `{ kind: 'ClientIP', clientIp }` picks a region close to the end user. |
 | `initialAssets` | array | Apps or keychain state to apply at boot. See [Asset Storage](/docs/platform/asset-storage). |
 | `sandbox.xcode.enabled` | boolean | Attach an Xcode build sandbox. See [Build with remote Xcode](/docs/ios/build-with-xcode). |

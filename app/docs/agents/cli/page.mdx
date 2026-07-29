@@ -84,6 +84,7 @@ The output includes the instance ID, the **Signed Stream URL**, and the Xcode sa
 | `--hard-timeout 3h` | Force-delete after this much wall time. `0` (default) means no cap. |
 | `--install ./build.app` | Local app to upload and install at boot. Repeatable. |
 | `--install-asset <name>` | Pre-installed asset from Asset Storage. Repeatable. |
+| `--force-bundle-id com.example.app` | After this app first enters the foreground, bring it back whenever it is closed or backgrounded. Does not launch it at startup. |
 | `--model iphone\|ipad\|watch` | Device model. Defaults to `iphone`. |
 | `--rm` | Delete the instance when the CLI process exits. Handy for one-shot runs. |
 
@@ -112,12 +113,16 @@ lim xcode build . --workspace MyApp.xcworkspace --scheme MyApp
 | `--scheme MyApp` | Xcode scheme name. |
 | `--workspace path.xcworkspace` | Use a workspace file. |
 | `--project path.xcodeproj` | Use a project file (alternative to `--workspace`). |
+| `--xcodegen-spec path` `--xcodegen-project dir` `--xcodegen-project-root dir` | Pin XcodeGen inputs when the spec isn't a root-level `project.yml`. They mirror `xcodegen generate` flags, with paths relative to the synced root. Passing any of them forces regeneration. |
 | `--sdk iphonesimulator\|iphoneos\|watchsimulator\|watchos` | Target SDK. |
 | `--upload <asset_name>` | Save the build artifact to Asset Storage under this name. Used for preview links. |
 | `--signed-upload-url <url>` | Upload to your own pre-signed URL (S3, GCS, etc). |
 | `--certificate-p12 path.p12` `--certificate-password ...` `--provisioning-profile path.mobileprovision` | Sign for a real-device build. |
-| `--upload-to-testflight` `--asc-key-id ...` `--asc-issuer-id ...` `--asc-key path.p8` | Upload the signed IPA to TestFlight after the build. Requires the signing flags. Omit `--asc-issuer-id` for individual API keys. |
-| `--asc-wait-timeout N` | Seconds to watch App Store Connect's processing verdict (default 120, 0 skips, max 1800). |
+| `--upload-to-appstore` `--asc-key-id ...` `--asc-issuer-id ...` `--asc-key path.p8` | Upload the signed IPA to App Store Connect after the build, making it available for TestFlight or App Store distribution. Requires the signing flags. Omit `--asc-issuer-id` for individual API keys. |
+| `--asc-wait-timeout N` | Seconds to watch App Store Connect's processing verdict (default 0: return once the upload commits, max 1800). |
+| `--webhook-url URL` `--webhook-header NAME=VALUE` | POST the terminal build result and persisted-log URL to an HTTPS callback. Repeat the header flag as needed. |
+| `--detach` | Return once limbuild accepts the build instead of streaming until completion. Requires `--webhook-url`. |
+| `--inactivity-timeout 3s` | Create a fresh instance for this build and reap it shortly after its last activity. Cannot be combined with `--id`. |
 | `--build-setting KEY=VALUE` | Pass an allowlisted build setting (any `APP_CONFIG_*` key or `SWIFT_ACTIVE_COMPILATION_CONDITIONS`). Repeatable. |
 | `--additional-file local=remote` | Sync an extra file (like `~/.netrc`) into the sandbox on every build. Repeatable. |
 | `--ignore 'regex'` | Skip paths during sync. Repeatable. |
@@ -167,6 +172,7 @@ Text, keys, scrolling, deep links:
 lim ios type "hello world" --enter
 lim ios press-key enter --modifier shift
 lim ios scroll down --amount 300
+lim ios scroll up --amount 300 --momentum 0.4
 lim ios open-url "https://apple.com"
 ```
 
