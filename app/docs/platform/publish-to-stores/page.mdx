@@ -30,9 +30,11 @@ Before implementing either store flow, prepare:
 
 - A Limrun API key in your backend's `LIM_API_KEY` environment variable.
 - The `lim` CLI installed on the backend worker that starts builds.
+  - Alternatively, you can use the clients in TypeScript SDK directly to sync and trigger builds.
 - App source available to that worker at a local project path.
 - A durable secret store for certificates, API keys, provisioning profiles, and Android upload keystores.
 - A public HTTPS webhook endpoint for build completion.
+  - You can also follow the logs in realtime or check periodically after triggering it once.
 - A browser frontend for the Apple and Google account connection flows.
 
 The example uses JSON files for secrets and an in-memory map for publish status. Those two parts are demo implementations. Replace them with your secret manager and database.
