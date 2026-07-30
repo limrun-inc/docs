@@ -472,7 +472,7 @@ const build = xcode.xcodebuild(
     signing: {
       certificateP12Base64: fs.readFileSync('./dist.p12').toString('base64'),
       certificatePassword: process.env['P12_PASSWORD'],
-      provisioningProfileBase64: fs.readFileSync('./MyApp.mobileprovision').toString('base64'),
+      provisioningProfilesBase64: [fs.readFileSync('./MyApp.mobileprovision').toString('base64')],
     },
     upload: { assetName: 'my-app-pr-42.ipa' },
   },
@@ -484,6 +484,45 @@ const { exitCode, signedDownloadUrl } = await build;
 </CodeGroup>
 
 Limrun verifies the signed app with Apple's code-signing verifier before uploading it. A signature that Apple's tooling would reject fails the build with a clear error instead of producing a broken IPA, so a signed build that succeeds has already passed Apple's verification.
+
+### Apps with extensions or a watch app
+
+App Store signing requires a distinct provisioning profile for every bundle the app embeds: the app itself plus each app extension (a WidgetKit widget, share sheet, intents extension) and watch app, all issued for the same distribution certificate. Repeat `--provisioning-profile` (or pass `provisioningProfilesBase64` in the SDK) with one profile per bundle. Each profile is matched to its bundle by the `application-identifier` it carries, so the order doesn't matter, but every profile must name an explicit (non-wildcard) bundle id.
+
+<CodeGroup labels={["CLI","TypeScript"]}>
+```bash
+lim xcode build . \
+  --sdk iphoneos \
+  --scheme MyApp \
+  --certificate-p12 ./signing/dist.p12 \
+  --certificate-password "$P12_PASSWORD" \
+  --provisioning-profile ./signing/MyApp.mobileprovision \
+  --provisioning-profile ./signing/MyAppWidgets.mobileprovision \
+  --upload my-app-pr-42.ipa
+```
+
+```ts
+import fs from 'node:fs';
+
+const build = xcode.xcodebuild(
+  { scheme: 'MyApp', sdk: 'iphoneos' },
+  {
+    signing: {
+      certificateP12Base64: fs.readFileSync('./dist.p12').toString('base64'),
+      certificatePassword: process.env['P12_PASSWORD'],
+      provisioningProfilesBase64: [
+        fs.readFileSync('./MyApp.mobileprovision').toString('base64'),
+        fs.readFileSync('./MyAppWidgets.mobileprovision').toString('base64'),
+      ],
+    },
+    upload: { assetName: 'my-app-pr-42.ipa' },
+  },
+);
+```
+
+</CodeGroup>
+
+Before signing, Limrun checks that every embedded bundle in the built app has a matching profile and fails the build with the uncovered bundle id otherwise, so a missing profile surfaces immediately instead of as an App Store validation rejection after upload.
 
 Export your p12 with its certificate chain included, so signing works regardless of which Apple WWDR intermediate issued your certificate. Keychain Access exports include the chain; with OpenSSL, pass the chain via `-certfile`:
 
@@ -500,6 +539,7 @@ The build result includes a signed download URL when you've configured an upload
 | `Unknown issuer hash` | The certificate's issuing CA isn't recognized and the p12 carries no CA chain. | Re-export the p12 with the certificate chain included (see the OpenSSL command above). |
 | `code signature verification failed` | The produced signature failed Apple's verifier. | Retry the build; contact support if it persists. |
 | `MAC verification failed` or other password errors | The certificate password doesn't match the p12. | Check the value you pass as the certificate password. |
+| `signing preflight failed: no provisioning profile covers ...` | An embedded bundle (extension, watch app) has no matching provisioning profile. | Pass one `--provisioning-profile` per bundle id named in the error. |
 
 ## Upload to App Store Connect
 
@@ -528,7 +568,7 @@ const build = xcode.xcodebuild(
     signing: {
       certificateP12Base64: fs.readFileSync('./dist.p12').toString('base64'),
       certificatePassword: process.env['P12_PASSWORD'],
-      provisioningProfileBase64: fs.readFileSync('./MyApp.mobileprovision').toString('base64'),
+      provisioningProfilesBase64: [fs.readFileSync('./MyApp.mobileprovision').toString('base64')],
     },
     appstore: {
       apiKeyId: '2X9R4HXF34',
