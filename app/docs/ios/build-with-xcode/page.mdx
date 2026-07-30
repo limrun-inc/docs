@@ -472,7 +472,7 @@ const build = xcode.xcodebuild(
     signing: {
       certificateP12Base64: fs.readFileSync('./dist.p12').toString('base64'),
       certificatePassword: process.env['P12_PASSWORD'],
-      provisioningProfileBase64: fs.readFileSync('./MyApp.mobileprovision').toString('base64'),
+      provisioningProfilesBase64: [fs.readFileSync('./MyApp.mobileprovision').toString('base64')],
     },
     upload: { assetName: 'my-app-pr-42.ipa' },
   },
@@ -568,7 +568,7 @@ const build = xcode.xcodebuild(
     signing: {
       certificateP12Base64: fs.readFileSync('./dist.p12').toString('base64'),
       certificatePassword: process.env['P12_PASSWORD'],
-      provisioningProfileBase64: fs.readFileSync('./MyApp.mobileprovision').toString('base64'),
+      provisioningProfilesBase64: [fs.readFileSync('./MyApp.mobileprovision').toString('base64')],
     },
     appstore: {
       apiKeyId: '2X9R4HXF34',
