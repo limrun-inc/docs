@@ -41,6 +41,12 @@ lim skills install
 
 The command fetches the latest skills from `limrun-inc/skills`, then prompts for the target agent, skill, and install scope. Keep the catalog defaults unless you are setting up a different workflow.
 
+The CLI sends privacy-safe product events such as skill installation, authentication, and command intent. It does not send command arguments, API keys, hostnames, project paths, repository names, logs, or raw errors. To disable this telemetry:
+
+```bash
+export LIM_DISABLE_TELEMETRY=1
+```
+
 ### 4. Start a coding session
 
 Open the same project in the agent you installed the skill for, then ask for the product change you want. Include that it should build and run the app on Limrun:
