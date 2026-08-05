@@ -485,6 +485,53 @@ const { exitCode, signedDownloadUrl } = await build;
 
 Limrun verifies the signed app with Apple's code-signing verifier before uploading it. A signature that Apple's tooling would reject fails the build with a clear error instead of producing a broken IPA, so a signed build that succeeds has already passed Apple's verification.
 
+### Cloud signing
+
+Cloud signing produces a signed IPA without a p12 or provisioning profile. Xcode authenticates with an App Store Connect team API key, then Apple creates or reuses a cloud-managed certificate and the required profiles during export.
+
+```bash
+lim xcode build . \
+  --sdk iphoneos \
+  --configuration Release \
+  --scheme MyApp \
+  --signing-method release-testing \
+  --team-id VMBY3VYW4U \
+  --asc-key-id 2X9R4HXF34 \
+  --asc-issuer-id "$ASC_ISSUER_ID" \
+  --asc-key ./signing/AuthKey_2X9R4HXF34.p8 \
+  --upload my-app-pr-42.ipa
+```
+
+Choose the method for the IPA you need:
+
+| Method | Use |
+|---|---|
+| `debugging` | Development-signed IPA for devices registered to the team. |
+| `release-testing` | Distribution-signed IPA for registered test devices. |
+| `app-store-connect` | Distribution-signed IPA for App Store Connect. |
+
+Cloud signing requires a team API key, its issuer ID, and a `--team-id` that matches the key's Apple Developer team. For `release-testing` and `app-store-connect`, the key must be an Admin key or have **Access to cloud-managed distribution certificates** enabled in App Store Connect.
+
+The TypeScript SDK accepts the same configuration:
+
+```ts
+import fs from 'node:fs';
+
+const build = xcode.xcodebuild(
+  { scheme: 'MyApp', sdk: 'iphoneos', configuration: 'Release' },
+  {
+    cloudSigning: {
+      method: 'release-testing',
+      teamId: 'VMBY3VYW4U',
+      apiKeyId: '2X9R4HXF34',
+      apiIssuerId: process.env['ASC_ISSUER_ID'],
+      apiPrivateKeyBase64: fs.readFileSync('./AuthKey_2X9R4HXF34.p8').toString('base64'),
+    },
+    upload: { assetName: 'my-app-pr-42.ipa' },
+  },
+);
+```
+
 ### Apps with extensions or a watch app
 
 App Store signing requires a distinct provisioning profile for every bundle the app embeds: the app itself plus each app extension (a WidgetKit widget, share sheet, intents extension) and watch app, all issued for the same distribution certificate. Repeat `--provisioning-profile` (or pass `provisioningProfilesBase64` in the SDK) with one profile per bundle. Each profile is matched to its bundle by the `application-identifier` it carries, so the order doesn't matter, but every profile must name an explicit (non-wildcard) bundle id.
@@ -540,19 +587,22 @@ The build result includes a signed download URL when you've configured an upload
 | `code signature verification failed` | The produced signature failed Apple's verifier. | Retry the build; contact support if it persists. |
 | `MAC verification failed` or other password errors | The certificate password doesn't match the p12. | Check the value you pass as the certificate password. |
 | `signing preflight failed: no provisioning profile covers ...` | An embedded bundle (extension, watch app) has no matching provisioning profile. | Pass one `--provisioning-profile` per bundle id named in the error. |
+| `Cloud signing permission error` | The API key cannot use cloud-managed distribution certificates. | Use an Admin key or enable **Access to cloud-managed distribution certificates** for the key. |
+| `No Account for Team` | `--team-id` does not match the API key's team. | Pass the Apple Developer team ID associated with the API key. |
+| `Failed Registering Bundle Identifier` | The bundle ID cannot be registered to this team, usually because another team owns it. | Use a bundle ID already owned by the team or one that is available to register. |
 
 ## Upload to App Store Connect
 
-A signed build can go straight from the Xcode sandbox to App Store Connect. Pass `--upload-to-appstore` with your App Store Connect API key alongside the signing flags, and the freshly signed IPA becomes available for TestFlight or App Store distribution with no downloading, Transporter, or separate upload step.
+A cloud-signed build can use the same API key for signing and upload. Use the `app-store-connect` method with `--upload-to-appstore`:
 
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim xcode build . \
   --sdk iphoneos \
+  --configuration Release \
   --scheme MyApp \
-  --certificate-p12 ./signing/dist.p12 \
-  --certificate-password "$P12_PASSWORD" \
-  --provisioning-profile ./signing/MyApp.mobileprovision \
+  --signing-method app-store-connect \
+  --team-id VMBY3VYW4U \
   --upload-to-appstore \
   --asc-key-id 2X9R4HXF34 \
   --asc-issuer-id "$ASC_ISSUER_ID" \
@@ -563,12 +613,14 @@ lim xcode build . \
 import fs from 'node:fs';
 
 const build = xcode.xcodebuild(
-  { scheme: 'MyApp', sdk: 'iphoneos' },
+  { scheme: 'MyApp', sdk: 'iphoneos', configuration: 'Release' },
   {
-    signing: {
-      certificateP12Base64: fs.readFileSync('./dist.p12').toString('base64'),
-      certificatePassword: process.env['P12_PASSWORD'],
-      provisioningProfilesBase64: [fs.readFileSync('./MyApp.mobileprovision').toString('base64')],
+    cloudSigning: {
+      method: 'app-store-connect',
+      teamId: 'VMBY3VYW4U',
+      apiKeyId: '2X9R4HXF34',
+      apiIssuerId: process.env['ASC_ISSUER_ID'],
+      apiPrivateKeyBase64: fs.readFileSync('./AuthKey_2X9R4HXF34.p8').toString('base64'),
     },
     appstore: {
       apiKeyId: '2X9R4HXF34',
@@ -587,15 +639,15 @@ const { exitCode, appstore } = await build;
 
 The build log streams the upload progress. By default the build succeeds as soon as the upload commits: Apple's processing routinely takes many minutes, so the verdict is left to App Store Connect, and the upload ID is printed so you can check it there. To watch for the verdict instead, pass `--asc-wait-timeout <seconds>` (`waitTimeoutSeconds` in the SDK, up to `1800`): a rejection within that window (a reused build number, a missing entitlement) fails the build with Apple's own error text, and expiry without a verdict is still a success with the build processing on Apple's side. Combine with `--upload` if you also want the IPA in Asset Storage.
 
-Every upload needs a `CFBundleVersion` higher than the last one for that version. Pass `--auto-build-number` (`autoIncrementBuildNumber: true` in the SDK's `appstore` options) to set it to one more than the highest build number already in App Store Connect, or 1 for a new app. The lookup runs server-side with the same API key used for the upload. It works for projects that use Xcode-standard versioning (`CFBundleVersion = $(CURRENT_PROJECT_VERSION)`), including modern Xcode templates and Expo prebuilds.
+Every upload needs a `CFBundleVersion` higher than the last one for that version. Pass `--auto-build-number` (`autoIncrementBuildNumber: true` in the SDK's `appstore` options) to set it to one more than the highest build number already in App Store Connect, or 1 for a new app. The lookup runs server-side with the same API key used for the upload. Manual signing requires Xcode-standard versioning (`CFBundleVersion = $(CURRENT_PROJECT_VERSION)`), including modern Xcode templates and Expo prebuilds. Cloud signing updates the unsigned archive before export.
 
-Your API key travels with the build request over TLS, is held in memory only for the duration of the build, and is never written to disk on the sandbox.
+Your API key travels with the build request over TLS. For cloud signing, limbuild writes it with owner-only permissions in the disposable sandbox directory for the export command, then deletes it. The sandbox directory is discarded with the instance.
 
 ### One-time App Store Connect setup
 
 Three App Store Connect settings make TestFlight delivery fully hands-off:
 
-1. **Create an API key with the Developer role.** In [App Store Connect](https://appstoreconnect.apple.com), go to Users and Access, open the Integrations tab, select App Store Connect API, and generate a Team Key with the Developer role (you need an Admin account to create team keys). Developer is the least-privileged role that can upload builds; don't hand the build a broader key than it needs. One team key serves all your apps. Collect the three values the build flags need:
+1. **Create an App Store Connect team API key.** In [App Store Connect](https://appstoreconnect.apple.com), go to Users and Access, open the Integrations tab, select App Store Connect API, and generate a Team Key. A Developer key is sufficient for upload with manual signing. Cloud distribution signing requires an Admin key or **Access to cloud-managed distribution certificates** enabled for the key. One team key serves all your apps. Collect the three values the build flags need:
    - `--asc-key-id`: the Key ID shown next to the new key.
    - `--asc-issuer-id`: the Issuer ID shown at the top of the Integrations page (it belongs to the team, not to the key).
    - `--asc-key`: the `.p8` file from the key's Download link. Download it right away and store it like a password: Apple keeps no copy, and the link disappears once you leave the page.
@@ -619,7 +671,7 @@ With these in place, one build command puts the app on your testers' devices as 
 
 ### Requirements and troubleshooting
 
-TestFlight delivery requires a signed device build (`--sdk iphoneos` plus the signing flags) and an existing app record in App Store Connect for your bundle ID; Apple's API cannot create app records. Each upload needs a `CFBundleVersion` higher than the last one for that version.
+TestFlight delivery requires a signed device build (`--sdk iphoneos` plus manual or cloud signing) and an existing app record in App Store Connect for your bundle ID; Apple's API cannot create app records. Each upload needs a `CFBundleVersion` higher than the last one for that version.
 
 | Build output | What it means | Fix |
 |---|---|---|
