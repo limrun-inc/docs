@@ -12,7 +12,7 @@ Connecting the developer account once gives your platform the signing material a
 
 With those pieces, your platform can:
 
-- **Sign release builds.** Produce App Store IPAs with an Apple distribution certificate and provisioning profile, and Play-ready AABs with the app's Android upload key.
+- **Sign release builds.** Let Apple retain the cloud-managed iOS certificate, or maintain a distribution certificate and profile in your secret store. Produce Play-ready AABs with the app's Android upload key.
 - **Publish new builds.** Upload iOS builds to App Store Connect and TestFlight, or publish Android builds to a Google Play track.
 - **Install on an iPhone over WebUSB.** Create a development certificate and device-bound development profile, pair the phone in the browser, and install the signed IPA over USB.
 - **Install from a QR code.** Register the iPhone, create a device-bound ad-hoc profile, and serve an over-the-air installation link the user can open by scanning a QR code.
@@ -32,7 +32,7 @@ Before implementing either store flow, prepare:
 - The `lim` CLI installed on the backend worker that starts builds.
   - Alternatively, you can use the clients in TypeScript SDK directly to sync and trigger builds.
 - App source available to that worker at a local project path.
-- A durable secret store for certificates, API keys, provisioning profiles, and Android upload keystores.
+- A durable secret store for API keys, Android upload keystores, and any manually managed Apple certificates and provisioning profiles.
 - A public HTTPS webhook endpoint for build completion.
   - You can also follow the logs in realtime or check periodically after triggering it once.
 - A browser frontend for the Apple and Google account connection flows.
@@ -117,7 +117,12 @@ Both stores use the same backend responsibilities.
 
 ## 2. Add App Store connection
 
-The user needs an Apple Developer Program account with permission to create App Store Connect API keys. The Apple flow prepares four resources: a distribution certificate, an App Store provisioning profile, an App Store Connect app record, and an App Store Connect API key.
+The user needs an Apple Developer Program account with permission to create App Store Connect API keys. Let them choose who maintains the signing certificate:
+
+- **Apple cloud signing** uses only the App Store Connect API key. Apple creates, retains, and reuses the cloud-managed distribution certificate and provisioning profile.
+- **Manual signing** creates and stores the distribution certificate and App Store provisioning profile in your secret store. Your application is responsible for renewing and replacing them.
+
+Both modes prepare an App Store Connect app record and API key for the upload.
 
 <Steps>
   <Step title="Sign the user in with Apple">
@@ -148,31 +153,32 @@ The user needs an Apple Developer Program account with permission to create App 
     Ask for the app's display name at the same time. It is required when you create the App Store Connect app record.
   </Step>
 
-  <Step title="Prepare and store Apple credentials">
-    Run these actions after the user confirms the team and bundle ID:
+  <Step title="Choose a signing mode and prepare credentials">
+    Run these actions after the user confirms the team, bundle ID, and signing mode:
 
     1. Switch to the team's App Store Connect provider when the team has a provider ID.
     2. Call `ensureAppStoreConnectApp` for the bundle ID and app name.
     3. Call `ensureAppStoreConnectApiKeySecret` and save the result.
+    4. For manual signing, call `ensureAppleCertificateSecret`, create or refresh an App Store provisioning profile that references that certificate, and store the profile.
 
-    The App Store Connect team key must be an Admin key or have **Access to cloud-managed distribution certificates** enabled. Limrun uses it for both cloud signing and upload. Reuse a valid stored key when the user reconnects.
+    Cloud signing requires the App Store Connect team key to be an Admin key or have **Access to cloud-managed distribution certificates** enabled. Limrun uses the key for cloud signing and upload; manual mode uses it for upload. Reuse valid stored resources when the user reconnects.
   </Step>
 </Steps>
 
 ## 3. Publish the iOS app
 
-When the user clicks publish, send the project path, team ID, bundle ID, optional scheme, and webhook URL to your backend.
+When the user clicks publish, send the project path, team ID, bundle ID, signing mode, optional scheme, and webhook URL to your backend.
 
 The backend then:
 
 1. Loads the App Store Connect API key from the secret store.
-2. Writes the `.p8` bytes to a temporary directory with owner-only permissions.
-3. Starts a release build for the `iphoneos` SDK.
-4. Passes the team ID and App Store Connect key to the CLI for cloud signing.
+2. For manual mode, also loads the distribution certificate and App Store provisioning profile.
+3. Writes the selected credentials to a temporary directory with owner-only permissions.
+4. Starts a release build for the `iphoneos` SDK with either cloud or manual signing flags.
 5. Requests automatic build-number selection, upload to App Store Connect, a completion webhook, and detached JSON output.
 6. Deletes the temporary files after the CLI exits.
 
-The resulting CLI invocation has this shape:
+The cloud-signing invocation has this shape:
 
 ```bash
 lim xcode build <project-path> \
@@ -192,7 +198,15 @@ lim xcode build <project-path> \
   --json
 ```
 
-Add `--scheme <scheme>` when the project needs one. Cloud signing requires a team API key and its issuer ID. Spawn the CLI with an argument array instead of constructing a shell command.
+Manual mode replaces `--signing-method` and `--team-id` with:
+
+```bash
+--certificate-p12 <certificate.p12> \
+--certificate-password <password> \
+--provisioning-profile <profile.mobileprovision>
+```
+
+The upload still uses the `--asc-*` flags. Add `--scheme <scheme>` when the project needs one. Cloud signing requires a team API key and its issuer ID. Spawn the CLI with an argument array instead of constructing a shell command, and redact the certificate password from logs.
 
 The complete implementation is in [`startPublish`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/publish.ts). A successful upload appears in App Store Connect and TestFlight. The user still attaches the processed build to an App Store version and submits that version for review in App Store Connect.
 
