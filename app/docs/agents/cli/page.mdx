@@ -118,7 +118,7 @@ lim xcode build . --workspace MyApp.xcworkspace --scheme MyApp
 | `--upload <asset_name>` | Save the build artifact to Asset Storage under this name. Used for preview links. |
 | `--signed-upload-url <url>` | Upload to your own pre-signed URL (S3, GCS, etc). |
 | `--certificate-p12 path.p12` `--certificate-password ...` `--provisioning-profile path.mobileprovision` | Sign for a real-device build. `--provisioning-profile` is repeatable: pass one profile per bundle the app embeds (the app plus each extension or watch app). |
-| `--signing-method app-store-connect\|release-testing\|ad-hoc\|debugging` `--team-id ...` | Use Apple cloud signing instead of a p12 and provisioning profiles. Also requires `--asc-key-id`, `--asc-issuer-id`, and `--asc-key`. Distribution methods require access to cloud-managed distribution certificates. |
+| `--signing-method app-store-connect\|release-testing\|debugging` `--team-id ...` | Use Apple cloud signing instead of a p12 and provisioning profiles. Also requires `--asc-key-id`, `--asc-issuer-id`, and `--asc-key`. Distribution methods require access to cloud-managed distribution certificates. |
 | `--upload-to-appstore` `--asc-key-id ...` `--asc-issuer-id ...` `--asc-key path.p8` | Upload the signed IPA to App Store Connect after the build, making it available for TestFlight or App Store distribution. Requires manual or cloud signing. |
 | `--asc-wait-timeout N` | Seconds to watch App Store Connect's processing verdict (default 0: return once the upload commits, max 1800). |
 | `--auto-build-number` | Set the build number to one more than the highest already in App Store Connect, or 1 for a new app. Requires `--upload-to-appstore` and Xcode-standard versioning. |

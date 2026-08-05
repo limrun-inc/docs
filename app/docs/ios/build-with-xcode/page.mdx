@@ -509,9 +509,8 @@ Choose the method for the IPA you need:
 | `debugging` | Development-signed IPA for devices registered to the team. |
 | `release-testing` | Distribution-signed IPA for registered test devices. |
 | `app-store-connect` | Distribution-signed IPA for App Store Connect. |
-| `ad-hoc` | Legacy Xcode alias for `release-testing`. |
 
-Cloud signing requires a team API key, its issuer ID, and a `--team-id` that matches the key's Apple Developer team. For `release-testing`, `ad-hoc`, and `app-store-connect`, the key must be an Admin key or have **Access to cloud-managed distribution certificates** enabled in App Store Connect.
+Cloud signing requires a team API key, its issuer ID, and a `--team-id` that matches the key's Apple Developer team. For `release-testing` and `app-store-connect`, the key must be an Admin key or have **Access to cloud-managed distribution certificates** enabled in App Store Connect.
 
 The TypeScript SDK accepts the same configuration:
 
