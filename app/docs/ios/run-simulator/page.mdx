@@ -1,6 +1,6 @@
 ---
 title: "Run an iOS Simulator"
-description: "Drive a running iOS simulator from code or shell: taps, typing, screenshots, recordings, app lifecycle, keychain state, logs, and reverse tunnels."
+description: "Drive a running iOS simulator from code or shell: taps, typing, screenshots, recordings, camera simulation, app lifecycle, keychain state, logs, and reverse tunnels."
 order: 3
 icon: "smartphone"
 ---
@@ -437,6 +437,26 @@ lim ios record stop -o /tmp/demo.mp4
 # or upload directly:
 lim ios record stop --presigned-url "<url>"
 ```
+
+## Simulate the camera with a video
+
+Play a video file as the simulator's camera — useful for QR-code scanning, document capture, video-call UIs, or any `AVCaptureSession`-driven flow that needs deterministic frames. The file is uploaded to the instance and replaces the live browser camera until cleared; apps see it through their regular capture pipeline.
+
+```ts
+await client.setCameraVideo('./fixtures/qr-scan.mp4');                 // loops by default
+await client.setCameraVideo('./fixtures/intro.mp4', { loop: false }); // play once
+await client.clearCameraVideo();                                       // back to the live camera
+```
+
+Or from the CLI:
+
+```bash
+lim ios camera play ./fixtures/qr-scan.mp4
+lim ios camera play ./fixtures/intro.mp4 --no-loop
+lim ios camera clear
+```
+
+With `loop: false` the feed freezes on the video's last frame after one pass, so the app keeps receiving frames instead of seeing the camera stall. Most common containers and codecs work (anything AVFoundation can decode, e.g. H.264/HEVC in `.mp4`/`.mov`); portrait recordings play upright.
 
 ## Reverse-tunnel a local service
 
