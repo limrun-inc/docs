@@ -451,9 +451,9 @@ await client.clearCameraVideo();                                       // back t
 Or from the CLI:
 
 ```bash
-lim ios camera-video play ./fixtures/qr-scan.mp4
-lim ios camera-video play ./fixtures/intro.mp4 --no-loop
-lim ios camera-video clear
+lim ios camera play ./fixtures/qr-scan.mp4
+lim ios camera play ./fixtures/intro.mp4 --no-loop
+lim ios camera clear
 ```
 
 With `loop: false` the feed freezes on the video's last frame after one pass, so the app keeps receiving frames instead of seeing the camera stall. Most common containers and codecs work (anything AVFoundation can decode, e.g. H.264/HEVC in `.mp4`/`.mov`); portrait recordings play upright.
