@@ -133,6 +133,7 @@ The three SDKs are not equivalent. Every one covers the control plane (create / 
 | iOS reverse tunnel | ✓ (`startReverseTunnel`) | not supported | not supported |
 | iOS app-log streaming | ✓ | not supported | not supported |
 | iOS video recording | ✓ | not supported | not supported |
+| iOS camera simulation from a video file | ✓ (`setCameraVideo`) | not supported | not supported |
 | StoreKit local-config helpers | ✓ | not supported | not supported |
 
 The **Go iOS WebSocket client** (`github.com/limrun-inc/go-sdk/websocket/ios`) covers screenshot, element-tree, tap, tap-element, type-text, press-key, launch-app, list-apps, open-url, install-app, lsof, set-orientation, increment/decrement/set element value, and `simctl` streaming. It does **not** include terminate-app, scroll, performActions, or video recording today.
