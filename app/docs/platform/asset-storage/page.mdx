@@ -204,6 +204,38 @@ if asset.md5 != local_md5:
 
 For **browser-direct uploads**, generate the `signedUploadUrl` on your backend (where the API key lives) and hand only the URL to the browser. The browser PUTs to it without ever touching your `LIM_API_KEY` or proxying bytes through your servers. Useful when end users on your platform upload their own builds.
 
+### App metadata
+
+App bundle assets can carry the app's identity as metadata: the title users see on iOS (`displayName`), `bundleIdentifier`, `shortVersion` (CFBundleShortVersionString), `buildVersion` (CFBundleVersion), and the app's primary URL scheme (`deeplink`, e.g. `myapp` for `myapp://` links). All fields are optional; consumers such as over-the-air installation and the Console use whichever are present, and `assets.list` / `assets.get` return them alongside a time-limited `signedIconUrl` when an icon was extracted.
+
+Builds through `lim xcode build --upload` record the metadata automatically from the built bundle, including the app icon. For bundles built elsewhere, set it at upload time:
+
+<CodeGroup labels={["CLI","TypeScript"]}>
+```bash
+lim asset push ./MyApp.ipa \
+  --upload-option "displayName=My App" \
+  --upload-option bundleIdentifier=com.example.app \
+  --upload-option shortVersion=1.2.3 \
+  --upload-option buildVersion=42 \
+  --upload-option deeplink=myapp
+```
+
+```ts
+const asset = await lim.assets.getOrUpload({
+  path: './MyApp.ipa',
+  uploadOptions: {
+    displayName: 'My App',
+    bundleIdentifier: 'com.example.app',
+    shortVersion: '1.2.3',
+    buildVersion: '42',
+    deeplink: 'myapp',
+  },
+});
+```
+</CodeGroup>
+
+On re-upload, provided fields overwrite the recorded ones and omitted fields are left unchanged.
+
 ## Install an asset
 
 Two install paths:

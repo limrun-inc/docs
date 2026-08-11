@@ -384,6 +384,8 @@ The webhook is sent whether the caller keeps streaming or detaches. Limrun POSTs
 
 `logsUrl` is a time-limited link to the persisted plain-text build log. Read that log for build diagnostics when `status` is `FAILED`. The instance, console, log, timing, and exit-code fields are omitted when they are unavailable.
 
+Device builds that upload their IPA by asset name additionally carry the app's identity in the payload: `assetId`, `bundleIdentifier`, `shortVersion`, `buildVersion`, `displayName`, `deeplink`, and a time-limited `iconUrl` for the extracted app icon. Each field appears only when the built bundle (or an explicit `--upload-option`) provided it.
+
 Webhook delivery follows these rules:
 
 - The URL must use HTTPS on a public DNS host. IP literals and private or cluster-internal targets are rejected when the build request is submitted.
@@ -484,6 +486,8 @@ const { exitCode, signedDownloadUrl } = await build;
 </CodeGroup>
 
 Limrun verifies the signed app with Apple's code-signing verifier before uploading it. A signature that Apple's tooling would reject fails the build with a clear error instead of producing a broken IPA, so a signed build that succeeds has already passed Apple's verification.
+
+Uploading by asset name also records the built app's metadata on the asset automatically: the app title, bundle identifier, versions, deep link scheme, and icon, all read from the built bundle. Consumers such as over-the-air installation and the Console use whichever fields are present. To record a field the bundle does not declare, pass the repeatable `--upload-option key=value` flag (CLI) or `upload: { assetName, uploadOptions }` (TypeScript) with any of `displayName`, `bundleIdentifier`, `shortVersion`, `buildVersion`, or `deeplink`; values extracted from the bundle win over explicit ones. See [Asset Storage](/docs/platform/asset-storage) for details.
 
 ### Cloud signing
 
