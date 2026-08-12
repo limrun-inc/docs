@@ -13,18 +13,28 @@
     "@farming-labs/theme": "0.1.108",
     "fumadocs-ui": "^16.7.16",
     "lucide-react": "^0.564.0",
-    "next": "16.2.6",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "next": "16.2.11",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
-    "@types/mdx": "^2.0.13",
-    "@types/node": "^22.10.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.18",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/mdx": "^2.0.14",
+    "@types/node": "^22.20.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss@<8.5.23": "^8.5.26",
+      "sharp@<0.35.0": "^0.35.0",
+      "@hono/node-server@<2.0.5": "^2.0.5",
+      "fumadocs-core": "16.8.11",
+      "fumadocs-ui": "16.8.11",
+      "fumadocs-openapi": "10.8.3"
+    }
   }
 }
