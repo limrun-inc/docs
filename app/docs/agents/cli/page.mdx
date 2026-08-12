@@ -166,15 +166,19 @@ lim ios tap-element --type Button --ax-label "Done"
 lim ios tap 201 450
 ```
 
-`tap-element` accepts `--ax-unique-id`, `--ax-label`, `--ax-label-contains`, `--type`, `--title`, `--title-contains`, and `--ax-value`. Combine them to narrow the match.
+`tap-element` accepts `--ax-unique-id`, `--ax-label`, `--ax-label-contains`, `--type`, `--title`, `--title-contains`, and `--ax-value`. Combine them to narrow the match. It taps with a real touch and scrolls off-screen elements into view first (a bounded sweep that can take several seconds); `--activate ax` performs an accessibility press instead.
 
 Text, keys, scrolling, deep links:
 
 ```bash
-lim ios type "hello world" --enter
+lim ios type "hello world" --enter          # real key events into the focused field; errors if none
+lim ios set-text "P@ssw0rd!" --focused      # exact value via accessibility, no keyboard behavior
+lim ios set-text "42" --ax-label Count      # same, by selector
+lim ios press-key @                         # shifted symbols work directly
 lim ios press-key enter --modifier shift
 lim ios scroll down --amount 300
-lim ios scroll up --amount 300 --momentum 0.4
+lim ios scroll up --amount 300 --momentum 0.4 --coordinate 200,400
+lim ios swipe --from 200,300 --to 200,600   # explicit drag, e.g. pull-to-refresh
 lim ios open-url "https://apple.com"
 ```
 
