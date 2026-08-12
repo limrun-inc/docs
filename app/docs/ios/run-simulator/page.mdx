@@ -165,6 +165,8 @@ lim ios tap 201 450
 
 `AccessibilitySelector` accepts `AXUniqueId`, `AXLabel`, `AXLabelContains`, `type`, `title`, `titleContains`, and `AXValue` (TypeScript field names; Go uses `AccessibilityID`, `Label`, `LabelContains`, `ElementType`, `Title`, `TitleContains`, and `Value` for the same fields). All non-empty fields must match (AND, not OR).
 
+`tapElement` taps with a real synthesized touch, so the app reacts exactly as it would to a finger. When the element isn't on screen, it scrolls the list to find it first (a bounded sweep, a few pages down then up) and taps once the content settles; a deep sweep can take several seconds. Pass `{ activate: 'ax' }` (CLI: `--activate ax`) to use an accessibility press instead: no scrolling, no touch events, but it works on elements without a usable frame.
+
 ### Steppers, sliders, and text values
 
 For controls that aren't tapped but adjusted, use the element-targeted variants:
@@ -172,12 +174,24 @@ For controls that aren't tapped but adjusted, use the element-targeted variants:
 ```ts
 await client.incrementElement({ AXLabel: 'Volume' });
 await client.decrementElement({ AXLabel: 'Volume' });
-await client.setElementValue('42', { AXLabel: 'Count' });   // faster than typing char-by-char
+await client.setElementValue('42', { AXLabel: 'Count' });   // sets the exact value, no keyboard involved
+await client.setElementValue('P@ssw0rd!');                  // no selector: targets the focused field
 ```
+
+Or from the CLI:
+
+```bash
+lim ios set-text "42" --ax-label Count
+lim ios set-text "P@ssw0rd!" --focused
+```
+
+`setElementValue` writes the value through accessibility: it's instant and verbatim, but the app's text delegates and keyboard behavior are skipped. Use it to seed field values; use `typeText` below when the app must react as if a user typed.
 
 ## Type and press keys
 
 Type into the currently focused field, press individual keys with optional modifiers, or toggle the on-screen keyboard. `toggleKeyboard` is the equivalent of pressing ⌘K in the simulator.
+
+`typeText` sends real hardware key events: text delegates fire, and the field's own keyboard behavior applies (a default text field autocapitalizes the first letter, for example). It requires a focused field and returns an error when there is none, so tap the field first. For an exact value without keyboard behavior, use `setElementValue` above. `pressKey` accepts shifted symbols directly (`@`, `#`, `?`, ...) and derives the shift itself.
 
 <CodeGroup labels={["TypeScript","Go"]}>
 ```ts
@@ -202,13 +216,14 @@ Or from the CLI:
 
 ```bash
 lim ios type "hello world" --enter
+lim ios press-key @
 lim ios press-key enter --modifier shift
 lim ios toggle-keyboard
 ```
 
-## Scroll and orientation
+## Scroll, swipe, and orientation
 
-`scroll` is a finger-swipe gesture. `pixels` is the gesture distance in points; `coordinate` (TS only) defaults to the screen center; `momentum` (0.0-1.0) controls fling decay. `setOrientation` flips the device between portrait and landscape.
+`scroll` is a finger-swipe gesture. `pixels` is the gesture distance in points; `coordinate` defaults to the screen center; `momentum` (0.0-1.0) controls fling decay. Directions follow the device rotation, so `down` scrolls the content down in landscape too. `setOrientation` flips the device between portrait and landscape.
 
 ```ts
 await client.scroll('down', 300);
@@ -222,8 +237,17 @@ Or from the CLI:
 
 ```bash
 lim ios scroll down --amount 300
-lim ios scroll up --amount 300 --momentum 0.4
+lim ios scroll up --amount 300 --momentum 0.4 --coordinate 200,400
 ```
+
+For gestures that need explicit start and end points, such as pull-to-refresh, carousel paging, or sliders, use `swipe`. Longer durations drag more precisely; shorter ones fling.
+
+```bash
+lim ios swipe --from 200,300 --to 200,600                 # pull-to-refresh: drag down from inside the content
+lim ios swipe --from 350,400 --to 50,400 --duration 800   # slow horizontal drag
+```
+
+From code, compose the same drag with `performActions` (touchDown, touchMove steps, touchUp; see the batch section below).
 
 ## Open URLs and deep links
 
