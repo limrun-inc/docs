@@ -41,7 +41,7 @@ lim skills install
 
 The command fetches the latest skills from `limrun-inc/skills`, then prompts for the target agent, skill, and install scope. Keep the catalog defaults unless you are setting up a different workflow.
 
-The CLI sends privacy-safe product events such as skill installation, authentication, and command intent. It does not send command arguments, API keys, hostnames, project paths, repository names, logs, or raw errors. To disable this telemetry:
+The CLI sends privacy-safe product events such as skill installation, authentication, the `lim run` lifecycle, and command intent. It does not send command arguments, API keys, hostnames, project paths, repository names, logs, or raw errors. To disable this telemetry:
 
 ```bash
 export LIM_DISABLE_TELEMETRY=1
