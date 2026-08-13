@@ -1,6 +1,6 @@
 ---
 title: "Run an iOS Simulator"
-description: "Drive a running iOS simulator from code or shell: taps, typing, screenshots, recordings, camera simulation, app lifecycle, keychain state, logs, and reverse tunnels."
+description: "Drive a running iOS simulator from code or shell: taps, typing, screenshots, recordings, camera simulation, app lifecycle, keychain state, logs, and local service tunnels."
 order: 3
 icon: "smartphone"
 ---
@@ -482,9 +482,44 @@ lim ios camera clear
 
 With `loop: false` the feed freezes on the video's last frame after one pass, so the app keeps receiving frames instead of seeing the camera stall. Most common containers and codecs work (anything AVFoundation can decode, e.g. H.264/HEVC in `.mp4`/`.mov`); portrait recordings play upright.
 
-## Reverse-tunnel a local service
+## Tunnel a local service
 
-The simulator runs remotely, but the app inside it sometimes needs to reach a service that runs on *your* side: a mock backend, a debug proxy, a test runner, or a local Expo dev server for hot-reload. A reverse tunnel solves this: the remote simulator opens an outbound connection that Limrun multiplexes back over a WebSocket to a TCP service on your machine, so a service on your laptop, CI runner, or private network appears local to the app, with no public tunnel and no inbound firewall holes.
+The simulator runs remotely, but the app inside it sometimes needs to reach a service that runs on your side: a mock backend, a test runner, or a local Expo dev server. Declare each TCP destination and start one tunnel:
+
+```ts
+const tunnel = await client.startTunnel({
+  routes: [
+    { host: 'localhost', port: 8000 },
+    { host: 'api.internal', port: 443 },
+  ],
+});
+
+console.log(tunnel.bindings);
+// Each binding maps one declared route to a simulator-facing host and port.
+
+const status = await client.getTunnelStatus();
+await client.stopTunnel(tunnel.tunnelId);
+```
+
+`localhost` resolves on the machine running the client. The app connects to the `endpoint` returned for that route. In this first release, the app does not use literal `localhost:8000`.
+
+The CLI can own the tunnel in a background process:
+
+```bash
+lim ios tunnel \
+  --route localhost:8000 \
+  --route api.internal:443 \
+  --detach
+
+lim ios tunnel status
+lim ios tunnel stop
+```
+
+Use `--json` when another process needs the tunnel ID or route mappings. One instance accepts one active destination tunnel with up to ten exact routes. A WebSocket loss closes its listeners and connections, so start a new tunnel to recover.
+
+### Fixed-port reverse tunnel
+
+`lim ios reverse` remains available for workflows that already choose a simulator-facing port in the reserved range. The direction is simulator to your service.
 
 Note the direction: this tunnel is **simulator → your service** (outbound from the device).
 

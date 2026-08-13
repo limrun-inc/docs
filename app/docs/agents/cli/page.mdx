@@ -237,6 +237,27 @@ lim ios app-log com.example.MyApp --follow
 lim ios app-log com.example.MyApp --tail 200
 ```
 
+## Reach services on the agent machine
+
+Declare each exact TCP destination that the simulator app needs:
+
+```bash
+lim ios tunnel \
+  --route localhost:8000 \
+  --route api.internal:443 \
+  --detach \
+  --id <ios-instance-id>
+```
+
+The command prints one simulator-facing endpoint per route. Query or stop it from another process:
+
+```bash
+lim ios tunnel status --id <ios-instance-id> --json
+lim ios tunnel stop --id <ios-instance-id>
+```
+
+Use the printed endpoint inside the simulator. In this release, declaring `localhost:8000` does not make literal simulator `localhost:8000` route through the tunnel.
+
 ## Record a video
 
 For anything involving motion (animations, gestures, gameplay), record a video instead of taking screenshots. Always attach it to the PR.
