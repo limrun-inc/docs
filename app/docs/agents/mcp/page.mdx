@@ -145,6 +145,8 @@ Five tools.
 
 The actions inside `ios-use` map onto methods on the SDK's `createInstanceClient`. The MCP server batches them into a few tools rather than exposing one tool per action so the agent can group related steps into a single round-trip.
 
+A `tapElement` action whose selector matches nothing in the accessibility tree fails in about a second and aborts the batch. iOS creates list rows lazily, so a below-the-fold row is often absent from the tree; when you expect that, put `scroll` actions before the `tapElement` in the same batch instead of relying on the server to search.
+
 App installs, Xcode builds, and asset uploads aren't on the MCP server. The MCP protocol doesn't give a tool access to the client's filesystem, so anything that needs to send bytes from your machine (an APK, a `.app` bundle, a build artifact) lives on the CLI and SDK instead.
 
 ## Next steps

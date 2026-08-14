@@ -166,12 +166,13 @@ lim ios tap-element --type Button --ax-label "Done"
 lim ios tap 201 450
 ```
 
-`tap-element` accepts `--ax-unique-id`, `--ax-label`, `--ax-label-contains`, `--type`, `--title`, `--title-contains`, and `--ax-value`. Combine them to narrow the match. It taps with a real touch and scrolls off-screen elements into view first (a bounded sweep that can take several seconds); `--activate ax` performs an accessibility press instead.
+`tap-element` accepts `--ax-unique-id`, `--ax-label`, `--ax-label-contains`, `--type`, `--title`, `--title-contains`, and `--ax-value`. Combine them to narrow the match. It taps with a real touch and scrolls elements the accessibility tree can see into view automatically. A selector that matches nothing fails in about a second; iOS creates list rows lazily, so below-the-fold rows are often absent from the tree. Pass `--scroll-search` to page the screen and retry until the row materializes (up to ~10s). `--activate ax` performs an accessibility press instead.
 
 Text, keys, scrolling, deep links:
 
 ```bash
 lim ios type "hello world" --enter          # real key events into the focused field; errors if none
+lim ios type "hi" --no-require-focus        # skip the focus check when you focused a field by coordinates
 lim ios set-text "P@ssw0rd!" --focused      # exact value via accessibility, no keyboard behavior
 lim ios set-text "42" --ax-label Count      # same, by selector
 lim ios press-key @                         # shifted symbols work directly
