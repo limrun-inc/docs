@@ -133,7 +133,7 @@ instance = limrun.android_instances.create(
 The Python SDK covers control-plane calls like this one. Playwright's Android device API ships only in the Node binding, so the rest of the page stays in TypeScript.
 
 <Note>
-  `reuseIfExists` matches existing instances by labels **and** region. If you don't pin `spec.region`, the platform may schedule your next create in a different region (closer to your current IP, for example), and the label match misses, so a fresh instance gets created instead. For repeatable reuse across CI runs or local dev sessions, pin `region: 'us-west'` (or whichever region you prefer) explicitly.
+  `reuseIfExists` matches existing instances by labels **and** region. If you don't pin the region, the platform may schedule your next create in a different region (closer to your current IP, for example), and the match misses, so a fresh instance gets created instead. For repeatable reuse across CI runs or local dev sessions, pin the region with the reserved label, e.g. `labels: { 'limrun.com/zone-override': 'us-east1' }`: it both schedules the instance there and participates in the label match.
 </Note>
 
 When the call resolves, two things on the instance object matter for Playwright:

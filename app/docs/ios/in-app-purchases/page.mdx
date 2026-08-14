@@ -30,7 +30,7 @@ Same create call you'd use for any build-and-test flow, with `sandbox.xcode.enab
 
 <CodeGroup labels={["CLI", "TypeScript", "Go", "Python"]}>
 ```bash
-lim ios create --xcode --reuse-if-exists --region us-west --label name=iap-test
+lim ios create --xcode --reuse-if-exists --label limrun.com/zone-override=us-east1 --label name=iap-test
 ```
 
 ```ts
@@ -45,9 +45,8 @@ const lim = new Limrun({ apiKey: process.env.LIM_API_KEY });
 const instance = await lim.iosInstances.create({
   wait: true,
   reuseIfExists: true,
-  metadata: { labels: { name: 'iap-test' } },
+  metadata: { labels: { name: 'iap-test', 'limrun.com/zone-override': 'us-east1' } },
   spec: {
-    region: 'us-west',
     sandbox: { xcode: { enabled: true } },
   },
 });

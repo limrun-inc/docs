@@ -6,7 +6,7 @@ icon: "blocks"
 ---
 # Egress IP addresses
 
-Limrun instances send outbound traffic through shared regional egress IP addresses. If your firewall or third-party service only accepts traffic from known source IPs, allowlist every address for the Limrun region your instance runs in.
+Limrun instances send outbound traffic through shared regional egress IP addresses. If your firewall or third-party service only accepts traffic from known source IPs, allowlist every address for the Limrun region your instance runs in. To keep an instance on a specific region's egress IPs, pin it to that region with the reserved `limrun.com/zone-override` instance label.
 
 These addresses are for outbound traffic from Limrun instances to your systems. They do not describe inbound access to Limrun APIs, browser streaming URLs, or per-organization egress.
 

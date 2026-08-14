@@ -225,7 +225,7 @@ Every successful `wait: true` create returns a `status` block with the URLs the 
 
 ## Regions and labels
 
-`spec.region` pins an instance to a region (e.g. `eu-north1`, `us-east1`). If omitted, Limrun schedules based on `spec.clues` and current availability. The console's **Analytics** tab breaks down runtime minutes per platform and per region, which is the canonical place to see which regions an org has used:
+To pin an instance to a region (e.g. `eu-north1`, `us-east1`), set the reserved `limrun.com/zone-override` label in `metadata.labels`: the instance is created in that region or not at all (503 when it has no capacity). `spec.region` is deprecated and only a preference; the request may fall back to other regions when the preferred one is full. If neither is given, Limrun schedules based on `spec.clues` and current availability. The console's **Analytics** tab breaks down runtime minutes per platform and per region, which is the canonical place to see which regions an org has used:
 
 <Frame>
   <img src="/images/console/11-analytics.png" alt="Console Analytics tab showing daily runtime minutes for Android, iOS, and XCode, broken down by eu-north1 and us-east1 regions" />
@@ -261,10 +261,9 @@ curl -X POST "https://api.limrun.com/v1/ios_instances?wait=true&reuseIfExists=tr
 const instance = await lim.iosInstances.create({
   wait: true,
   reuseIfExists: true,
-  metadata: { labels: { session: 'demo' } },
+  metadata: { labels: { session: 'demo', 'limrun.com/zone-override': 'us-east1' } },
   spec: {
     model: 'iphone',
-    region: 'us-west',
     forceBundleId: 'com.example.myapp',
     sandbox: { xcode: { enabled: true } },
   },
@@ -306,7 +305,7 @@ instance, err := client.IosInstances.New(ctx, limrun.IosInstanceNewParams{
 
 ```bash
 lim ios create --reuse-if-exists --xcode \
-  --model iphone --region us-west \
+  --model iphone --label limrun.com/zone-override=us-east1 \
   --force-bundle-id com.example.myapp \
   --label session=demo
 ```

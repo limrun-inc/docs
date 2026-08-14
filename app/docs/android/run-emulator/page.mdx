@@ -88,7 +88,7 @@ With the CLI or SDK set up and authenticated, provisioning is a simple command:
 lim android create
 
 # Auto-delete the pod when this CLI process exits, and pin to a region with a label.
-lim android create --rm --region us-west --label app=demo --label session=docs
+lim android create --rm --label limrun.com/zone-override=us-east1 --label app=demo --label session=docs
 
 # Pre-install a local APK (uploaded to Asset Storage first, MD5-deduplicated).
 lim android create --install ./build.apk
@@ -105,9 +105,8 @@ const lim = new Limrun();   // reads LIM_API_KEY from the environment
 const instance = await lim.androidInstances.create({
   wait: true,            // resolve only after status.state === 'ready'
   reuseIfExists: true,   // return the existing match instead of creating a new pod
-  metadata: { labels: { app: 'demo', session: 'docs' } },
+  metadata: { labels: { app: 'demo', session: 'docs', 'limrun.com/zone-override': 'us-east1' } },
   spec: {
-    region: 'us-west',           // optional; otherwise picked by clues + availability
     inactivityTimeout: '10m',    // 1m, 10m, 3h, ...
     hardTimeout: '0',            // '0' = no hard cap
     clues: [{ kind: 'OSVersion', osVersion: '15' }],   // '13' | '14' | '15'
@@ -174,7 +173,8 @@ Flags for `lim android create`:
 
 | Flag | Use this to |
 |---|---|
-| `--region <name>` | Pin the region (e.g. `us-west`). Otherwise scheduled by availability. |
+| `--label limrun.com/zone-override=<region>` | Pin the instance to a region with no fallback: creation fails with 503 when that region has no capacity. |
+| `--region <name>` | Deprecated: a region preference only; may fall back to other regions when full. |
 | `--display-name <name>` | Set the human-readable name shown in the console. |
 | `--label key=value` | Attach a metadata label. Repeat for multiple labels. |
 | `--reuse-if-exists` | Return the existing instance with matching labels + region instead of creating a new pod. Defaults to `false`. |
@@ -197,7 +197,7 @@ Flags for `lim android create`:
 | `reuseIfExists` | boolean | When `true`, return the existing instance with matching `metadata.labels` and `spec.region` instead of creating a new pod. Defaults to `false`. |
 | `metadata.displayName` | string | Human-readable name surfaced in the web console alongside `metadata.id`. |
 | `metadata.labels` | `Record<string, string>` | Free-form `key=value` map for tagging and grouping. |
-| `spec.region` | string | Pin region (e.g. `us-west`). When omitted, the scheduler picks based on `clues` plus availability. |
+| `spec.region` | string | Deprecated: a preference only; may fall back to other regions when full. Pin with the `limrun.com/zone-override` label in `metadata.labels` instead. When omitted, the scheduler picks based on `clues` plus availability. |
 | `spec.inactivityTimeout` | duration string | `1m`, `10m`, `3h`, etc. Defaults to `3m`. Passing `'0'` defers to the organization-level default. |
 | `spec.hardTimeout` | duration string | Forced termination after this wall-clock window. `'0'` means no cap; the pod runs until inactivity or explicit delete. Defaults to `0`. |
 | `spec.clues[].kind` | `'ClientIP' \| 'OSVersion'` | Scheduling hint: bias by OS version or by user location. |

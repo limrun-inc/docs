@@ -79,7 +79,7 @@ The output includes the instance ID, the **Signed Stream URL**, and the Xcode sa
 | `--xcode` | Attach a Mac sandbox. Required for `lim xcode build`. |
 | `--reuse-if-exists` | Return an existing instance with the same labels instead of creating a new one. |
 | `--label key=value` | Repeatable. Used by `--reuse-if-exists` and for cleanup. |
-| `--region us-west` | Pin to a region. |
+| `--label limrun.com/zone-override=us-east1` | Pin to a region, with no fallback when it is full. |
 | `--inactivity-timeout 10m` | Auto-delete after this much idle time. `1m`, `10m`, `3h`. Org default applies if you skip it. |
 | `--hard-timeout 3h` | Force-delete after this much wall time. `0` (default) means no cap. |
 | `--install ./build.app` | Local app to upload and install at boot. Repeatable. |
