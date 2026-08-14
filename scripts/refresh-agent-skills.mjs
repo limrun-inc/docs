@@ -4,7 +4,7 @@
 // outputs; do not edit the mirrored files by hand.
 
 import { createHash } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -113,3 +113,6 @@ for (const [relative, bytes] of outputs) {
   await writeFile(target, bytes);
 }
 console.log(`Mirrored ${skills.length} skills from ${REPO}@${commit.slice(0, 12)}`);
+if (process.env.GITHUB_OUTPUT) {
+  await appendFile(process.env.GITHUB_OUTPUT, `commit=${commit.slice(0, 12)}\n`);
+}
