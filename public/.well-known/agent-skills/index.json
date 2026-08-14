@@ -2,7 +2,7 @@
   "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
   "source": {
     "repository": "https://github.com/limrun-inc/skills",
-    "commit": "98e210a31f46f4d766898ad5db2c08cedfd15cff"
+    "commit": "2befa235d6372f8b8a5ad5fa8528174917be44cb"
   },
   "skills": [
     {
@@ -24,14 +24,14 @@
       "type": "skill-md",
       "description": "Prepare and run Expo / React Native apps on Limrun with Expo dev-client iteration. Use when the user wants an Expo dev build, Metro tunnel, hot reload, JS/TS iteration without repeated native rebuilds, or to run/test an Expo app on a remote iOS simulator.",
       "url": "/.well-known/agent-skills/limrun-expo-development/SKILL.md",
-      "digest": "sha256:ec52c0b27fd5b7a4cd477b8e9779ccff27b7aeb8d1ad32283b6f49fbadb2762d"
+      "digest": "sha256:9cb2aabcdf09ace346ea121f4f76ec09035c085fff48ea4032af24f2c0e34bd7"
     },
     {
       "name": "limrun-detox-testing",
       "type": "skill-md",
       "description": "Configure, run, or debug Detox on Limrun iOS simulators. Use when attaching the Limrun Detox runtime to an app, wiring Detox mediator connectivity, or validating app/tester connections over reverse tunnels.",
       "url": "/.well-known/agent-skills/limrun-detox-testing/SKILL.md",
-      "digest": "sha256:5d064cfc0a4a829a0b9e5f571745daa79e4f8ddd05d035b79f3f6ec2630c3005"
+      "digest": "sha256:462daf1a196b25d797df0742de22d8679082d47e9071d84402de8cabd62fdc22"
     },
     {
       "name": "limrun-maestro-testing",
@@ -52,7 +52,7 @@
       "type": "skill-md",
       "description": "Build an Android app on a remote Gradle sandbox with `lim gradle build` instead of local Gradle or Android Studio, from any environment (Linux, Windows, macOS, VM, container). Use when the user wants to build an APK or AAB, sign a release with an upload key, or prepare a Play Store publish, for native Android projects, React Native, and Expo. To run, tap, screenshot, or otherwise interact with the built APK on an emulator, use the `lim android` commands shown here. For iOS builds, use limrun-xcode or limrun-expo-development.",
       "url": "/.well-known/agent-skills/limrun-gradle/SKILL.md",
-      "digest": "sha256:b3de36d762cc33e7645d270bb1b9188abf7113e7e6b6996c1baf5c79ac80cc7a"
+      "digest": "sha256:3441b5366bd9f891c688d820d1c1fcf35a5a92bf4f48743da6aea9465e3aa127"
     }
   ]
 }
