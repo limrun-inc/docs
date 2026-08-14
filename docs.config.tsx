@@ -251,4 +251,16 @@ export default defineDocs({
     description:
       "Run Xcode and iOS, Android, and Linux sandboxes in the cloud, controllable from any language or coding agent.",
   },
+
+  llmsTxt: {
+    baseUrl: "https://docs.limrun.com",
+    siteTitle: "Limrun docs",
+    siteDescription:
+      "Cloud infrastructure for mobile development: iOS simulators, Android emulators, and Xcode builds in the cloud, controlled through one CLI or SDK.",
+  },
+
+  mcp: {
+    name: "Limrun docs",
+    version: "1.0.0",
+  },
 });
