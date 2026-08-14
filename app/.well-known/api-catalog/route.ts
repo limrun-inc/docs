@@ -39,6 +39,7 @@ export function GET() {
     headers: {
       "Content-Type": "application/linkset+json",
       "Cache-Control": "public, max-age=0, s-maxage=3600",
+      "Access-Control-Allow-Origin": "*",
     },
   });
 }

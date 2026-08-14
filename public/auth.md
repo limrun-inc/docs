@@ -10,7 +10,7 @@ How agents authenticate against the Limrun API (`api.limrun.com`).
 
 ```bash
 export LIM_API_KEY=lim_...
-curl https://api.limrun.com/v1/iosInstances \
+curl https://api.limrun.com/v1/ios_instances \
   -H "Authorization: Bearer $LIM_API_KEY"
 ```
 
