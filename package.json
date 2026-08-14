@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "refresh-agent-skills": "node scripts/refresh-agent-skills.mjs"
   },
   "dependencies": {
     "@farming-labs/docs": "0.1.108",
