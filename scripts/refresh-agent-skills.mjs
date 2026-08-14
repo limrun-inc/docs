@@ -25,14 +25,28 @@ async function fetchOk(url, init) {
   return res;
 }
 
+// Unauthenticated GitHub API calls are rate-limited; export GITHUB_TOKEN
+// (e.g. GITHUB_TOKEN=$(gh auth token)) if you hit 403s.
+const apiHeaders = {
+  accept: "application/vnd.github+json",
+  ...(process.env.GITHUB_TOKEN && {
+    authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+  }),
+};
+
 async function fetchJson(url) {
-  return (await fetchOk(url, { headers: { accept: "application/vnd.github+json" } })).json();
+  return (await fetchOk(url, { headers: apiHeaders })).json();
 }
 
 function frontmatterDescription(skillMd, name) {
-  const frontmatter = skillMd.match(/^---\n([\s\S]*?)\n---/)?.[1];
+  const frontmatter = skillMd.replace(/^﻿/, "").match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1];
   const raw = frontmatter?.match(/^description:\s*(.+)$/m)?.[1].trim();
   if (!raw) throw new Error(`${name}/SKILL.md has no frontmatter description`);
+  if (/^[>|]/.test(raw)) {
+    throw new Error(
+      `${name}/SKILL.md uses a YAML block scalar for description; this script only parses single-line descriptions`,
+    );
+  }
   return raw.replace(/^["']|["']$/g, "");
 }
 
@@ -43,9 +57,13 @@ const catalog = await (
 const tree = await fetchJson(
   `https://api.github.com/repos/${REPO}/git/trees/${commit}?recursive=1`,
 );
+if (tree.truncated) {
+  throw new Error(`git tree listing for ${REPO}@${commit} is truncated; refusing a partial mirror`);
+}
 
-await rm(OUT_DIR, { recursive: true, force: true });
-
+// Fetch everything into memory first so a mid-run failure cannot leave a
+// half-populated mirror on disk.
+const outputs = new Map();
 const skills = [];
 for (const { name } of catalog.skills) {
   const files = tree.tree.filter(
@@ -64,9 +82,7 @@ for (const { name } of catalog.skills) {
         await fetchOk(`https://raw.githubusercontent.com/${REPO}/${commit}/${file.path}`)
       ).arrayBuffer(),
     );
-    const target = join(OUT_DIR, name, relative);
-    await mkdir(dirname(target), { recursive: true });
-    await writeFile(target, bytes);
+    outputs.set(join(name, relative), bytes);
     if (relative === "SKILL.md") {
       digest = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
       description = frontmatterDescription(bytes.toString("utf8"), name);
@@ -88,5 +104,12 @@ const index = {
   source: { repository: `https://github.com/${REPO}`, commit },
   skills,
 };
-await writeFile(join(OUT_DIR, "index.json"), `${JSON.stringify(index, null, 2)}\n`);
+outputs.set("index.json", Buffer.from(`${JSON.stringify(index, null, 2)}\n`));
+
+await rm(OUT_DIR, { recursive: true, force: true });
+for (const [relative, bytes] of outputs) {
+  const target = join(OUT_DIR, relative);
+  await mkdir(dirname(target), { recursive: true });
+  await writeFile(target, bytes);
+}
 console.log(`Mirrored ${skills.length} skills from ${REPO}@${commit.slice(0, 12)}`);

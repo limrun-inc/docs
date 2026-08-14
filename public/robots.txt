@@ -1,11 +1,17 @@
 # Static robots.txt owned by this repo (a file here disables the framework's
-# runtime-generated one). The section below is ours: Content Signals cannot be
-# expressed through the framework config. Everything between the BEGIN/END
-# markers is owned by `npx docs robots generate --append`; rerun it when the
-# framework's agent routes change (`--check` verifies staleness in place).
+# runtime-generated one). The section above the BEGIN marker is ours: Content
+# Signals cannot be expressed through the framework config. Everything between
+# the BEGIN/END markers is owned by `npx docs robots generate --append`; rerun
+# it when the framework's agent routes change (`--check` verifies staleness).
 # The per-crawler groups in the generated block are redundant with
 # `User-agent: *` on purpose: they are an explicit welcome signal that
 # AI-crawler operators and readiness scanners look for.
+
+# Content Signals declare AI content usage preferences for the whole site.
+# Stated both standalone (file scope, as the spec authors do on cloudflare.com)
+# and inside the wildcard group, to satisfy either reading of robots.txt group
+# scoping. See https://contentsignals.org/
+Content-Signal: ai-train=yes, search=yes, ai-input=yes
 
 User-agent: *
 Allow: /

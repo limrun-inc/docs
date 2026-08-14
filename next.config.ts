@@ -5,11 +5,13 @@ import { withDocs } from "@farming-labs/next/config";
 const agentDiscoveryHeaders = [
   {
     key: "Link",
+    // Registered relation types only: RFC 8288 requires unregistered rels to
+    // be absolute URIs, so no bare "llms.txt" rel here. llms.txt stays
+    // discoverable via robots.txt, AGENTS.md, and agent.json.
     value: [
       '</.well-known/api-catalog>; rel="api-catalog"',
       '</.well-known/agent-skills/index.json>; rel="describedby"',
       '</.well-known/mcp/server-card.json>; rel="service-desc"',
-      '</llms.txt>; rel="llms.txt"',
     ].join(", "),
   },
 ];
