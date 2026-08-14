@@ -3,6 +3,10 @@
 # Signals cannot be expressed through the framework config. Everything between
 # the BEGIN/END markers is owned by `npx docs robots generate --append`; rerun
 # it when the framework's agent routes change (`--check` verifies staleness).
+# Note: the managed block carries no Sitemap line because the docs CLI cannot
+# currently evaluate the TSX config to resolve baseUrl; the hand-owned Sitemap
+# line below is authoritative. If a framework upgrade makes --check fail and
+# --append emit a Sitemap inside the block, drop the hand-owned line.
 # The per-crawler groups in the generated block are redundant with
 # `User-agent: *` on purpose: they are an explicit welcome signal that
 # AI-crawler operators and readiness scanners look for.

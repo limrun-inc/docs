@@ -38,16 +38,21 @@ async function fetchJson(url) {
   return (await fetchOk(url, { headers: apiHeaders })).json();
 }
 
+// Deliberately not a full YAML parser (the script stays dependency-free), so
+// it must fail loudly on anything beyond a single-line scalar instead of
+// publishing mangled text into the RFC-facing index.json.
 function frontmatterDescription(skillMd, name) {
   const frontmatter = skillMd.replace(/^﻿/, "").match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1];
-  const raw = frontmatter?.match(/^description:\s*(.+)$/m)?.[1].trim();
+  const match = frontmatter?.match(/^description:[ \t]*(.+)\r?\n?(([ \t]+).*)?$/m);
+  const raw = match?.[1].trim();
   if (!raw) throw new Error(`${name}/SKILL.md has no frontmatter description`);
-  if (/^[>|]/.test(raw)) {
+  if (/^[>|&*]/.test(raw) || match[3]) {
     throw new Error(
-      `${name}/SKILL.md uses a YAML block scalar for description; this script only parses single-line descriptions`,
+      `${name}/SKILL.md description is not a single-line plain or quoted scalar; this script cannot parse it faithfully`,
     );
   }
-  return raw.replace(/^["']|["']$/g, "");
+  const quoted = raw.match(/^"(.*)"$/) ?? raw.match(/^'(.*)'$/);
+  return quoted ? quoted[1] : raw;
 }
 
 const commit = (await fetchJson(`https://api.github.com/repos/${REPO}/commits/${BRANCH}`)).sha;

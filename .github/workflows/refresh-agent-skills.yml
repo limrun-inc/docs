@@ -33,6 +33,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      # The change gate and `git add -A` are deliberately unscoped: the only
+      # step before this is the mirror script, so any working-tree change is
+      # the mirror. If you add steps that write other files, scope these.
       - name: Open or update the PR
         env:
           GH_TOKEN: ${{ github.token }}

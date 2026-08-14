@@ -29,6 +29,9 @@ Review a page in two passes, in this order: technical verification first, writin
 - Cloud agents are headless. Where the audience is an agent, lead with the `LIM_API_KEY` environment variable and do not mention `lim login`. `lim login` belongs only on human-facing quickstart content.
 - Do not pitch default behavior as a feature.
 - Do not document unobservable server internals without a source.
+- Do not mention Homebrew anywhere; the tap is not maintained.
+- Do not surface `lim xcode sync` as a standalone step; `lim xcode build` already syncs. Reference `sync` only for watch-mode use cases.
+- SDK coverage is TypeScript, Python, and Go. No Java code blocks or mentions.
 
 ## Checklist before committing
 

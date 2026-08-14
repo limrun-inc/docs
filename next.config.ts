@@ -1,7 +1,9 @@
 import { withDocs } from "@farming-labs/next/config";
 
 // RFC 8288 Link header pointing agents at the machine-readable surfaces.
-// Served on / and every docs page so deep links also carry discovery.
+// Served on / and /docs only: a wildcard /docs/:path* source would replace the
+// framework's per-page rel=canonical Link header on /docs/{slug}.md responses
+// (Next config headers overwrite handler headers for non-mergeable names).
 const agentDiscoveryHeaders = [
   {
     key: "Link",
@@ -24,7 +26,7 @@ export default withDocs({
   async headers() {
     return [
       { source: "/", headers: agentDiscoveryHeaders },
-      { source: "/docs/:path*", headers: agentDiscoveryHeaders },
+      { source: "/docs", headers: agentDiscoveryHeaders },
       { source: "/.well-known/:path*", headers: corsHeaders },
       { source: "/auth.md", headers: corsHeaders },
       { source: "/AGENTS.md", headers: corsHeaders },
