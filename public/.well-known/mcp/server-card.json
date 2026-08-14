@@ -1,0 +1,17 @@
+{
+  "serverInfo": {
+    "name": "Limrun docs",
+    "version": "1.0.0"
+  },
+  "description": "Search and read the Limrun documentation (cloud iOS simulators, Android emulators, remote Xcode and Gradle builds) over MCP.",
+  "endpoint": "https://docs.limrun.com/mcp",
+  "url": "https://docs.limrun.com/mcp",
+  "transport": {
+    "type": "streamable-http"
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": false
+  }
+}
