@@ -165,7 +165,7 @@ lim ios tap 201 450
 
 `AccessibilitySelector` accepts `AXUniqueId`, `AXLabel`, `AXLabelContains`, `type`, `title`, `titleContains`, and `AXValue` (TypeScript field names; Go uses `AccessibilityID`, `Label`, `LabelContains`, `ElementType`, `Title`, `TitleContains`, and `Value` for the same fields). All non-empty fields must match (AND, not OR).
 
-`tapElement` taps with a real synthesized touch, so the app reacts exactly as it would to a finger. When the element isn't on screen, it scrolls the list to find it first (a bounded sweep, a few pages down then up) and taps once the content settles; a deep sweep can take several seconds. Pass `{ activate: 'ax' }` (CLI: `--activate ax`) to use an accessibility press instead: no scrolling, no touch events, but it works on elements without a usable frame.
+`tapElement` taps with a real synthesized touch, so the app reacts exactly as it would to a finger. Elements the accessibility tree can see are scrolled into view automatically before the tap. A selector that matches nothing fails in about a second: iOS creates list rows lazily, so a below-the-fold row is often absent from the tree entirely. For those, pass `{ scrollSearch: true }` (CLI: `--scroll-search`), which pages the screen and retries the tap until the row materializes, up to the call's `timeoutMs` budget. Pass `{ activate: 'ax' }` (CLI: `--activate ax`) to use an accessibility press instead: no scrolling, no touch events, but it works on elements without a usable frame.
 
 ### Steppers, sliders, and text values
 
@@ -191,7 +191,7 @@ lim ios set-text "P@ssw0rd!" --focused
 
 Type into the currently focused field, press individual keys with optional modifiers, or toggle the on-screen keyboard. `toggleKeyboard` is the equivalent of pressing ⌘K in the simulator.
 
-`typeText` sends real hardware key events: text delegates fire, and the field's own keyboard behavior applies (a default text field autocapitalizes the first letter, for example). It requires a focused field and returns an error when there is none, so tap the field first. For an exact value without keyboard behavior, use `setElementValue` above. `pressKey` accepts shifted symbols directly (`@`, `#`, `?`, ...) and derives the shift itself.
+`typeText` sends real hardware key events: text delegates fire, and the field's own keyboard behavior applies (a default text field autocapitalizes the first letter, for example). It requires a focused field and returns an error when there is none, so tap the field first. If you focused a field by other means (a coordinate tap, for example) and the accessibility focus scan misreads it, pass `{ requireFocus: false }` (CLI: `--no-require-focus`) to type blind. For an exact value without keyboard behavior, use `setElementValue` above. `pressKey` accepts shifted symbols directly (`@`, `#`, `?`, ...) and derives the shift itself.
 
 <CodeGroup labels={["TypeScript","Go"]}>
 ```ts
