@@ -1,7 +1,7 @@
 import { withDocs } from "@farming-labs/next/config";
 
 // RFC 8288 Link header pointing agents at the machine-readable surfaces.
-// Served on / and /docs (/ redirects to /docs).
+// Served on / and every docs page so deep links also carry discovery.
 const agentDiscoveryHeaders = [
   {
     key: "Link",
@@ -18,7 +18,7 @@ export default withDocs({
   async headers() {
     return [
       { source: "/", headers: agentDiscoveryHeaders },
-      { source: "/docs", headers: agentDiscoveryHeaders },
+      { source: "/docs/:path*", headers: agentDiscoveryHeaders },
     ];
   },
 });

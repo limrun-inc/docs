@@ -1,6 +1,10 @@
 # Static robots.txt owned by this repo (a file here disables the
 # framework-generated one). Keep the Allow list in sync with the agent
 # routes; `npx docs robots generate --check` compares against the framework.
+#
+# The per-crawler groups below are redundant with `User-agent: *` on purpose:
+# they are an explicit welcome signal that AI-crawler operators and readiness
+# scanners look for. Do not fold them into the wildcard group.
 
 User-agent: *
 Allow: /

@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
+import { MCP_NAME, MCP_VERSION, SITE_URL } from "@/lib/site";
 
 export default defineDocs({
   entry: "docs",
@@ -253,14 +254,14 @@ export default defineDocs({
   },
 
   llmsTxt: {
-    baseUrl: "https://docs.limrun.com",
+    baseUrl: SITE_URL,
     siteTitle: "Limrun docs",
     siteDescription:
       "Cloud infrastructure for mobile development: iOS simulators, Android emulators, and Xcode builds in the cloud, controlled through one CLI or SDK.",
   },
 
   mcp: {
-    name: "Limrun docs",
-    version: "1.0.0",
+    name: MCP_NAME,
+    version: MCP_VERSION,
   },
 });
