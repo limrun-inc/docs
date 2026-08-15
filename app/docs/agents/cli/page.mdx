@@ -346,6 +346,8 @@ lim xcode build .       # remote build, still no API key
 
 `lim gradle build` follows the same pattern with `lim gradle create --json` and the `LIM_GRADLE_INSTANCE_URL`/`LIM_GRADLE_INSTANCE_TOKEN` pair.
 
+With both the simulator and the Xcode sandbox pinned, a bare `lim xcode attach-simulator` wires them together so every `lim xcode build` auto-installs onto the simulator, still without a key.
+
 ### 4. Share files through signed asset URLs
 
 Asset Storage lives on the management API, so the sandbox can't mint asset URLs itself. Create the asset outside and hand the sandbox its signed URLs; they carry their own authorization.
