@@ -1,0 +1,59 @@
+name: Refresh agent skills
+
+# Keeps public/.well-known/agent-skills/ in sync with limrun-inc/skills@main.
+# Runs weekly (and on demand). One rolling branch carries the latest mirror:
+# force-pushed on every change, one always-current PR, no stale-PR pileup and
+# no dead state if a previous run pushed but failed to open the PR.
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: refresh-agent-skills
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Refresh mirror
+        id: refresh
+        run: node scripts/refresh-agent-skills.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # The change gate and `git add -A` are deliberately unscoped: the only
+      # step before this is the mirror script, so any working-tree change is
+      # the mirror. If you add steps that write other files, scope these.
+      - name: Open or update the PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MSG: "skills: refresh agent-skills mirror to limrun-inc/skills@${{ steps.refresh.outputs.commit }}"
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Mirror is up to date."
+            exit 0
+          fi
+          branch="refresh-agent-skills"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A
+          git commit -m "$MSG"
+          git push --force origin "$branch"
+          if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --fill
+          else
+            gh pr edit "$branch" --title "$MSG"
+          fi

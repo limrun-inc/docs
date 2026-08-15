@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
+import { MCP_NAME, MCP_VERSION, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 export default defineDocs({
   entry: "docs",
@@ -250,5 +251,16 @@ export default defineDocs({
     titleTemplate: "%s – lim.run docs",
     description:
       "Run Xcode and iOS, Android, and Linux sandboxes in the cloud, controllable from any language or coding agent.",
+  },
+
+  llmsTxt: {
+    baseUrl: SITE_URL,
+    siteTitle: SITE_NAME,
+    siteDescription: SITE_DESCRIPTION,
+  },
+
+  mcp: {
+    name: MCP_NAME,
+    version: MCP_VERSION,
   },
 });
