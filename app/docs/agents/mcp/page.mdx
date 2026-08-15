@@ -20,7 +20,7 @@ This page covers when to reach for MCP vs the CLI, how to get the URL, and how t
 |---|---|---|
 | **Where it runs** | The agent's shell | The agent's MCP client transport |
 | **Auth** | Org API key in env or config | Per-instance `status.token` as `Authorization: Bearer` |
-| **Connection** | Fresh WebSocket per command, or a persistent one via `lim session start` | Long-lived MCP session |
+| **Connection** | Persistent WebSocket via a background daemon auto-started on first use (opt out with `--no-daemon`) | Long-lived MCP session |
 | **What it can do** | Everything Limrun does. Full [SDK reference](/docs/reference/sdk). | Device control only. Five tools, listed below. No builds, no asset uploads. |
 | **Best for** | Builds, instance lifecycle, asset management | Tight tap-screenshot-element-tree loops where round-trips matter |
 
