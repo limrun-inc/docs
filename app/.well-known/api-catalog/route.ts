@@ -36,10 +36,11 @@ const body = `${JSON.stringify(catalog, null, 2)}\n`;
 
 export function GET() {
   return new Response(body, {
+    // CORS comes from the /.well-known/:path* rule in next.config.ts, which
+    // replaces any ACAO set here (Next config headers win for this name).
     headers: {
       "Content-Type": "application/linkset+json",
       "Cache-Control": "public, max-age=0, s-maxage=3600",
-      "Access-Control-Allow-Origin": "*",
     },
   });
 }
