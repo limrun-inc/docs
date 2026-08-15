@@ -287,10 +287,12 @@ lim ios list --label-selector "agent=cursor,issue=LIM-34"
 Run this where the API key lives (your machine, the orchestrator, CI):
 
 ```bash
-lim ios create --xcode --json > instance.json
+lim ios create --json > instance.json
 jq -r .status.apiUrl instance.json    # the instance's API URL
 jq -r .status.token  instance.json    # the instance's token
 ```
+
+Each resource is created individually as the agent needs it: `lim android create --no-connect --json` (`--no-connect` skips the local ADB tunnel, which would mix its output into the JSON), `lim xcode create --json` for a build sandbox, `lim gradle create --json` for Android builds. Every one returns its own `status.apiUrl` and `status.token`.
 
 ### 2. Point the sandboxed CLI at the instance
 
@@ -313,16 +315,24 @@ Both exist for every instance type: the env pairs are `LIM_<TYPE>_INSTANCE_URL` 
 
 When both are present, an explicit `--id` wins over the env pair, which wins over the pinned instance.
 
-### 3. Hand over the Xcode sandbox too, for builds
+### 3. Builds work the same way
 
-`lim xcode build` targets the Mac sandbox, which has its own URL. For an iOS instance created with `--xcode`, that's `status.sandbox.xcode.url` with the same `status.token`:
+`lim xcode build` targets an Xcode sandbox, its own resource with its own credentials. Create it where the key lives and hand over its pair like any other instance:
 
 ```bash
-export LIM_XCODE_INSTANCE_URL=$(jq -r .status.sandbox.xcode.url instance.json)
-export LIM_XCODE_INSTANCE_TOKEN=$(jq -r .status.token instance.json)
+lim xcode create --json > xcode.json
+```
+
+Then in the sandbox:
+
+```bash
+export LIM_XCODE_INSTANCE_URL=$(jq -r .status.apiUrl xcode.json)
+export LIM_XCODE_INSTANCE_TOKEN=$(jq -r .status.token xcode.json)
 
 lim xcode build .       # remote build, still no API key
 ```
+
+`lim gradle build` follows the same pattern with `lim gradle create --json` and the `LIM_GRADLE_INSTANCE_URL`/`LIM_GRADLE_INSTANCE_TOKEN` pair.
 
 ### What still needs the key
 
