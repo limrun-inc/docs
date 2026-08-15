@@ -31,6 +31,8 @@ Set `LIM_API_KEY` in the shell your agent uses. The CLI also picks up `.env` fil
 export LIM_API_KEY=lim_...
 ```
 
+The API key can create, list, and delete every instance in your organization. If the agent runs in a sandbox that shouldn't hold that much power, skip this step and [hand it a single instance](#hand-one-instance-to-a-sandboxed-agent) instead.
+
 ### 3. Install the Limrun skill
 
 From your project root, install the skill:
@@ -275,6 +277,56 @@ With no ID, this deletes the last instance the CLI created (tracked in `~/.lim/l
 ```bash
 lim ios list --label-selector "agent=cursor,issue=LIM-34"
 ```
+
+## Hand one instance to a sandboxed agent
+
+`LIM_API_KEY` is an org-wide credential: it can create, list, and delete every instance you have. An agent in an untrusted or shared sandbox shouldn't hold it. Instead, create the instance outside the sandbox and hand the agent only that instance's own credentials. The CLI drives a pinned instance without any API key.
+
+### 1. Create the instance and capture its credentials
+
+Run this where the API key lives (your machine, the orchestrator, CI):
+
+```bash
+lim ios create --xcode --json > instance.json
+jq -r .status.apiUrl instance.json    # the instance's API URL
+jq -r .status.token  instance.json    # the instance's token
+```
+
+### 2. Point the sandboxed CLI at the instance
+
+Export the pair inside the sandbox; every `lim ios` command picks them up directly, nothing is persisted:
+
+```bash
+export LIM_IOS_INSTANCE_URL=https://.../v1/ios_.../api
+export LIM_IOS_INSTANCE_TOKEN=lim_st_...
+
+lim ios element-tree    # works with no LIM_API_KEY
+```
+
+Or pin it once per workspace with `set-instance`, which stores it in `~/.lim/last-instances.json`:
+
+```bash
+lim ios set-instance --api-url https://.../v1/ios_.../api --token lim_st_...
+```
+
+Both exist for every instance type: the env pairs are `LIM_<TYPE>_INSTANCE_URL` and `LIM_<TYPE>_INSTANCE_TOKEN` with `IOS`, `ANDROID`, `XCODE`, or `GRADLE`, and the commands are `lim {ios,android,xcode,gradle} set-instance`. Android additionally takes `LIM_ANDROID_INSTANCE_ADB_URL` (`status.adbWebSocketUrl`, or the `--adb-websocket-url` flag) if the agent should run `lim android connect`.
+
+When both are present, an explicit `--id` wins over the env pair, which wins over the pinned instance.
+
+### 3. Hand over the Xcode sandbox too, for builds
+
+`lim xcode build` targets the Mac sandbox, which has its own URL. For an iOS instance created with `--xcode`, that's `status.sandbox.xcode.url` with the same `status.token`:
+
+```bash
+export LIM_XCODE_INSTANCE_URL=$(jq -r .status.sandbox.xcode.url instance.json)
+export LIM_XCODE_INSTANCE_TOKEN=$(jq -r .status.token instance.json)
+
+lim xcode build .       # remote build, still no API key
+```
+
+### What still needs the key
+
+Anything on the management API (creating, listing, and deleting instances, and Asset Storage uploads like `lim xcode build --upload`) fails with an authentication error in the sandbox. That's the point: the agent drives the one instance it was given, and lifecycle stays with whoever holds the key. Delete the instance from the orchestrator when the work is done. If the agent should ship build artifacts, hand it a pre-signed URL and use `--signed-upload-url` instead of `--upload`; that path never touches the management API.
 
 ## Watch out for these
 
