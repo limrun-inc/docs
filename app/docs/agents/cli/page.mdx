@@ -284,7 +284,9 @@ lim ios list --label-selector "agent=cursor,issue=LIM-34"
 
 ### 1. Create the instance and capture its credentials
 
-Run this where the API key lives (your machine, the orchestrator, CI):
+Run this where the API key lives (your machine, the orchestrator, CI). If the orchestrator is a backend service, the SDK makes the same call:
+
+<CodeGroup labels={["CLI","TypeScript SDK"]}>
 
 ```bash
 lim ios create --json > instance.json
@@ -292,7 +294,17 @@ jq -r .status.apiUrl instance.json    # the instance's API URL
 jq -r .status.token  instance.json    # the instance's token
 ```
 
-Each resource is created individually as the agent needs it: `lim android create --no-connect --json` (`--no-connect` skips the local ADB tunnel, which would mix its output into the JSON), `lim xcode create --json` for a build sandbox, `lim gradle create --json` for Android builds. Every one returns its own `status.apiUrl` and `status.token`.
+```ts
+import Limrun from '@limrun/api';
+
+const lim = new Limrun({ apiKey: process.env.LIM_API_KEY });
+const instance = await lim.iosInstances.create({ wait: true });
+// Hand instance.status.apiUrl and instance.status.token to the sandbox.
+```
+
+</CodeGroup>
+
+Each resource is created individually as the agent needs it: `lim android create --no-connect --json` (`--no-connect` skips the local ADB tunnel, which would mix its output into the JSON), `lim xcode create --json` for a build sandbox, `lim gradle create --json` for Android builds. The SDK equivalents are `lim.androidInstances.create`, `lim.xcodeInstances.create`, and `lim.gradleInstances.create`, all with `{ wait: true }` to return once the instance is ready. Every one returns its own `status.apiUrl` and `status.token`.
 
 ### 2. Point the sandboxed CLI at the instance
 
@@ -334,9 +346,43 @@ lim xcode build .       # remote build, still no API key
 
 `lim gradle build` follows the same pattern with `lim gradle create --json` and the `LIM_GRADLE_INSTANCE_URL`/`LIM_GRADLE_INSTANCE_TOKEN` pair.
 
+### 4. Share files through signed asset URLs
+
+Asset Storage lives on the management API, so the sandbox can't mint asset URLs itself. Create the asset outside and hand the sandbox its signed URLs; they carry their own authorization.
+
+To let the agent ship a build artifact, mint the asset where the key lives and pass its upload URL in:
+
+<CodeGroup labels={["CLI","TypeScript SDK"]}>
+
+```bash
+: > agent-build.zip                     # empty placeholder; the agent's upload replaces it
+lim asset push ./agent-build.zip
+lim asset list --name agent-build.zip --upload-url --json | jq -r '.[0].signedUploadUrl'
+```
+
+```ts
+const asset = await lim.assets.getOrCreate({ name: 'agent-build.zip' });
+// Hand asset.signedUploadUrl to the sandbox. Nothing has to be uploaded yet;
+// the same call also returns asset.signedDownloadUrl for later.
+```
+
+</CodeGroup>
+
+In the sandbox, the build uploads straight to that URL without touching the management API:
+
+```bash
+lim xcode build . --signed-upload-url "$UPLOAD_URL"
+```
+
+To hand the agent a file (a prebuilt app, a fixture), push it outside with `lim asset push ./MyApp.app.zip`, grab the URL with `lim asset list --name MyApp.app.zip --download-url --json`, and pass it in. The agent installs it keyless; the instance downloads the URL server-side:
+
+```bash
+lim ios install-app "$DOWNLOAD_URL"
+```
+
 ### What still needs the key
 
-Anything on the management API (creating, listing, and deleting instances, and Asset Storage uploads like `lim xcode build --upload`) fails with an authentication error in the sandbox. That's the point: the agent drives the one instance it was given, and lifecycle stays with whoever holds the key. Delete the instance from the orchestrator when the work is done. If the agent should ship build artifacts, hand it a pre-signed URL and use `--signed-upload-url` instead of `--upload`; that path never touches the management API.
+Anything on the management API (creating, listing, and deleting instances, and minting asset URLs like `lim xcode build --upload` does) fails with an authentication error in the sandbox. That's the point: the agent drives the one instance it was given, and lifecycle stays with whoever holds the key. Delete the instance from the orchestrator when the work is done.
 
 ## Watch out for these
 
