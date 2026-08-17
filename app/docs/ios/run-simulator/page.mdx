@@ -113,6 +113,45 @@ Screenshot dimensions are in *points*, the same coordinate space as `tap(x, y)`.
 await client.tapWithScreenSize(x, y, screenshotWidth, screenshotHeight);
 ```
 
+## List and transfer app files
+
+Use `listFiles` to discover the exact relative path before downloading an
+app-generated file. Pass the same container options to each operation:
+
+```ts
+import { writeFile } from 'node:fs/promises';
+
+const container = {
+  bundleId: 'com.example.app',
+  containerType: 'data',
+};
+
+const entries = await client.listFiles('Documents', container);
+// [{ name: 'recording.mov', path: 'Documents/recording.mov',
+//    isDirectory: false, size: 123456 }]
+
+const recording = await client.pullFile(entries[0].path, container);
+await writeFile('./recording.mov', recording);
+```
+
+Or from the CLI:
+
+```bash
+lim ios ls Documents --bundle-id com.example.app --container-type data
+lim ios pull-file Documents/recording.mov ./recording.mov \
+  --bundle-id com.example.app --container-type data
+lim ios push-file ./fixture.json Documents/fixture.json \
+  --bundle-id com.example.app --container-type data
+lim ios delete-file Documents/fixture.json \
+  --bundle-id com.example.app --container-type data
+```
+
+Without `--bundle-id`, file commands target the simulator staging folder.
+With `--bundle-id`, the default container type is `app`; use
+`--container-type data` for writable app data such as `Documents`, `Library`,
+and `tmp`. Every path returned by `ls` / `listFiles` is relative to the selected
+root and can be passed directly to pull, push, or delete with the same options.
+
 ## Tap
 
 Prefer accessibility selectors. They survive layout changes; coordinates don't.
