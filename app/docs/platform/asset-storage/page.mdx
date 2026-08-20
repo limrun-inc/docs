@@ -25,7 +25,7 @@ interface Asset {
   displayName?:      string;
   md5?:              string;                           // present only once bytes are uploaded
   platform?:         'ios' | 'android' | 'xcode';      // unset = usable on any platform
-  expiresAt?:        string;                           // when the asset is deleted; defaults to 14 days after creation
+  expiresAt?:        string;                           // when set, the time the asset is deleted automatically
   signedDownloadUrl?: string;                          // returned when includeDownloadUrl=true
   signedUploadUrl?:   string;                          // returned when includeUploadUrl=true
 }
@@ -39,7 +39,7 @@ interface Asset {
 | `displayName` | Optional human-readable label surfaced in the console; falls back to `name`. |
 | `md5` | Set once the bytes have been uploaded. Unique hash used by `getOrUpload` to skip re-uploads for duplicates and by `installApp` to enable server-side caching. |
 | `platform` | Limits which platform can install the asset. Useful when the same logical name (e.g. `acme/my-app-v1.2.3`) covers both an iOS sim build and an Android APK. Responses also include `os`, a deprecated alias that mirrors this field. |
-| `expiresAt` | The time after which the asset (bytes and record) is deleted automatically. See [Asset expiry](#asset-expiry-ttl). |
+| `expiresAt` | When set, the time after which the asset (bytes and record) is deleted automatically. See [Asset expiry](#asset-expiry-ttl). |
 | `signedDownloadUrl` / `signedUploadUrl` | Time-limited URLs. Only returned when you ask for them on `list`/`get`, or always on `getOrCreate`. |
 
 
@@ -210,13 +210,14 @@ For **browser-direct uploads**, generate the `signedUploadUrl` on your backend (
 
 Every upload path accepts an optional `ttl` as a Go duration string (`--ttl` on `lim asset push`, `ttl` on `getOrUpload`/`getOrCreate`, `--upload-ttl` on `lim xcode build` and `lim gradle build`). When set, the asset is deleted (bytes and record) that long after the upload; the minimum is `1m` and `1d` is invalid Go syntax, use `24h`.
 
-When omitted, a **newly created asset expires 14 days after creation**. Re-uploading under the same name keeps the asset's recorded expiry: pass a `ttl` on the re-upload to push the expiry out from that moment.
-
 ```bash
 lim asset push ./build/MyApp.app.tar.gz -n my-app-v1.2.3.tar.gz --ttl 720h
 ```
 
-For assets you want to keep long-term, set a generous `ttl` explicitly and refresh it on re-uploads.
+The default depends on the upload path:
+
+- **Direct uploads** (`lim asset push`, `getOrUpload`, `getOrCreate`) never expire unless you pass a `ttl`. Re-uploading under the same name keeps the recorded expiry; pass a `ttl` on the re-upload to change it.
+- **Build-product uploads** (`lim xcode build --upload`, `lim gradle build --upload`, [RBE uploads](/docs/ios/build-with-bazel)) default to **14 days**: each build upload without an explicit `--upload-ttl` pushes the asset's expiry to 14 days from that upload, so actively rebuilt assets stay alive while abandoned build artifacts get swept.
 
 ## Install an asset
 
