@@ -130,7 +130,7 @@ jobs:
 
 1. **Checkout.** The source tree is what gets synced to the Xcode sandbox.
 2. **Install Limrun CLI.** `npm i -g lim` runs anywhere Node does. The build itself runs on Limrun's Mac fleet, so the job stays on a cheap Linux runner.
-3. **Build on Limrun.** `lim xcode create --reuse-if-exists` provisions (or reuses) a sandbox tagged with the PR number and repo name, so subsequent pushes to the same PR reuse the same sandbox instead of spinning up a fresh one. `lim xcode build . --upload <name>` then syncs the source, runs `xcodebuild`, and uploads the artifact to [Asset Storage](/docs/platform/asset-storage). Naming the asset after the PR means the next push overwrites it, so the preview link always points at the latest commit.
+3. **Build on Limrun.** `lim xcode create --reuse-if-exists` provisions (or reuses) a sandbox tagged with the PR number and repo name, so subsequent pushes to the same PR reuse the same sandbox instead of spinning up a fresh one. `lim xcode build . --upload <name>` then syncs the source, runs `xcodebuild`, and uploads the artifact to [Asset Storage](/docs/platform/asset-storage). Naming the asset after the PR means the next push overwrites it, so the preview link always points at the latest commit. An asset expires 14 days after it was first created (re-uploads keep the recorded expiry), so for PRs that may live longer, pass `--upload-ttl <duration>` (e.g. `720h`) on each build to push the expiry out from that upload.
 4. **Comment with preview link.** Build `https://console.limrun.com/preview?asset=<name>&platform=ios` and post it as a PR comment. Opening the link in the Limrun console provisions a simulator and pre-installs the asset uploaded in step 3.
 
 ## Clean up when a PR closes
