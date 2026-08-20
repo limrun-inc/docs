@@ -698,7 +698,7 @@ xcode.xcodebuild(
 );
 ```
 
-The uploaded asset expires after 14 days by default. Pass `--upload-ttl` with a Go duration (`ttl` in the SDK; e.g. `720h`, `1d` is invalid) to change that; re-uploads keep the asset's current expiry.
+The uploaded asset expires 14 days after the last upload by default: each build upload pushes the expiry out again, so actively rebuilt assets stay alive. Pass `--upload-ttl` with a Go duration (`ttl` in the SDK; e.g. `720h`, `1d` is invalid) to change the window. Assets uploaded with `lim asset push` are unaffected; they never expire unless given a `--ttl`.
 
 **Upload to your own bucket.** Pass a pre-signed S3, GCS, or R2 URL and the artifact PUTs directly to it from the sandbox. The build bytes never travel through your client; the sandbox handles the upload itself, which avoids a round-trip through whatever machine called `lim xcode build`. Use this when you want the artifact in storage you already manage, or when the build is large enough that pulling it back through your CI runner would be wasteful.
 

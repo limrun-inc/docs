@@ -118,7 +118,7 @@ lim xcode build . --workspace MyApp.xcworkspace --scheme MyApp
 | `--xcodegen-spec path` `--xcodegen-project dir` `--xcodegen-project-root dir` | Pin XcodeGen inputs when the spec isn't a root-level `project.yml`. They mirror `xcodegen generate` flags, with paths relative to the synced root. Passing any of them forces regeneration. |
 | `--sdk iphonesimulator\|iphoneos\|watchsimulator\|watchos` | Target SDK. |
 | `--upload <asset_name>` | Save the build artifact to Asset Storage under this name. Used for preview links. |
-| `--upload-ttl <duration>` | Expiry of the uploaded asset as a Go duration (e.g. `720h`). Defaults to 14 days for newly created assets; re-uploads keep the current expiry. Requires `--upload`. |
+| `--upload-ttl <duration>` | Expiry of the uploaded asset as a Go duration (e.g. `720h`). Defaults to `336h` (14 days); each build upload pushes the expiry that far out from the upload. Requires `--upload`. |
 | `--signed-upload-url <url>` | Upload to your own pre-signed URL (S3, GCS, etc). |
 | `--certificate-p12 path.p12` `--certificate-password ...` `--provisioning-profile path.mobileprovision` | Sign for a real-device build. `--provisioning-profile` is repeatable: pass one profile per bundle the app embeds (the app plus each extension or watch app). |
 | `--signing-method app-store-connect\|release-testing\|debugging` `--team-id ...` | Use Apple cloud signing instead of a p12 and provisioning profiles. Also requires `--asc-key-id`, `--asc-issuer-id`, and `--asc-key`. Distribution methods require access to cloud-managed distribution certificates. |
