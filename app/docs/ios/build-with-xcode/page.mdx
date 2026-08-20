@@ -711,15 +711,15 @@ xcode.xcodebuild(
 );
 ```
 
-**When the product name differs from the scheme name.** The server locates the built `.app` on its own, including projects where the scheme and `PRODUCT_NAME` diverge (a scheme "MyApp Dev" building `MyApp-dev.app`). If an upload still fails with `built artifact not found`, pin the product name explicitly — the server then takes `<name>.app` from the build products verbatim and skips discovery:
+**When the product name differs from the scheme name.** The server locates the built `.app` on its own, including projects where the scheme and `PRODUCT_NAME` diverge (a scheme "MyApp Dev" building `MyApp-dev.app`). If an upload still fails with `built artifact not found`, pin the bundle filename explicitly (including the `.app` extension) — the server then takes that name from the build products verbatim and skips discovery:
 
 ```bash
-lim xcode build . --scheme "MyApp Dev" --upload myapp-dev-build --upload-product-name MyApp-dev
+lim xcode build . --scheme "MyApp Dev" --upload myapp-dev-build --artifact-name MyApp-dev.app
 ```
 
 ```ts
 xcode.xcodebuild(
-  { scheme: 'MyApp Dev', productName: 'MyApp-dev' },
+  { scheme: 'MyApp Dev', artifactName: 'MyApp-dev.app' },
   { upload: { assetName: 'myapp-dev-build' } },
 );
 ```
