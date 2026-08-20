@@ -70,11 +70,11 @@ The instance status carries everything you need:
 | Status field | Use |
 |---|---|
 | `apiUrl` | HTTP base for the device daemon. Pass to the control client. |
-| `token` | Per-instance bearer for `apiUrl`, `endpointWebSocketUrl`, and `sandbox.xcode.url`. Embedded in `signedStreamUrl`. |
+| `token` | Per-instance bearer for `apiUrl` and `endpointWebSocketUrl`. Embedded in `signedStreamUrl`. |
 | `endpointWebSocketUrl` | WebSocket endpoint for the [`<RemoteControl />` web component](/docs/platform/embed-simulator) (pass with `?token=`). |
 | `signedStreamUrl` | Console-hosted watch URL with the token embedded; open in a browser without your API key. |
 | `mcpUrl` | Per-instance MCP HTTP endpoint. Auth with the per-instance `status.token`, not your org API key. See [MCP](/docs/agents/mcp). |
-| `sandbox.xcode.url` | Xcode sandbox API URL (only when `spec.sandbox.xcode.enabled: true`). |
+| `sandbox.xcode.url` | Legacy: embedded Xcode sandbox API URL on instances created by old clients with `spec.sandbox.xcode.enabled`. New clients create the sandbox separately and attach; see [Build with remote Xcode](/docs/ios/build-with-xcode). |
 | `targetHttpPortUrlPrefix` | Reverse-proxy prefix for tunneled HTTP ports on the device. |
 | `state` | `unknown` → `creating` → `assigned` → `ready` → `terminated`. |
 
@@ -772,9 +772,10 @@ lim ios create --reuse-if-exists \
   --inactivity-timeout 10m \
   --force-bundle-id com.example.myapp \
   --label app=my-app --label session=demo \
-  --install-asset my-app-build.zip \
-  --xcode
+  --install-asset my-app-build.zip
 ```
+
+Add `--xcode` to also create an Xcode build sandbox and attach the simulator to it, or `--attach` to attach to your most recent Xcode build target. See [Build with remote Xcode](/docs/ios/build-with-xcode).
 
 ### `spec` reference
 
@@ -787,7 +788,7 @@ lim ios create --reuse-if-exists \
 | `forceBundleId` | string | After this app first enters the foreground, bring it back whenever it is closed or backgrounded. |
 | `clues` | array | Scheduling hints. `{ kind: 'ClientIP', clientIp }` picks a region close to the end user. |
 | `initialAssets` | array | Apps or keychain state to apply at boot. See [Asset Storage](/docs/platform/asset-storage). |
-| `sandbox.xcode.enabled` | boolean | Attach an Xcode build sandbox. See [Build with remote Xcode](/docs/ios/build-with-xcode). |
+| `sandbox.xcode.enabled` | boolean | Legacy: create an embedded Xcode sandbox with the simulator. Kept for old clients; create the sandbox separately and attach instead. See [Build with remote Xcode](/docs/ios/build-with-xcode). |
 
 `metadata.labels` is free-form `key=value` and powers `reuseIfExists`, listing, and cleanup queries.
 

@@ -21,16 +21,17 @@ StoreKit can serve in-app purchase products from a local `.storekit` configurati
 
 Two practical consequences:
 
-- The simulator needs to be set up so it accepts a local config. That means provisioning it with the **Xcode sandbox attached** (the same sandbox you use for [Build with remote Xcode](/docs/ios/build-with-xcode)), and ad-hoc-signing the build so the simulator runs it without an Apple Developer account.
+- The simulator needs to be set up so it accepts a local config. That means **attaching it to an Xcode sandbox** (the same sandbox you use for [Build with remote Xcode](/docs/ios/build-with-xcode)), and ad-hoc-signing the build so the simulator runs it without an Apple Developer account.
 - The config is keyed by bundle ID. Setting it for `com.example.MyApp` doesn't affect any other bundle on the same simulator, and clearing it sends StoreKit back to real-sandbox behavior for that bundle only.
 
-## Provision an instance with the Xcode sandbox
+## Provision an Xcode sandbox and an attached simulator
 
-Same create call you'd use for any build-and-test flow, with `sandbox.xcode.enabled` switched on:
+Create the two instances separately and attach the simulator to the sandbox — the same shape as any build-and-test flow:
 
-<CodeGroup labels={["CLI", "TypeScript", "Go", "Python"]}>
+<CodeGroup labels={["CLI", "TypeScript", "Python"]}>
 ```bash
-lim ios create --xcode --reuse-if-exists --region us-west --label name=iap-test
+lim xcode create --reuse-if-exists --region us-west --label name=iap-test
+lim ios create --attach --reuse-if-exists --region us-west --label name=iap-test
 ```
 
 ```ts
@@ -38,47 +39,25 @@ import { Limrun, Ios } from '@limrun/api';
 
 const lim = new Limrun({ apiKey: process.env.LIM_API_KEY });
 
-// `wait: true` blocks until the instance is `ready` and the Xcode sandbox URL
-// is populated on `status.sandbox.xcode.url`. `reuseIfExists` keeps you on the
-// same warm instance on re-runs; pin a region if you want that to be reliable
-// across networks (see Run an iOS Simulator).
+// `wait: true` blocks until each instance is `ready`. `reuseIfExists` keeps
+// you on the same warm instances on re-runs; pin a region if you want that
+// to be reliable across networks (see Run an iOS Simulator).
+const xcodeInstance = await lim.xcodeInstances.create({
+  wait: true,
+  reuseIfExists: true,
+  metadata: { labels: { name: 'iap-test' } },
+  spec: { region: 'us-west' },
+});
+
 const instance = await lim.iosInstances.create({
   wait: true,
   reuseIfExists: true,
   metadata: { labels: { name: 'iap-test' } },
-  spec: {
-    region: 'us-west',
-    sandbox: { xcode: { enabled: true } },
-  },
+  spec: { region: 'us-west' },
 });
-```
 
-```go
-import (
-    "context"
-    "os"
-    limrun "github.com/limrun-inc/go-sdk"
-    "github.com/limrun-inc/go-sdk/option"
-    "github.com/limrun-inc/go-sdk/packages/param"
-)
-
-lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
-
-instance, err := lim.IosInstances.New(context.TODO(), limrun.IosInstanceNewParams{
-    Wait:          param.NewOpt(true),
-    ReuseIfExists: param.NewOpt(true),
-    Metadata: limrun.IosInstanceNewParamsMetadata{
-        Labels: map[string]string{"name": "iap-test"},
-    },
-    Spec: limrun.IosInstanceNewParamsSpec{
-        Region: param.NewOpt("us-west"),
-        Sandbox: limrun.IosInstanceNewParamsSpecSandbox{
-            Xcode: limrun.IosInstanceNewParamsSpecSandboxXcode{
-                Enabled: param.NewOpt(true),
-            },
-        },
-    },
-})
+const xcode = await lim.xcodeInstances.createClient({ instance: xcodeInstance });
+await xcode.attachSimulator(instance);
 ```
 
 ```python
@@ -87,25 +66,31 @@ from limrun_api import Limrun
 
 limrun = Limrun(api_key=os.environ["LIM_API_KEY"])
 
+xcode_instance = limrun.xcode_instances.create(
+    wait=True,
+    reuse_if_exists=True,
+    metadata={"labels": {"name": "iap-test"}},
+    spec={"region": "us-west"},
+)
+
 instance = limrun.ios_instances.create(
     wait=True,
     reuse_if_exists=True,
     metadata={"labels": {"name": "iap-test"}},
-    spec={
-        "region": "us-west",
-        "sandbox": {"xcode": {"enabled": True}},
-    },
+    spec={"region": "us-west"},
 )
+
+# Attach the simulator with a direct HTTP call: POST {xcode status.api_url}/simulator
+# with the Xcode instance's status.token as bearer and body
+# {"apiUrl": instance.status.api_url, "token": instance.status.token}.
 ```
 
 </CodeGroup>
 
-When the call resolves, two URLs on the returned object matter for IAP work:
+Two URLs matter for IAP work:
 
-- **The Xcode sandbox URL** (`instance.status.sandbox.xcode.url`). The Xcode client connects here to sync source and run `xcodebuild`.
-- **The device control-plane URL** (`instance.status.apiUrl`). The iOS client connects here to call the StoreKit helpers and drive the UI.
-
-Both authenticate with the same `instance.status.token`.
+- **The Xcode sandbox URL** (`xcodeInstance.status.apiUrl`, token `xcodeInstance.status.token`). The Xcode client connects here to sync source and run `xcodebuild`.
+- **The device control-plane URL** (`instance.status.apiUrl`, token `instance.status.token`). The iOS client connects here to call the StoreKit helpers and drive the UI.
 
 ## Build and install the app
 
@@ -114,21 +99,16 @@ Sync your source to the Xcode sandbox and run `xcodebuild`. Critically, the buil
 <CodeGroup labels={["CLI", "TypeScript"]}>
 ```bash
 # Syncs the source folder and runs xcodebuild in one step. --id targets the
-# iOS instance with the Xcode sandbox attached (created above).
-lim xcode build ./MyApp --id <instance-id> --scheme MyApp --sdk iphonesimulator
+# Xcode instance created above.
+lim xcode build ./MyApp --id <xcode-instance-id> --scheme MyApp --sdk iphonesimulator
 ```
 
 ```ts
-const xcode = await lim.xcodeInstances.createClient({
-  apiUrl: instance.status.sandbox!.xcode!.url!,
-  token: instance.status.token,
-});
-
 await xcode.sync('./MyApp', { watch: false });
 
 // `xcodebuild()` with no signing params produces an ad-hoc-signed simulator
 // build. After it succeeds, the build is auto-installed on the attached
-// simulator on the same instance.
+// simulator.
 const build = xcode.xcodebuild();
 build.stdout.on('data', (line) => process.stdout.write(line.toString()));
 build.stderr.on('data', (line) => process.stderr.write(line.toString()));
