@@ -71,7 +71,7 @@ Every successful build then refreshes the `preview/my-app` asset automatically, 
 lim xcode rbe upload preview/my-app --ttl 24h
 ```
 
-TTLs are optional Go durations (`24h`, `30m`). Anyone in your organization can then open the build in a browser at `https://console.limrun.com/preview?asset=preview/my-app&platform=ios`.
+TTLs are optional Go durations (`24h`, `30m`); without one a newly created asset expires after 14 days, and re-uploads keep the asset's current expiry. Anyone in your organization can then open the build in a browser at `https://console.limrun.com/preview?asset=preview/my-app&platform=ios`.
 
 ## Use it in CI
 

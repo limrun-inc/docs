@@ -164,6 +164,8 @@ const build = gradle.gradlebuild({ upload: { assetName: 'myapp.apk' } });
 const { exitCode, signedDownloadUrl } = await build;
 ```
 
+The uploaded asset expires after 14 days by default. Pass `--upload-ttl` with a Go duration (`ttl` in the SDK; e.g. `720h`, `1d` is invalid) to change that; re-uploads keep the asset's current expiry.
+
 The build result includes a signed download URL. Anyone with the URL can download the artifact without a Limrun API key. The signature expires after 15 minutes; if you need it later, re-fetch a fresh URL with `lim asset list --name <asset> --download-url`.
 
 **Upload to your own bucket.** Pass a pre-signed S3, GCS, or R2 URL and the artifact PUTs directly to it from the sandbox, without a round-trip through the machine that called the build:
