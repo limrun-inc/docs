@@ -15,7 +15,7 @@ The flow:
 1. **Provision** an Xcode sandbox.
 2. **Sync** your source folder to it.
 3. **Run `xcodebuild`** on the remote Mac. Logs stream back.
-4. **Install or ship.** Successful builds auto-install on a paired simulator, or you upload the IPA to share.
+4. **Install or ship.** Successful builds auto-install on an attached simulator, or you upload the IPA to share.
 
 ### SDK coverage by language
 
@@ -27,19 +27,15 @@ The flow:
 
 Python and Go users provision the instance with their SDK and drive the build with `lim xcode build`. See the [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix).
 
-## Two ways to use the Xcode sandbox
+## Provision the Xcode sandbox
 
-The right shape depends on whether you also need a simulator right now.
+The Xcode sandbox and the iOS simulator are separate instances with separate lifecycles. You create the sandbox, build on it, and attach a simulator only when it's time to run the app. This composability is the point: get an Xcode sandbox for the build, attach a simulator to test, drop the simulator and go back to just Xcode (or swap to Android) when you're not testing. You only pay for what's currently running.
 
-Limrun lets your agent compose its environment step-by-step: get an Xcode sandbox for the build, attach a simulator only when it's time to test, drop the simulator and go back to just Xcode (or swap to Android) when you're not. You only pay for what's currently running. Future services like Blender and Unity follow the same pattern.
+Building before the simulator exists also matters practically: a simulator that sits idle during a long build can hit its inactivity timeout and disappear before the build finishes.
 
-### Paired with an iOS simulator (most common)
-
-When the agent is going to test on a simulator right after the build, create one iOS instance with the Xcode sandbox attached. Pass `--xcode` to the CLI, or set the sandbox config on the SDK call as shown below. After a successful build, the app auto-installs and auto-launches on the simulator.
-
-<CodeGroup labels={["CLI","TypeScript","Python","Go"]}>
+<CodeGroup labels={["CLI","TypeScript","Python"]}>
 ```bash
-lim ios create --xcode --reuse-if-exists --label session=demo
+lim xcode create --reuse-if-exists --label session=demo
 ```
 
 ```ts
@@ -47,87 +43,28 @@ import Limrun from '@limrun/api';
 
 const lim = new Limrun({ apiKey: process.env['LIM_API_KEY'] });
 
-const instance = await lim.iosInstances.create({
-  wait: true,
-  reuseIfExists: true,
-  metadata: { labels: { session: 'demo' } },
-  spec: {
-    sandbox: { xcode: { enabled: true } },
-  },
-});
-
-const xcodeUrl = instance.status.sandbox!.xcode!.url!;
-const xcode = await lim.xcodeInstances.createClient({
-  apiUrl: xcodeUrl,
-  token: instance.status.token,
-});
-```
-
-```python
-# Python provisions the paired instance; the build step itself is not in the
-# Python SDK today. Drive the build with `lim xcode build` from your CI step.
-instance = client.ios_instances.create(
-    wait=True,
-    reuse_if_exists=True,
-    metadata={"labels": {"session": "demo"}},
-    spec={"sandbox": {"xcode": {"enabled": True}}},
-)
-xcode_url = instance.status.sandbox.xcode.url
-```
-
-```go
-// Go provisions the paired instance; the build step itself is not in the
-// Go SDK today. Drive the build with `lim xcode build` from your CI step.
-instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
-    Wait:          param.NewOpt(true),
-    ReuseIfExists: param.NewOpt(true),
-    Metadata: limrun.IosInstanceNewParamsMetadata{
-        Labels: map[string]string{"session": "demo"},
-    },
-    Spec: limrun.IosInstanceNewParamsSpec{
-        Sandbox: limrun.IosInstanceNewParamsSpecSandbox{
-            Xcode: limrun.IosInstanceNewParamsSpecSandboxXcode{
-                Enabled: param.NewOpt(true),
-            },
-        },
-    },
-})
-xcodeURL := instance.Status.Sandbox.Xcode.URL
-```
-
-</CodeGroup>
-
-On the SDK side, `xcode` is the handle you use in the sync and build sections below. On the CLI, the `--xcode` flag is what carries the sandbox attachment through.
-
-### Standalone, without a simulator
-
-For pure CI builds, real-device IPA distribution, or build steps where the agent doesn't need a simulator yet, create a top-level Xcode instance. Attach a simulator later only when it's time to run the app (see [Auto-install on the simulator](#auto-install-on-the-simulator)).
-
-<CodeGroup labels={["CLI","TypeScript","Python"]}>
-```bash
-lim xcode create --reuse-if-exists --label session=ci-build
-```
-
-```ts
 const xcodeInstance = await lim.xcodeInstances.create({
   wait: true,
   reuseIfExists: true,
-  metadata: { labels: { session: 'ci-build' } },
+  metadata: { labels: { session: 'demo' } },
 });
 
 const xcode = await lim.xcodeInstances.createClient({ instance: xcodeInstance });
 ```
 
 ```python
+# Python provisions the instance; the build step itself is not in the
+# Python SDK today. Drive the build with `lim xcode build` from your CI step.
 xcode_instance = client.xcode_instances.create(
     wait=True,
     reuse_if_exists=True,
-    metadata={"labels": {"session": "ci-build"}},
+    metadata={"labels": {"session": "demo"}},
 )
-# Drive the build with `lim xcode build` against this instance's ID.
 ```
 
 </CodeGroup>
+
+On the SDK side, `xcode` is the handle you use in the sync and build sections below.
 
 If you only have the URL and token from a different process (not the full instance object), open the client with the raw form:
 
@@ -135,7 +72,9 @@ If you only have the URL and token from a different process (not the full instan
 const xcode = await lim.xcodeInstances.createClient({ apiUrl, token });
 ```
 
-The **Go SDK doesn't yet have a standalone Xcode resource.** From Go, either provision an iOS instance with the Xcode sandbox attached (the paired pattern above), POST to `/v1/xcode_instances` directly, or call `lim xcode create` from your process.
+The **Go SDK doesn't yet have a standalone Xcode resource.** From Go, POST to `/v1/xcode_instances` directly or call `lim xcode create` from your process.
+
+When you already know you'll test on a simulator right after the build, the CLI can create both instances and attach them in one call: `lim ios create --xcode` (or `lim xcode create --ios`). The two instances are still separate; the flag just saves you the attach step described in [Auto-install on the simulator](#auto-install-on-the-simulator).
 
 ## Sync your source
 
@@ -153,7 +92,7 @@ lim xcode sync . --watch
 ```ts
 await xcode.sync('./my-app', {
   watch: true,             // re-sync on file changes
-  install: true,           // install after each sync (paired iOS only)
+  install: true,           // install after each sync (attached simulator only)
   additionalFiles: [
     { localPath: '/home/dev/.netrc', remotePath: '~/.netrc' },
   ],
@@ -728,11 +667,13 @@ xcode.xcodebuild(
 
 ## Auto-install on the simulator
 
-When the Xcode sandbox is paired with a simulator, every successful build auto-installs and auto-launches on it. No extra step.
-
-For standalone Xcode instances, attach a simulator at any time:
+Attach a simulator to the Xcode sandbox at any time. The attach installs the latest successful build immediately, and every later successful build auto-installs and auto-launches on it. `lim ios create --attach` creates a fresh simulator and attaches it in one step; `lim xcode attach-simulator` attaches one that already exists:
 
 ```bash
+# Create a simulator and attach it (installs the latest successful build)
+lim ios create --attach
+
+# Or attach an existing simulator
 lim xcode attach-simulator <ios_instance_id>
 ```
 
@@ -742,9 +683,13 @@ Or via the SDK:
 await xcode.attachSimulator(iosInstance);
 // or with raw URL/token:
 await xcode.attachSimulator({ apiUrl: '...', token: '...' });
+// or create a fresh simulator and attach it in one call:
+const { simulator } = await xcode.attachNewSimulator();
 ```
 
-After the attach call returns, the next successful build auto-installs on that simulator. Re-attach to a different simulator if you want to test the same build across multiple device models.
+From Python or Go, attach with a direct HTTP call: `POST {xcode status.apiUrl}/simulator` with the Xcode instance's `status.token` as bearer and body `{"apiUrl": "<simulator status.apiUrl>", "token": "<simulator status.token>"}`.
+
+Re-attach to a different simulator if you want to test the same build across multiple device models.
 
 ## Full example: build a signed IPA on every PR
 

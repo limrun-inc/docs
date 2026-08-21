@@ -65,7 +65,7 @@ Three credentials show up in SDK integrations.
 | Credential | Where you get it | Use for |
 |---|---|---|
 | **Org API key** (`lim_...`) | [console.limrun.com](https://console.limrun.com) → Settings → API Keys; `lim login`; or `LIM_API_KEY` | REST control plane (`api.limrun.com`), including create/list/delete. |
-| **Per-instance token** (`instance.status.token`) | Returned in `status` when the instance is `ready` | `apiUrl` device daemon, the per-instance MCP server (`mcpUrl`), `endpointWebSocketUrl` (append `?token=`), `adbWebSocketUrl`, `sandbox.xcode.url`, and SDK helpers like `Ios.createInstanceClient`. Embedded in `signedStreamUrl` for browser streaming. |
+| **Per-instance token** (`instance.status.token`) | Returned in `status` when the instance is `ready` | `apiUrl` device daemon, the per-instance MCP server (`mcpUrl`), `endpointWebSocketUrl` (append `?token=`), `adbWebSocketUrl`, and SDK helpers like `Ios.createInstanceClient`. Embedded in `signedStreamUrl` for browser streaming. |
 | **Scoped registry token** (`lim_st_...`) | Minted by your backend with `scopedTokens.create` | Browser connections to the device-install and Apple relay endpoints. Its scopes limit which endpoints and assets the browser can use. |
 
 The org API key must never ship to a browser or end-user client. For embedded simulators, your backend holds the API key and passes only `endpointWebSocketUrl` + `status.token` to `<RemoteControl />`. See [Embed the simulator](/docs/platform/embed-simulator#authentication).
@@ -213,14 +213,14 @@ Every successful `wait: true` create returns a `status` block with the URLs the 
 
 | Field | iOS | Android | Xcode | Use |
 |---|---|---|---|---|
-| `token` | ✓ | ✓ | ✓ | Per-instance bearer for `apiUrl`, `endpointWebSocketUrl`, `adbWebSocketUrl`, `sandbox.xcode.url`; embedded in `signedStreamUrl`. |
+| `token` | ✓ | ✓ | ✓ | Per-instance bearer for `apiUrl`, `endpointWebSocketUrl`, `adbWebSocketUrl`; embedded in `signedStreamUrl`. |
 | `apiUrl` | ✓ | ✓ | ✓ | HTTP base for the per-instance device daemon (SDK / CLI control client). |
 | `signedStreamUrl` | ✓ | ✓ |   | Browser watch URL with token embedded (no org API key in the browser). |
 | `endpointWebSocketUrl` | ✓ | ✓ |   | WebSocket for `<RemoteControl />`; pass `?token=<status.token>`. |
 | `mcpUrl` | ✓ | ✓ |   | Per-instance MCP HTTP endpoint. Auth with `status.token` as `Authorization: Bearer`, not your org API key. See [MCP](/docs/agents/mcp). |
 | `adbWebSocketUrl` |   | ✓ |   | ADB tunnel endpoint. Pass as `adbUrl` to `createInstanceClient`. |
 | `targetHttpPortUrlPrefix` | ✓ | ✓ |   | Reverse-proxy prefix for tunneled HTTP ports (used by Appium/WDA). |
-| `sandbox.xcode.url` | ✓ (conditional) |   |   | Xcode sandbox API URL when `spec.sandbox.xcode.enabled: true`. |
+| `sandbox.xcode.url` | ✓ (legacy) |   |   | Embedded Xcode sandbox URL on instances created by old clients with `spec.sandbox.xcode.enabled`. New clients create the Xcode instance separately and attach the simulator. |
 | `sandbox.playwrightAndroid.url` |   | ✓ (conditional) |   | CDP URL when `spec.sandbox.playwrightAndroid.enabled: true`. |
 
 ## Regions and labels
@@ -251,8 +251,7 @@ curl -X POST "https://api.limrun.com/v1/ios_instances?wait=true&reuseIfExists=tr
     "spec": {
       "model": "iphone",
       "region": "us-west",
-      "forceBundleId": "com.example.myapp",
-      "sandbox": { "xcode": { "enabled": true } }
+      "forceBundleId": "com.example.myapp"
     }
   }'
 ```
@@ -266,7 +265,6 @@ const instance = await lim.iosInstances.create({
     model: 'iphone',
     region: 'us-west',
     forceBundleId: 'com.example.myapp',
-    sandbox: { xcode: { enabled: true } },
   },
 });
 ```
@@ -279,7 +277,6 @@ instance = client.ios_instances.create(
     spec={
         "model": "iphone",
         "region": "us-west",
-        "sandbox": {"xcode": {"enabled": True}},
     },
 )
 ```
@@ -295,17 +292,12 @@ instance, err := client.IosInstances.New(ctx, limrun.IosInstanceNewParams{
     },
     Spec: limrun.IosInstanceNewParamsSpec{
         Region: param.NewOpt("us-west"),
-        Sandbox: limrun.IosInstanceNewParamsSpecSandbox{
-            Xcode: limrun.IosInstanceNewParamsSpecSandboxXcode{
-                Enabled: param.NewOpt(true),
-            },
-        },
     },
 })
 ```
 
 ```bash
-lim ios create --reuse-if-exists --xcode \
+lim ios create --reuse-if-exists \
   --model iphone --region us-west \
   --force-bundle-id com.example.myapp \
   --label session=demo
@@ -395,9 +387,10 @@ The Android operations have the same shape as iOS. Substitute `androidInstances`
 
 The TypeScript and Python SDKs expose a top-level `xcodeInstances` / `xcode_instances` resource with the same CRUD shape as iOS. The **Go SDK does not** ship an `XcodeInstances` service today; reach the same instances through one of these paths:
 
-- Set `spec.sandbox.xcode.enabled: true` when creating an iOS instance and use the iOS resource on the SDK; the Xcode sandbox URL comes back at `instance.status.sandbox.xcode.url`.
-- Or call `POST /v1/xcode_instances` directly over HTTP.
+- Call `POST /v1/xcode_instances` directly over HTTP.
 - Or shell out to `lim xcode create` / `lim xcode build`.
+
+To run a build on a simulator, attach the simulator to the Xcode instance after creating both; see [Build with remote Xcode](/docs/ios/build-with-xcode#auto-install-on-the-simulator).
 
 ### Assets
 

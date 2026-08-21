@@ -631,7 +631,7 @@ A successful `create` returns the full instance resource. The fields you'll typi
 
 The iOS shape is identical with these differences:
 
-- **iOS-only:** `status.sandbox.xcode.url` when `spec.sandbox.xcode.enabled` is set.
+- **iOS-only (legacy):** `status.sandbox.xcode.url` on instances created by old clients with `spec.sandbox.xcode.enabled`; new clients create the Xcode instance separately and attach the simulator.
 - **Android-only:** `status.adbWebSocketUrl` (WebSocket endpoint for ADB tunnel), `status.sandbox.playwrightAndroid.url` when the Playwright sub-sandbox is enabled.
 
 For the full field reference, see [Status URL surface](/docs/reference/sdk#status-url-surface).

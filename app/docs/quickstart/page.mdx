@@ -61,26 +61,24 @@ The rest of this page covers the CLI flow.
     ```
   </Step>
 
-  <Step title="Create an iOS instance with Xcode attached">
-    A single `lim ios create --xcode` provisions a simulator and an attached Xcode sandbox in one call. `--reuse-if-exists` makes re-runs return the same instance instead of creating a new one.
-
-    ```bash
-    lim ios create --xcode --reuse-if-exists --label project=quickstart
-    ```
-
-    Open the **Signed Stream URL** from the output in any browser to watch the simulator live. The URL has its own token embedded, so no sign-in is needed.
-  </Step>
-
-  <Step title="Build and run">
+  <Step title="Build on a cloud Mac">
     From inside the project directory:
 
     ```bash
     lim xcode build .
     ```
 
-    For multi-scheme projects, add `--scheme <name>` and either `--workspace <path>` or `--project <path>`.
+    The first run provisions an Xcode build sandbox for you, syncs the project, and runs `xcodebuild` remotely. Build logs stream back as they happen. For multi-scheme projects, add `--scheme <name>` and either `--workspace <path>` or `--project <path>`.
+  </Step>
 
-    Build logs stream back as they happen. On success, the build artifact auto-installs and auto-launches on the attached simulator. The streaming tab updates to your app's first screen a few seconds after the build completes.
+  <Step title="Run it on a simulator">
+    Create a simulator attached to the sandbox. The attach installs and launches the build immediately, and every later successful build reinstalls automatically.
+
+    ```bash
+    lim ios create --attach --reuse-if-exists --label project=quickstart
+    ```
+
+    Open the **Signed Stream URL** from the output in any browser to watch the simulator live. The URL has its own token embedded, so no sign-in is needed. Your app's first screen appears a few seconds after the attach.
 
     <Frame>
       <img src="/images/console/06-ios-app-launched.png" alt="The sample-native-app running on a remote iOS simulator, showing its 'Hello, world!' first screen" />
@@ -103,10 +101,11 @@ The element tree is the source of truth for what the UI shows: labels, accessibi
 
 ## Tear down
 
-When you're done, delete the instance. Without an ID, `lim ios delete` removes the last iOS instance the CLI created for you (the pointer is in `~/.lim/last-instances.json`).
+When you're done, delete the instances. Without an ID, each delete removes the last instance of that type the CLI created for you (the pointer is in `~/.lim/last-instances.json`).
 
 ```bash
 lim ios delete
+lim xcode delete
 ```
 
 ## Where to go next
