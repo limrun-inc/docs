@@ -490,56 +490,49 @@ The simulator runs remotely, but the app inside it sometimes needs to reach a se
 const tunnel = await client.startTunnel({
   routes: [
     { host: 'localhost', port: 8000 },
-    { host: 'api.internal', port: 443 },
+    { host: '10.20.30.40', port: 443 },
   ],
 });
-
-console.log(tunnel.bindings);
-// Each binding maps one declared route to a simulator-facing host and port.
 
 const status = await client.getTunnelStatus();
 await client.stopTunnel(tunnel.tunnelId);
 ```
 
-`localhost` resolves on the machine running the client. The app connects to the `endpoint` returned for that route. In this first release, the app does not use literal `localhost:8000`.
+The app keeps using literal `localhost:8000`. The tunnel connects it to `localhost:8000` on the machine running the client. Literal IP routes work the same way; other hostnames are not supported in this release.
 
 The CLI can own the tunnel in a background process:
 
 ```bash
 lim ios tunnel \
   --route localhost:8000 \
-  --route api.internal:443 \
+  --route 10.20.30.40:443 \
   --detach
 
 lim ios tunnel status
 lim ios tunnel stop
 ```
 
-Use `--json` when another process needs the tunnel ID or route mappings. One instance accepts one active destination tunnel with up to ten exact routes. A WebSocket loss closes its listeners and connections, so start a new tunnel to recover.
+Use `--json` when another process needs the tunnel ID. One instance accepts one active destination tunnel with up to ten exact routes. A WebSocket loss closes its connections, so start a new tunnel to recover.
 
 ### Expo and Metro
 
-Metro can listen on its normal local port while Expo advertises the endpoint
-returned by Limrun:
+Metro can listen on its normal local port while Expo advertises localhost:
 
 ```bash
 METRO_PORT="$(node -e 'const s=require("node:net").createServer(); s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})')"
-TUNNEL_JSON="$(lim ios tunnel \
+lim ios tunnel \
   --route "localhost:${METRO_PORT}" \
   --detach \
-  --json \
-  --id <ios-instance-id>)"
-TUNNEL_HOST="$(node -e 'const x=JSON.parse(process.argv[1]); console.log(x.bindings[0].endpoint.host)' "$TUNNEL_JSON")"
-TUNNEL_PORT="$(node -e 'const x=JSON.parse(process.argv[1]); console.log(x.bindings[0].endpoint.port)' "$TUNNEL_JSON")"
-TUNNEL_URL="http://${TUNNEL_HOST}:${TUNNEL_PORT}"
+  --id <ios-instance-id>
+TUNNEL_URL="http://localhost:${METRO_PORT}"
 echo "TUNNEL_URL=$TUNNEL_URL"
 
 EXPO_PACKAGER_PROXY_URL="$TUNNEL_URL" \
   npx expo start --dev-client --port "$METRO_PORT"
 ```
 
-`EXPO_PACKAGER_PROXY_URL` makes Expo use the simulator-facing host and port in
-the manifest, bundle URLs, and deep links. Set it inline so it takes precedence
+`EXPO_PACKAGER_PROXY_URL` makes Expo use localhost and the declared port in the
+manifest, bundle URLs, and deep links. Set it inline so it takes precedence
 over project dotenv values. Keep this shell open for Metro, and copy the printed
 `TUNNEL_URL` into a second terminal for the launch command.
 

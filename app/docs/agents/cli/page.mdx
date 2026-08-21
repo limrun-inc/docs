@@ -244,19 +244,19 @@ Declare each exact TCP destination that the simulator app needs:
 ```bash
 lim ios tunnel \
   --route localhost:8000 \
-  --route api.internal:443 \
+  --route 10.20.30.40:443 \
   --detach \
   --id <ios-instance-id>
 ```
 
-The command prints one simulator-facing endpoint per route. Query or stop it from another process:
+The app keeps using the declared destination unchanged. Query or stop the tunnel from another process:
 
 ```bash
 lim ios tunnel status --id <ios-instance-id> --json
 lim ios tunnel stop --id <ios-instance-id>
 ```
 
-Use the printed endpoint inside the simulator. In this release, declaring `localhost:8000` does not make literal simulator `localhost:8000` route through the tunnel.
+Declaring `localhost:8000` makes literal simulator `localhost:8000` reach the agent machine's `localhost:8000`. Other hostnames are not supported in this release.
 
 ## Record a video
 
