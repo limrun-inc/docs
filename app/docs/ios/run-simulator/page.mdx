@@ -587,14 +587,6 @@ REACT_NATIVE_PACKAGER_HOSTNAME=$HOST npx expo start --dev-client --host lan --po
 lim ios open-url "<scheme>://expo-development-client/?url=http%3A%2F%2F$HOST%3A57090"
 ```
 
-When Metro is already running, the last two steps collapse into one command. `lim ios reverse --detach` starts the tunnel in a background session daemon and prints only a URL, so it composes with command substitution; with `--scheme` that URL is the dev-client deep link, encoding included. `lim xcode build` prints this exact command after a Debug Expo build:
-
-```bash
-lim ios open-url "$(lim ios reverse 57090:57090 --detach --scheme <scheme>)"
-```
-
-The detached tunnel lives until you stop the session daemon with `lim session stop` or the instance ends.
-
 For CI, this is more reliable than `expo start --tunnel` (ngrok): no external service, and none of the `session closed` failures. Limrun's [automatic PR preview Action](/docs/ios/pr-previews) installs full app builds rather than running dev-server hot-reload, so it does not use this path.
 
 ## Drop into macOS dev tools
