@@ -60,6 +60,10 @@ Fourteen tools in three groups.
 
 Apps install at creation time through the `apps` field. There is no install tool for a running instance: the MCP protocol gives the server no access to the client's filesystem, so anything that moves local bytes (an APK, a simulator build, an Xcode project) belongs to the CLI and SDK. Upload builds as [assets](/docs/platform/asset-storage) first and they show up in `list-apps`.
 
+## Skills for what the tools leave out
+
+The server tells agents where its surface ends. Its initialize response says builds and local files belong to the `lim` CLI, and it serves the step-by-step CLI procedures as [Agent Skills](https://agentskills.io) in three forms: a `get-agent-skill` tool (pass one of `limrun-xcode`, `limrun-gradle`, `limrun-xcode-bazel`, `limrun-expo-development`), `skill://` resources with a `skills/list` catalog for clients that follow the MCP skills extension, and the same content installable locally with `npx skills add limrun-inc/skills`. An agent that needs to build something asks for the skill, installs the CLI it describes, and continues in its own shell.
+
 Instances created here carry a `created-by: mcp` label, so `lim ios list` and the console show where they came from.
 
 ## Revoking access
