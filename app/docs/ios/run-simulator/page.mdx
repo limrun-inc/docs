@@ -587,6 +587,12 @@ REACT_NATIVE_PACKAGER_HOSTNAME=$HOST npx expo start --dev-client --host lan --po
 lim ios open-url "<scheme>://expo-development-client/?url=http%3A%2F%2F$HOST%3A57090"
 ```
 
+When Metro is already running, the last two steps collapse into one command: `--open` opens the URL on the simulator as soon as the tunnel is ready, substituting a literal `{host}` with the simulator-facing host, so the command needs nothing you don't know upfront. `lim xcode build` prints this exact command after a Debug Expo build:
+
+```bash
+lim ios reverse 57090:57090 --open "<scheme>://expo-development-client/?url=http%3A%2F%2F{host}%3A57090"
+```
+
 For CI, this is more reliable than `expo start --tunnel` (ngrok): no external service, and none of the `session closed` failures. Limrun's [automatic PR preview Action](/docs/ios/pr-previews) installs full app builds rather than running dev-server hot-reload, so it does not use this path.
 
 ## Drop into macOS dev tools
