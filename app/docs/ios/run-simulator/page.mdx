@@ -544,6 +544,22 @@ const events = await limrun.iosInstances.listEvents(id);
 
 Log and event timestamps share the recording's clock (`startedAt`), so entries can be aligned with playback offsets. The web console plays persisted recordings with app logs and events following the video.
 
+While a capture is running, tail it live through the SDK — for example to show logs in your own dashboard in real time:
+
+```ts
+const stopLogs = client.streamAppLogCapture({
+  onLine: (line) => console.log(new Date(line.ts).toISOString(), line.line),
+});
+const stopEvents = client.streamEventCapture({
+  onEvent: (event) => console.log(event.type, event.summary ?? ''),
+});
+// ... later
+stopLogs();
+stopEvents();
+```
+
+On connect the stream replays the most recent entries (up to 1000) before tailing, so a capture that is already running is covered. A dropped connection reconnects and resumes exactly where it left off; every entry is delivered exactly once, in order.
+
 ## Simulate the camera with a video
 
 Play a video file as the simulator's camera — useful for QR-code scanning, document capture, video-call UIs, or any `AVCaptureSession`-driven flow that needs deterministic frames. The file is uploaded to the instance and replaces the live browser camera until cleared; apps see it through their regular capture pipeline.

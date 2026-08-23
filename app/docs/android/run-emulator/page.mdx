@@ -700,6 +700,22 @@ const events = await limrun.androidInstances.listEvents(id);
 
 Log and event timestamps share the recording's clock (`startedAt`), so entries can be aligned with playback offsets. The web console plays persisted recordings with app logs and events following the video.
 
+While a capture is running, tail it live through the SDK — for example to show logs in your own dashboard in real time:
+
+```ts
+const stopLogs = client.streamAppLogCapture({
+  onLine: (line) => console.log(new Date(line.ts).toISOString(), line.line),
+});
+const stopEvents = client.streamEventCapture({
+  onEvent: (event) => console.log(event.type, event.summary ?? ''),
+});
+// ... later
+stopLogs();
+stopEvents();
+```
+
+On connect the stream replays the most recent entries (up to 1000) before tailing, so a capture that is already running is covered. A dropped connection reconnects and resumes exactly where it left off; every entry is delivered exactly once, in order.
+
 ### Get the element tree
 
 <CodeGroup labels={["CLI", "TypeScript"]}>
