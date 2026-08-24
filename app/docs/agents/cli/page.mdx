@@ -258,7 +258,13 @@ lim ios tunnel status --id <ios-instance-id> --json
 lim ios tunnel stop --id <ios-instance-id>
 ```
 
-Declaring `localhost:8000` makes literal simulator `localhost:8000` reach the agent machine's `localhost:8000`. Other hostnames are not supported in this release.
+Declaring `localhost:8000` makes simulator `localhost:8000`, `127.0.0.1:8000`,
+`[::1]:8000`, and `[::ffff:127.0.0.1]:8000` reach the agent machine's
+`localhost:8000`. Other hostnames are not supported in this release.
+
+A tunnel accepts up to ten exact TCP routes. Ports 1–65535 are supported except
+53; CIDRs and UDP are not supported. The route set is immutable, so stop and
+restart the tunnel with the complete route list when destinations change.
 
 ## Record a video
 

@@ -537,28 +537,41 @@ const status = await client.getTunnelStatus();
 await client.stopTunnel(tunnel.tunnelId);
 ```
 
-The app keeps using literal `localhost:8000`. The tunnel connects it to `localhost:8000` on the machine running the client. Literal IP routes work the same way; other hostnames are not supported in this release.
+The app keeps using literal `localhost:8000`. The tunnel connects it to `localhost:8000` on the machine running the client. A localhost declaration also captures the exact loopback aliases `127.0.0.1`, `::1`, and `::ffff:127.0.0.1`. Literal IP routes work the same way for non-loopback addresses.
+
+The initial release supports TCP and up to ten exact host-and-port routes. Ports
+1–65535 are accepted except port 53. Hostnames other than `localhost`, CIDRs,
+and UDP are not supported.
 
 The CLI can own the tunnel in a background process:
 
 ```bash
 lim ios tunnel \
+  --id <ios-instance-id> \
   --route localhost:8000 \
   --route 10.20.30.40:443 \
   --detach
 
-lim ios tunnel status
-lim ios tunnel stop
+lim ios tunnel status --id <ios-instance-id>
+lim ios tunnel stop --id <ios-instance-id>
 ```
 
-Use `--json` when another process needs the tunnel ID. One instance accepts one active destination tunnel with up to ten exact routes. A WebSocket loss closes its connections, so start a new tunnel to recover.
+Use `--json` for structured output. One instance accepts one active destination
+tunnel. Its route list is immutable: to add or remove a destination, stop the
+tunnel and start it again with the complete route list. A WebSocket loss closes
+its connections, so start a new tunnel to recover.
+
+If the app attempts a route while its local service is stopped, only that
+connection fails; the tunnel and its other routes stay active. JSON status
+records the failure as `lastDialFailure`. Restart the service at the same
+destination and the existing tunnel carries later connections.
 
 ### Expo and Metro
 
 Metro can listen on its normal local port while Expo advertises localhost:
 
 ```bash
-METRO_PORT="$(node -e 'const s=require("node:net").createServer(); s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})')"
+METRO_PORT=8081
 lim ios tunnel \
   --route "localhost:${METRO_PORT}" \
   --detach \
@@ -574,6 +587,9 @@ EXPO_PACKAGER_PROXY_URL="$TUNNEL_URL" \
 manifest, bundle URLs, and deep links. Set it inline so it takes precedence
 over project dotenv values. Keep this shell open for Metro, and copy the printed
 `TUNNEL_URL` into a second terminal for the launch command.
+
+If port 8081 is already occupied, choose another explicit port and use the same
+value in the route, `TUNNEL_URL`, and Expo's `--port`.
 
 Open your development build with that URL:
 

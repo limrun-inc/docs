@@ -119,7 +119,7 @@ bun add --global lim
 
 ## SDK capability matrix
 
-The three SDKs are not equivalent. Every one covers the control plane (create / get / list / delete instances and assets). Beyond that, only the TypeScript SDK is complete; the others vary. The CLI is the easiest fallback for anything your SDK doesn't cover; raw HTTP is the universal escape hatch.
+The three SDKs are not equivalent. Every one covers the control plane (create / get / list / delete instances and assets). Beyond that, only the TypeScript SDK is complete; the others vary. The CLI is the easiest fallback for anything your SDK doesn't cover. Raw HTTP covers REST surfaces, but starting a destination tunnel requires the CLI, TypeScript SDK, or an implementation of its multiplexed WebSocket protocol.
 
 | Capability | TypeScript | Python | Go |
 |---|---|---|---|
