@@ -32,7 +32,7 @@ Add the server, then authenticate from inside a session. The `/mcp` command list
 claude mcp add --transport http limrun https://mcp.limrun.com/mcp
 ```
 
-Open a Claude Code session, run `/mcp`, select **limrun**, and choose **Authenticate**. After you approve access in the browser, `/mcp` shows the server as connected with its 14 tools. Access tokens rotate automatically from then on; you will not be asked to sign in again unless you revoke access.
+Open a Claude Code session, run `/mcp`, select **limrun**, and choose **Authenticate**. After you approve access in the browser, `/mcp` shows the server as connected with its 15 tools. Access tokens rotate automatically from then on; you will not be asked to sign in again unless you revoke access.
 
 ## Connect from other MCP clients
 
@@ -43,7 +43,7 @@ Any client that speaks the MCP streamable HTTP transport works with one of two a
 
 ## What the server exposes
 
-Fourteen tools in three groups.
+Fifteen tools in three groups.
 
 **Lifecycle and assets.** These need no `instanceId`; they operate at the org level.
 
@@ -58,17 +58,15 @@ Fourteen tools in three groups.
 
 **iOS device control**: `ios-screenshot-and-element-tree`, `ios-use` (batched taps, typing, scrolling, and the rest of the action surface), `ios-open-url`, `ios-app` (list, launch, terminate), `ios-logs`. **Android device control**: `android-screenshot-and-element-tree`, `android-use`, `android-open-url`. Each takes the `instanceId` returned by a create tool. The action surfaces match the per-instance server; the [per-instance page](/docs/agents/mcp#what-the-mcp-server-exposes) documents them in detail.
 
-Apps install at creation time through the `apps` field. There is no install tool for a running instance: the MCP protocol gives the server no access to the client's filesystem, so anything that moves local bytes (an APK, a simulator build, an Xcode project) belongs to the CLI and SDK. Upload builds as [assets](/docs/platform/asset-storage) first and they show up in `list-apps`.
+Apps install at creation time through the `apps` field. There is no install tool for a running instance: the MCP protocol gives the server no access to the client's filesystem, so anything that moves local bytes (an APK, a simulator build, an Xcode project) belongs to the CLI and SDK. Upload builds as [assets](/docs/platform/asset-storage) first and they show up in `list-apps`. Instances created here carry a `created-by: mcp` label.
 
 ## Skills for what the tools leave out
 
-The server tells agents where its surface ends. Its initialize response says builds and local files belong to the `lim` CLI, and it serves the step-by-step CLI procedures as [Agent Skills](https://agentskills.io) in three forms: a `get-agent-skill` tool (pass one of `limrun-xcode`, `limrun-gradle`, `limrun-xcode-bazel`, `limrun-expo-development`), `skill://` resources with a `skills/list` catalog for clients that follow the MCP skills extension, and the same content installable locally with `npx skills add limrun-inc/skills`. An agent that needs to build something asks for the skill, installs the CLI it describes, and continues in its own shell.
-
-Instances created here carry a `created-by: mcp` label, so `lim ios list` and the console show where they came from.
+The fifteenth tool, `get-agent-skill`, hands agents the procedures the surface above leaves out. The server's initialize response says builds and local files belong to the `lim` CLI, and it serves the step-by-step CLI procedures as [Agent Skills](https://agentskills.io) in three forms: the `get-agent-skill` tool (pass one of `limrun-xcode`, `limrun-gradle`, `limrun-xcode-bazel`, `limrun-expo-development`), `skill://` resources with a `skills/list` catalog for clients that follow the MCP skills extension, and the same content installable locally with `npx skills add limrun-inc/skills`. An agent that needs to build something asks for the skill, installs the CLI it describes, and continues in its own shell.
 
 ## Revoking access
 
-Tokens minted through OAuth appear in the console under Settings, API Keys, described as MCP OAuth tokens. Revoking one signs that connection out: the client is challenged on its next request and, if its refresh token was revoked too, falls back to a fresh browser sign-in.
+Tokens minted through OAuth appear in the console under Settings, API Keys, described as MCP OAuth tokens. Revoking one invalidates only the current access token: the client is challenged on its next request and rotates to a fresh token with its refresh token, without asking you to sign in again. To disconnect a client, remove the server from that client's configuration.
 
 ## Next steps
 
