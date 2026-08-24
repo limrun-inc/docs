@@ -265,6 +265,8 @@ Declaring `localhost:8000` makes simulator `localhost:8000`, `127.0.0.1:8000`,
 A tunnel accepts up to ten exact TCP routes. Ports 1–65535 are supported except
 53; CIDRs and UDP are not supported. The route set is immutable, so stop and
 restart the tunnel with the complete route list when destinations change.
+An open idle tunnel does not count as instance activity and does not prevent the
+simulator's inactivity timeout.
 
 ## Record a video
 

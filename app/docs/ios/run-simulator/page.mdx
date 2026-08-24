@@ -559,7 +559,8 @@ lim ios tunnel stop --id <ios-instance-id>
 Use `--json` for structured output. One instance accepts one active destination
 tunnel. Its route list is immutable: to add or remove a destination, stop the
 tunnel and start it again with the complete route list. A WebSocket loss closes
-its connections, so start a new tunnel to recover.
+its connections, so start a new tunnel to recover. An open idle tunnel does not
+count as instance activity and does not prevent the inactivity timeout.
 
 If the app attempts a route while its local service is stopped, only that
 connection fails; the tunnel and its other routes stay active. JSON status
@@ -611,7 +612,7 @@ lim ios open-url \
 
 ### Legacy fixed-port reverse tunnel
 
-`lim ios reverse` remains available for legacy workflows that already choose a simulator-facing port in the reserved range. New workflows should use the destination tunnel above. The direction is simulator to your service.
+`lim ios reverse` remains available for legacy workflows that already choose a simulator-facing port in the reserved range. New workflows should use the destination tunnel above.
 
 Note the direction: this tunnel is **simulator → your service** (outbound from the device).
 
