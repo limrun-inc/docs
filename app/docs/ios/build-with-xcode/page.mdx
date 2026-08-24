@@ -449,7 +449,7 @@ Choose the method for the IPA you need:
 | `release-testing` | Distribution-signed IPA for registered test devices. |
 | `app-store-connect` | Distribution-signed IPA for App Store Connect. |
 
-Cloud signing requires a team API key, its issuer ID, and a `--team-id` that matches the key's Apple Developer team. For `release-testing` and `app-store-connect`, the key must be an Admin key or have **Access to cloud-managed distribution certificates** enabled in App Store Connect.
+Cloud signing works for device SDK builds: `--sdk iphoneos` and `--sdk watchos`. It requires a team API key, its issuer ID, and a `--team-id` that matches the key's Apple Developer team. For `release-testing` and `app-store-connect`, the key must be an Admin key or have **Access to cloud-managed distribution certificates** enabled in App Store Connect.
 
 The TypeScript SDK accepts the same configuration:
 
