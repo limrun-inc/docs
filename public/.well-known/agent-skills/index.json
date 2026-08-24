@@ -2,7 +2,7 @@
   "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
   "source": {
     "repository": "https://github.com/limrun-inc/skills",
-    "commit": "2befa235d6372f8b8a5ad5fa8528174917be44cb"
+    "commit": "e29a129cea3d311d2bd348eef1aadcd1b20397d5"
   },
   "skills": [
     {
@@ -10,21 +10,21 @@
       "type": "skill-md",
       "description": "Build an iOS / Apple app on remote Xcode with `lim xcode build` instead of local xcodebuild, from any environment (Linux, Windows, macOS, VM, container). Use for non-Bazel projects (an `.xcodeproj` / `.xcworkspace`, an XcodeGen `project.yml` with a gitignored project, React Native / Expo native build) when the user wants to build, compile, reload, produce a preview build, or ship a signed device IPA. To run, tap, screenshot, or otherwise interact with the result on a simulator, use limrun-ios-simulator. For Bazel workspaces, use limrun-xcode-bazel.",
       "url": "/.well-known/agent-skills/limrun-xcode/SKILL.md",
-      "digest": "sha256:6e1797b22e1508d8d28f32914f18ed9d661fbd0538b0a2cc08f31f6071210fc9"
+      "digest": "sha256:c1502141a039019fd72f2122eec0cfc40cd514ffec7316931ab96b0869d4a9ea"
     },
     {
       "name": "limrun-ios-simulator",
       "type": "skill-md",
       "description": "Drive an app running on a Limrun cloud iOS simulator: launch, tap, type, read the accessibility element tree, screenshot, record video, play a video file as the camera, and run timed action chains. Use after a build (from any builder) when the user wants to see, test, or interact with their app on a simulator, or says 'show me a screenshot', 'tap', 'run the UI test', 'record a video', 'mock the camera', or 'launch on simulator'. To build the app first, use limrun-xcode-bazel (Bazel workspaces) or limrun-xcode (xcodebuild projects).",
       "url": "/.well-known/agent-skills/limrun-ios-simulator/SKILL.md",
-      "digest": "sha256:1d9fe6c3b4a6cb551c6cf3f423dc4795fc05bcc618cc48e56f12ff502b579290"
+      "digest": "sha256:904645ba73253269e720b0bfb8c60551c13bf110087b663ed1ab51ea71ea41e8"
     },
     {
       "name": "limrun-expo-development",
       "type": "skill-md",
-      "description": "Prepare and run Expo / React Native apps on Limrun with Expo dev-client iteration. Use when the user wants an Expo dev build, Metro tunnel, hot reload, JS/TS iteration without repeated native rebuilds, or to run/test an Expo app on a remote iOS simulator.",
+      "description": "Prepare and run Expo / React Native apps on Limrun with Expo dev-client iteration. Use when the user wants an Expo dev build, Metro tunnel, hot reload, JS/TS iteration without repeated native rebuilds, or to run/test an Expo app on a remote iOS simulator or Android emulator.",
       "url": "/.well-known/agent-skills/limrun-expo-development/SKILL.md",
-      "digest": "sha256:9cb2aabcdf09ace346ea121f4f76ec09035c085fff48ea4032af24f2c0e34bd7"
+      "digest": "sha256:fcc279369b149ea2e603e6ca0b216fa37a901f954aac353b2b46a6569d5bdc6d"
     },
     {
       "name": "limrun-detox-testing",
@@ -45,14 +45,21 @@
       "type": "skill-md",
       "description": "Build a Bazel-based iOS / macOS / Apple app on Limrun's remote build execution (RBE) instead of a local Mac, and install it on a remote iOS simulator. Use when the project is a Bazel workspace (MODULE.bazel / WORKSPACE) building rules_apple / rules_swift targets and the user wants to `bazel build` it or run it on a simulator, or when a `--config=limrun` build or install misbehaves. To then tap, type, screenshot, or otherwise interact with the running app, use limrun-ios-simulator. For non-Bazel (plain xcodebuild) projects use limrun-xcode instead.",
       "url": "/.well-known/agent-skills/limrun-xcode-bazel/SKILL.md",
-      "digest": "sha256:756c315340bae0a3f906518fe9448fcf97b42098613dde3b6d4d1d8bdf29760b"
+      "digest": "sha256:81f8ccb8c6d5acd1061530af1d7964e0aeaeb41708ef66fdbc489800daadd264"
     },
     {
       "name": "limrun-gradle",
       "type": "skill-md",
-      "description": "Build an Android app on a remote Gradle sandbox with `lim gradle build` instead of local Gradle or Android Studio, from any environment (Linux, Windows, macOS, VM, container). Use when the user wants to build an APK or AAB, sign a release with an upload key, or prepare a Play Store publish, for native Android projects, React Native, and Expo. To run, tap, screenshot, or otherwise interact with the built APK on an emulator, use the `lim android` commands shown here. For iOS builds, use limrun-xcode or limrun-expo-development.",
+      "description": "Build an Android app on a remote Gradle sandbox with `lim gradle build` instead of local Gradle or Android Studio, from any environment (Linux, Windows, macOS, VM, container). Use when the user wants to build an APK or AAB, sign a release with an upload key, or prepare a Play Store publish, for native Android projects, React Native, and Expo. To run, tap, screenshot, or otherwise interact with the built APK on an emulator, use limrun-android-emulator. For iOS builds, use limrun-xcode or limrun-expo-development.",
       "url": "/.well-known/agent-skills/limrun-gradle/SKILL.md",
-      "digest": "sha256:3441b5366bd9f891c688d820d1c1fcf35a5a92bf4f48743da6aea9465e3aa127"
+      "digest": "sha256:1ac9e0454cb93b6fff20b31856545b2b23296bf3843a01d18457a03741ecf476"
+    },
+    {
+      "name": "limrun-android-emulator",
+      "type": "skill-md",
+      "description": "Drive an app running on a Limrun cloud Android emulator: install an APK, launch and terminate apps with crash reports, tap, type, read the UI element tree, screenshot, record video, inject microphone audio, shape network bandwidth, and use adb over the CLI's tunnel for logcat, files, and shell. Use after a build (from limrun-gradle or any builder) when the user wants to see, test, or interact with their app on an emulator, or says 'show me a screenshot', 'tap', 'run it on the emulator', 'check logcat', or 'record a video'. To build the APK or AAB first, use limrun-gradle.",
+      "url": "/.well-known/agent-skills/limrun-android-emulator/SKILL.md",
+      "digest": "sha256:a09b7a94cf8ec1a164c6a15703d91966f84f66b762de67070db12a954f2dd7bd"
     }
   ]
 }
