@@ -1,0 +1,83 @@
+---
+title: "Remote MCP server"
+description: "One MCP endpoint for your whole organization: agents create simulators and emulators on demand, drive them, and clean up after themselves."
+order: 2
+icon: "bot"
+---
+# Remote MCP server
+
+`https://mcp.limrun.com/mcp` is Limrun's org-level [Model Context Protocol](https://modelcontextprotocol.io) server. Connect it once and any MCP client can create iOS simulators and Android emulators, drive them by screenshot and accessibility tree, and delete them when done. Three things to know up front:
+
+- **One endpoint, sign in with your Limrun account.** OAuth is the default: the client opens a browser, you approve access, and tokens refresh on their own afterwards. An org API key in an `Authorization: Bearer` header works too for headless setups.
+- **Stateless.** Every tool that touches a device takes an explicit `instanceId`, so there is no session to lose; reconnects and long gaps are fine.
+- **Instances only.** An OAuth connection can create, inspect, drive, and delete instances and list your app assets. It cannot reach billing or the rest of the API. Builds and file uploads stay on the [CLI](/docs/agents/cli).
+
+## Remote server or per-instance server
+
+Every instance also runs [its own MCP server](/docs/agents/mcp). Pick by who holds the credential:
+
+| Aspect | Remote server (this page) | Per-instance server |
+|---|---|---|
+| **Endpoint** | `https://mcp.limrun.com/mcp` for the whole org | One URL per instance, from `status.mcpUrl` |
+| **Auth** | OAuth sign-in, or an org API key | That instance's `status.token` |
+| **Lifecycle tools** | Create, list, inspect, delete instances | None; the instance must already exist |
+| **Blast radius** | Everything instance-shaped in the org | One instance; the token dies with it |
+| **Best for** | An agent that owns the whole loop, from "get me a device" to cleanup | Handing one sandboxed device to an agent without an org credential |
+
+## Connect from Claude Code
+
+Add the server, then authenticate from inside a session. The `/mcp` command lists servers and starts the browser sign-in:
+
+```bash
+claude mcp add --transport http limrun https://mcp.limrun.com/mcp
+```
+
+Open a Claude Code session, run `/mcp`, select **limrun**, and choose **Authenticate**. After you approve access in the browser, `/mcp` shows the server as connected with its 15 tools. Access tokens rotate automatically from then on; you will not be asked to sign in again unless you revoke access.
+
+## Connect from other MCP clients
+
+Any client that speaks the MCP streamable HTTP transport works with one of two auth setups:
+
+- **OAuth**: point the client at `https://mcp.limrun.com/mcp` and complete the sign-in it triggers. The server advertises its authorization server through the standard discovery metadata, so clients that support remote MCP servers find the flow on their own.
+- **API key**: configure the same URL with a header, `Authorization: Bearer <LIM_API_KEY>`. Use this where no browser is available, such as CI or a cloud agent. Keys live in the console under Settings, API Keys.
+
+## What the server exposes
+
+Fifteen tools in three groups.
+
+**Lifecycle and assets.** These need no `instanceId`; they operate at the org level.
+
+| Tool | What it does |
+|---|---|
+| `create-ios-simulator` | Creates a simulator and blocks until it is ready, then returns the instance ID. Optional `apps` pre-installs by asset name or public URL; optional `inactivityTimeout` overrides the org default; optional `idempotencyKey` makes retries return the same instance. |
+| `create-android-emulator` | Same contract for Android emulators. `apps` entries are asset names or public APK URLs. |
+| `list-instances` | Lists the org's running instances with their IDs and states. |
+| `get-instance-status` | State and error message for one instance ID. |
+| `delete-instance` | Terminates an instance. The one destructive tool. |
+| `list-apps` | Names of app assets available for the `apps` field of the create tools, per platform. |
+
+**iOS device control**: `ios-screenshot-and-element-tree`, `ios-use` (batched taps, typing, scrolling, and the rest of the action surface), `ios-open-url`, `ios-app` (list, launch, terminate), `ios-logs`. **Android device control**: `android-screenshot-and-element-tree`, `android-use`, `android-open-url`. Each takes the `instanceId` returned by a create tool. The action surfaces match the per-instance server; the [per-instance page](/docs/agents/mcp#what-the-mcp-server-exposes) documents them in detail.
+
+Apps install at creation time through the `apps` field. There is no install tool for a running instance: the MCP protocol gives the server no access to the client's filesystem, so anything that moves local bytes (an APK, a simulator build, an Xcode project) belongs to the CLI and SDK. Upload builds as [assets](/docs/platform/asset-storage) first and they show up in `list-apps`. Instances created here carry a `created-by: mcp` label.
+
+## Skills for what the tools leave out
+
+The fifteenth tool, `get-agent-skill`, hands agents the procedures the surface above leaves out. The server's initialize response says builds and local files belong to the `lim` CLI, and it serves the step-by-step CLI procedures as [Agent Skills](https://agentskills.io) in three forms: the `get-agent-skill` tool (pass one of `limrun-xcode`, `limrun-gradle`, `limrun-xcode-bazel`, `limrun-expo-development`), `skill://` resources with a `skills/list` catalog for clients that follow the MCP skills extension, and the same content installable locally with `npx skills add limrun-inc/skills`. An agent that needs to build something asks for the skill, installs the CLI it describes, and continues in its own shell.
+
+## Revoking access
+
+Tokens minted through OAuth appear in the console under Settings, API Keys, described as MCP OAuth tokens. Revoking one invalidates only the current access token: the client is challenged on its next request and rotates to a fresh token with its refresh token, without asking you to sign in again. To disconnect a client, remove the server from that client's configuration.
+
+## Next steps
+
+<Cards>
+  <Card title="Per-instance MCP" icon="bot" href="/docs/agents/mcp">
+    Hand a single instance to an agent using only that instance's token, no org credential involved.
+  </Card>
+  <Card title="CLI for coding agents" icon="terminal" href="/docs/agents/cli">
+    Builds, asset uploads, and everything else the MCP surface leaves out.
+  </Card>
+  <Card title="Asset storage" icon="database" href="/docs/platform/asset-storage">
+    Upload the app archives that list-apps offers to the create tools.
+  </Card>
+</Cards>

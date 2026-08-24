@@ -493,7 +493,7 @@ A successful `create` returns the full instance resource.
 | `status.adbWebSocketUrl` | WebSocket endpoint for the ADB tunnel. Pass to `createInstanceClient` as `adbUrl`. |
 | `status.endpointWebSocketUrl` | WebSocket endpoint for the [`<RemoteControl />` web component](/docs/platform/embed-simulator) (append `?token=`). |
 | `status.signedStreamUrl` | Console-hosted watch URL with the token baked in. Open in a browser without your API key. |
-| `status.mcpUrl` | Per-instance MCP HTTP endpoint. Authenticate with your **org API key**, not `status.token`. See [MCP](/docs/agents/mcp). |
+| `status.mcpUrl` | Per-instance MCP HTTP endpoint. Authenticate with `status.token`, not your org API key. See [MCP](/docs/agents/mcp). |
 | `status.targetHttpPortUrlPrefix` | WebSocket prefix (`wss://...`) for reaching HTTP services running on the device. Append your target port to forward traffic through. |
 | `status.sandbox.playwrightAndroid.url` | Chrome DevTools Protocol URL when the Playwright sub-sandbox is enabled. |
 | `status.token` | Per-instance bearer for `apiUrl`, `adbWebSocketUrl`, and `endpointWebSocketUrl`. Embedded in `signedStreamUrl`. |
