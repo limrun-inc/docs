@@ -1,0 +1,113 @@
+---
+title: "Run XCTest Suites"
+description: "Build a scheme's test targets on remote Xcode and run them on a cloud iOS simulator: streamed per-case results, test selection, JSON output, and CI-ready exit codes."
+order: 3
+icon: flask-conical
+---
+# Run XCTest suites
+
+`lim xcode test` builds your scheme's test targets on a remote Xcode sandbox,
+runs them on an attached cloud iOS simulator (unit and UI targets alike), and
+streams one line per test case as it finishes. The command exits non-zero when
+any test fails, so it drops straight into CI.
+
+For provisioning and syncing basics, see
+[Build with remote Xcode](/docs/ios/build-with-xcode); everything there
+(XcodeGen projects, sync tuning, ignore patterns) applies here too.
+
+## Run the suite
+
+```bash
+lim xcode test .
+lim xcode test ./MyProject --scheme MyApp
+```
+
+Like `lim xcode build --ios`, the command reuses your last simulator-backed
+Xcode target or creates and attaches what it needs, so repeat runs skip
+provisioning and warm the build cache. The scheme must have a test action
+configured; shared schemes exported by Xcode have one whenever the project has
+test targets.
+
+The output streams the build log first, then one line per case and a closing
+summary:
+
+```text
+  PASS LimFixtureTests.CartModelTests/testDiscountAppliesOverThreshold (12ms)
+  FAIL LimFixtureTests.LegacyPricingTests/testLegacyRounding (31ms)
+       XCTAssertEqual failed: ("$4.50") is not equal to ("$5.00")
+  5 passed, 1 failed
+```
+
+Swift test classes are reported module-qualified (`Module.Class`), Objective-C
+classes bare.
+
+## Select tests
+
+Use xcodebuild's identifier format `Target[/Class[/method]]`. Repeat the flag
+for multiple entries; the two flags are mutually exclusive:
+
+```bash
+# Only one test method
+lim xcode test . --only-testing MyAppTests/LoginTests/testValidLogin
+
+# Everything except the UI target
+lim xcode test . --skip-testing MyAppUITests
+```
+
+A bare target name selects or skips that whole target. Targets named by no
+`--only-testing` entry are skipped entirely, and an entry naming a target the
+build did not produce fails the run instead of silently running everything.
+
+## JSON output
+
+`--json` streams the raw per-case events as NDJSON and ends with an exit
+record, for piping into your own tooling:
+
+```bash
+lim xcode test . --json > results.ndjson
+```
+
+```json
+{"type":"case","testClass":"MyAppTests.LoginTests","method":"testValidLogin","passed":true,"durationMs":12}
+{"type":"case","testClass":"MyAppTests.LoginTests","method":"testExpiredToken","passed":false,"durationMs":31,"failureMessage":"XCTAssertEqual failed: ..."}
+{"type":"summary","passed":1,"failed":1,"planFinished":true}
+{"exitCode":1}
+```
+
+A missing `summary` event means the run died partway; `planFinished: false`
+means the suite started but did not complete its plan.
+
+## From the SDK
+
+The TypeScript SDK exposes the same run through `xcodebuild` with
+`action: 'build-for-testing'`. Per-case events stream through
+`onXctestEvent`, and the accumulated cases and summary land on the result:
+
+```ts
+const result = await xcode.xcodebuild(
+  { scheme: 'MyApp', sdk: 'iphonesimulator', action: 'build-for-testing' },
+  { onXctestEvent: (event) => console.log(event) },
+);
+
+console.log(result.xctest?.summary); // { type: 'summary', passed, failed, planFinished }
+console.log(result.exitCode);        // non-zero when tests fail
+```
+
+`onlyTesting` and `skipTesting` ride on the same settings object.
+
+## Build without running
+
+`--build-only` compiles the test targets on a plain sandbox without acquiring
+a simulator; the products stay on the sandbox for a later run:
+
+```bash
+lim xcode test . --build-only
+```
+
+## CI notes
+
+- The exit code is the gate: `0` when every selected test passes, non-zero
+  otherwise, so `lim xcode test .` works as a CI step with no output parsing.
+- For fully reproducible runs on fresh instances, pass
+  `--inactivity-timeout 30m`; the run then creates its own sandbox and
+  simulator instead of reusing yours, and they clean themselves up.
