@@ -200,7 +200,7 @@ What to know:
 
 ## Run project commands
 
-Use `lim xcode run` when the repository needs a macOS command such as a Make target or code generator. The command syncs the current directory, then runs after `--` in the remote workspace:
+Use `lim xcode run` as the escape hatch when the repository needs another macOS command, such as a Make target or code generator. The command syncs the current directory, then runs after `--` in the remote workspace:
 
 ```bash
 lim xcode run -- make api
@@ -218,17 +218,12 @@ Add `--no-sync` when the instance already has the source state the command needs
 lim xcode run --no-sync -- make api
 ```
 
-The sandbox includes mise and Homebrew for project tools. Their downloads and installed tools stay in this synced workspace's sandbox home and remain available to later commands:
+The sandbox includes mise for project tool versions. Its downloads and installed tools stay in the instance's sandbox home:
 
 ```bash
 lim xcode run -- 'mise trust && mise install'
 lim xcode run -- mise run generate
-lim xcode run -- brew install tree
-lim xcode run -- tree --version
-lim xcode run -- 'brew tap owner/tap && brew trust owner/tap'
 ```
-
-Homebrew formulae and trusted third-party taps are supported. Homebrew itself is pinned by the sandbox image, so `brew update` is disabled; casks and services are unavailable. The workspace uses a custom Homebrew prefix instead of the host's `/opt/homebrew`, so formulae whose bottles require the default prefix may not install.
 
 Commands are one-shot. They stream stdout and stderr, return the remote exit code, and do not provide an interactive terminal.
 
