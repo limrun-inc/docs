@@ -174,7 +174,7 @@ The backend then:
 1. Loads the App Store Connect API key from the secret store.
 2. For manual mode, also loads the distribution certificate and App Store provisioning profile.
 3. Writes the selected credentials to a temporary directory with owner-only permissions.
-4. Starts a release build for the `iphoneos` SDK with either cloud or manual signing flags.
+4. Starts a release build for the target Apple device SDK with either cloud or manual signing flags.
 5. Requests automatic build-number selection, upload to App Store Connect, a completion webhook, and detached JSON output.
 6. Deletes the temporary files after the CLI exits.
 
@@ -206,7 +206,7 @@ Manual mode replaces `--signing-method` and `--team-id` with:
 --provisioning-profile <profile.mobileprovision>
 ```
 
-The upload still uses the `--asc-*` flags. Add `--scheme <scheme>` when the project needs one. Cloud signing requires a team API key and its issuer ID. Spawn the CLI with an argument array instead of constructing a shell command, and redact the certificate password from logs.
+The upload still uses the `--asc-*` flags. Add `--scheme <scheme>` when the project needs one. For tvOS or visionOS, use `--sdk appletvos` or `--sdk xros` with the matching scheme and App Store Connect app record. Cloud signing requires a team API key and its issuer ID. Spawn the CLI with an argument array instead of constructing a shell command, and redact the certificate password from logs.
 
 The complete implementation is in [`startPublish`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/publish.ts). A successful upload appears in App Store Connect and TestFlight. The user still attaches the processed build to an App Store version and submits that version for review in App Store Connect.
 
