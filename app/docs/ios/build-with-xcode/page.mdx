@@ -1,12 +1,12 @@
 ---
 title: "Build with remote Xcode"
-description: "Sync your source, run `xcodebuild` in the cloud, stream the logs back, and install the result on a remote simulator. Or ship a signed IPA."
+description: "Sync your source, run `xcodebuild` in the cloud, stream the logs back, and install the result on a remote simulator. Or ship a signed Apple-platform IPA."
 order: 1
 icon: "hammer"
 ---
 # Build with remote Xcode
 
-Limrun lets you compile iOS apps on a remote Mac. Your laptop or CI runner doesn't need to be one. After a successful build, you either run the app on a remote simulator or download a signed IPA to ship.
+Limrun lets you compile iOS, watchOS, tvOS, and visionOS apps on a remote Mac. Your laptop or CI runner doesn't need to be one. After a successful build, you either run a supported app on a remote simulator or download a signed IPA to ship.
 
 If your app builds with Bazel instead of `xcodebuild`, use [remote build execution](/docs/ios/build-with-bazel): no source sync, and Bazel keeps running on your side.
 
@@ -255,7 +255,7 @@ lim xcode build . --scheme MyApp --workspace MyApp.xcworkspace
 const build = xcode.xcodebuild({
   workspace: 'MyApp.xcworkspace',
   scheme: 'MyApp',
-  sdk: 'iphonesimulator', // or 'iphoneos', 'watchsimulator', 'watchos'
+  sdk: 'iphonesimulator', // also iphoneos, watchsimulator, watchos, appletvos, xros
 });
 
 build.command.on('data', (line) => process.stdout.write(line));
@@ -360,7 +360,7 @@ Match what you'd pass to local `xcodebuild`:
 | `workspace` | Path to a `.xcworkspace`, e.g. `MyApp.xcworkspace`. |
 | `project` | Path to a `.xcodeproj`. Use this *or* `workspace`, not both. |
 | `scheme` | Required for multi-scheme apps. |
-| `sdk` | `iphonesimulator` (default for the simulator), `iphoneos` for device builds, `watchsimulator` / `watchos` for watchOS. |
+| `sdk` | `iphonesimulator` (default), `iphoneos`, `watchsimulator`, `watchos`, `appletvos`, or `xros`. tvOS and visionOS are device-build only. |
 
 To pass a custom build setting, repeat `--build-setting KEY=VALUE` on the CLI or set `buildSettings` on the SDK call. Only allowlisted keys are accepted: any `APP_CONFIG_*` key, plus `SWIFT_ACTIVE_COMPILATION_CONDITIONS`. Other keys are rejected. `APP_CONFIG_*` values are treated as app configuration and redacted from build logs.
 
@@ -387,9 +387,20 @@ xcode.xcodebuild(
 
 Settings outside the allowlist, like `CURRENT_PROJECT_VERSION`, can't be passed here. Bump those in the Xcode project itself.
 
+### tvOS and visionOS
+
+Pass the device SDK and scheme explicitly for tvOS and visionOS:
+
+```bash
+lim xcode build . --scheme TVApp --sdk appletvos
+lim xcode build . --scheme VisionApp --sdk xros
+```
+
+These builds use the same unsigned IPA, manual-signing, cloud-signing, and upload paths as iOS device builds. tvOS and visionOS simulator builds, simulator attachment, and XCTest execution are not supported yet.
+
 ## Sign for real-device builds
 
-To produce a signed IPA for distribution, switch the target SDK to `iphoneos`, pass a P12 certificate, and pass a provisioning profile. Add an upload target so the IPA lands in Asset Storage with a downloadable URL.
+To produce a signed IPA for distribution, select a device SDK, pass a P12 certificate, and pass a provisioning profile. Add an upload target so the IPA lands in Asset Storage with a downloadable URL. If you omit the SDK, signing defaults to `iphoneos`; pass `watchos`, `appletvos`, or `xros` explicitly for another platform.
 
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
@@ -449,7 +460,7 @@ Choose the method for the IPA you need:
 | `release-testing` | Distribution-signed IPA for registered test devices. |
 | `app-store-connect` | Distribution-signed IPA for App Store Connect. |
 
-Cloud signing works for device SDK builds: `--sdk iphoneos` and `--sdk watchos`. It requires a team API key, its issuer ID, and a `--team-id` that matches the key's Apple Developer team. For `release-testing` and `app-store-connect`, the key must be an Admin key or have **Access to cloud-managed distribution certificates** enabled in App Store Connect.
+Cloud signing works for device SDK builds: `--sdk iphoneos`, `--sdk watchos`, `--sdk appletvos`, and `--sdk xros`. It requires a team API key, its issuer ID, and a `--team-id` that matches the key's Apple Developer team. For `release-testing` and `app-store-connect`, the key must be an Admin key or have **Access to cloud-managed distribution certificates** enabled in App Store Connect.
 
 The TypeScript SDK accepts the same configuration:
 
@@ -576,6 +587,8 @@ const { exitCode, appstore } = await build;
 
 </CodeGroup>
 
+App Store Connect upload supports `iphoneos`, `appletvos`, and `xros`. Replace the SDK and scheme in the examples above to deliver a tvOS or visionOS build. Existing watchOS upload behavior is unchanged.
+
 The build log streams the upload progress. By default the build succeeds as soon as the upload commits: Apple's processing routinely takes many minutes, so the verdict is left to App Store Connect, and the upload ID is printed so you can check it there. To watch for the verdict instead, pass `--asc-wait-timeout <seconds>` (`waitTimeoutSeconds` in the SDK, up to `1800`): a rejection within that window (a reused build number, a missing entitlement) fails the build with Apple's own error text, and expiry without a verdict is still a success with the build processing on Apple's side. Combine with `--upload` if you also want the IPA in Asset Storage.
 
 Every upload needs a `CFBundleVersion` higher than the last one for that version. Pass `--auto-build-number` (`autoIncrementBuildNumber: true` in the SDK's `appstore` options) to set it to one more than the highest build number already in App Store Connect, or 1 for a new app. The lookup runs server-side with the same API key used for the upload. Manual signing requires Xcode-standard versioning (`CFBundleVersion = $(CURRENT_PROJECT_VERSION)`), including modern Xcode templates and Expo prebuilds. Cloud signing updates the unsigned archive before export.
@@ -610,7 +623,7 @@ With these in place, one build command puts the app on your testers' devices as 
 
 ### Requirements and troubleshooting
 
-TestFlight delivery requires a signed device build (`--sdk iphoneos` plus manual or cloud signing) and an existing app record in App Store Connect for your bundle ID; Apple's API cannot create app records. Each upload needs a `CFBundleVersion` higher than the last one for that version.
+TestFlight delivery requires a signed `iphoneos`, `appletvos`, or `xros` build plus manual or cloud signing and an existing app record in App Store Connect for your bundle ID; Apple's API cannot create app records. Each upload needs a `CFBundleVersion` higher than the last one for that version.
 
 | Build output | What it means | Fix |
 |---|---|---|
