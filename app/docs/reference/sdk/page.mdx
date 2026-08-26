@@ -79,7 +79,16 @@ const session = await lim.scopedTokens.create({
 });
 ```
 
-The token inherits the API key's organization. `ttlSeconds` defaults to 3600 and accepts values from 1 through 14400. Scoped tokens cannot be revoked, so hand them to the browser only when it starts a registry session.
+The token inherits the API key's organization. `ttlSeconds` defaults to 3600 and accepts values from 1 through 14400.
+
+Mint short-lived tokens and hand them to the browser only when it starts a registry session. If one leaks before it expires, revoke it with the `id` returned alongside the token:
+
+```bash
+curl -X DELETE https://api.limrun.com/v1/scoped_tokens/$ID \
+  -H "Authorization: Bearer $LIM_API_KEY"
+```
+
+The registry refuses the token from the next request onwards. Revocation covers that one token: the API key that minted it and every other token minted with it keep working.
 
 ## Install snippets
 
