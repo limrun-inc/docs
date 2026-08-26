@@ -22,9 +22,24 @@ const agentDiscoveryHeaders = [
 // Discovery RFC recommends CORS so browser-based agents can fetch them.
 const corsHeaders = [{ key: "Access-Control-Allow-Origin", value: "*" }];
 
+// Baseline security headers, served on every response. The CSP carries only
+// frame-ancestors: a resource policy would have to name every script, style
+// and font the docs load, and one written without testing breaks the page
+// rather than protecting it. Clickjacking is what the missing header actually
+// exposed, and frame-ancestors closes it on its own.
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  // X-Frame-Options says the same thing to browsers predating frame-ancestors.
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+];
+
 export default withDocs({
   async headers() {
     return [
+      { source: "/:path*", headers: securityHeaders },
       { source: "/", headers: agentDiscoveryHeaders },
       { source: "/docs", headers: agentDiscoveryHeaders },
       { source: "/.well-known/:path*", headers: corsHeaders },
