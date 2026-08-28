@@ -482,6 +482,49 @@ const build = xcode.xcodebuild(
 );
 ```
 
+#### Preserving entitlements
+
+Cloud signing archives your app unsigned, and Apple's export carries entitlements into the signed IPA only from an existing code signature, so capability entitlements from your project's `.entitlements` file (HealthKit, CloudKit, app groups, push) do not survive on their own. Pass them explicitly with `--entitlements`; the build server embeds them into the archive so the export preserves them. A bare path applies to the app; use `<bundleId>=<path>` for embedded bundles such as widgets or a watch app, repeating the flag per bundle.
+
+<CodeGroup labels={["CLI","TypeScript"]}>
+```bash
+lim xcode build . \
+  --sdk iphoneos \
+  --configuration Release \
+  --scheme MyApp \
+  --signing-method release-testing \
+  --team-id VMBY3VYW4U \
+  --asc-key-id 2X9R4HXF34 \
+  --asc-issuer-id "$ASC_ISSUER_ID" \
+  --asc-key ./signing/AuthKey_2X9R4HXF34.p8 \
+  --entitlements ./MyApp/MyApp.entitlements \
+  --entitlements com.example.myapp.widgets=./Widgets/Widgets.entitlements \
+  --upload my-app-pr-42.ipa
+```
+```ts
+cloudSigning: {
+  method: 'release-testing',
+  teamId: 'VMBY3VYW4U',
+  apiKeyId: '2X9R4HXF34',
+  apiIssuerId: process.env['ASC_ISSUER_ID'],
+  apiPrivateKeyBase64: fs.readFileSync('./AuthKey_2X9R4HXF34.p8').toString('base64'),
+  // Keyed by bundle id; the empty key targets the app itself.
+  entitlements: {
+    '': fs.readFileSync('./MyApp/MyApp.entitlements').toString('base64'),
+    'com.example.myapp.widgets': fs.readFileSync('./Widgets/Widgets.entitlements').toString('base64'),
+  },
+},
+```
+</CodeGroup>
+
+Three rules apply. Every capability must also be enabled on your App ID in the developer portal, or the export fails naming the missing one. Values must be fully expanded: build-setting references like `$(AppIdentifierPrefix)` are rejected, so write the concrete team prefix instead. And keys the export manages itself (`application-identifier`, `com.apple.developer.team-identifier`, `get-task-allow`, `beta-reports-active`) must be omitted; the export sets them from the generated profile and distribution method.
+
+Verify what landed in the IPA:
+
+```bash
+unzip -q my-app.ipa -d out && codesign -d --entitlements - out/Payload/MyApp.app
+```
+
 ### Apps with extensions or a watch app
 
 App Store signing requires a distinct provisioning profile for every bundle the app embeds: the app itself plus each app extension (a WidgetKit widget, share sheet, intents extension) and watch app, all issued for the same distribution certificate. Repeat `--provisioning-profile` (or pass `provisioningProfilesBase64` in the SDK) with one profile per bundle. Each profile is matched to its bundle by the `application-identifier` it carries, so the order doesn't matter, but every profile must name an explicit (non-wildcard) bundle id.
