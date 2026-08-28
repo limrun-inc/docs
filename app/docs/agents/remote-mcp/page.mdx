@@ -41,6 +41,8 @@ Any client that speaks the MCP streamable HTTP transport works with one of two a
 - **OAuth**: point the client at `https://mcp.limrun.com/mcp` and complete the sign-in it triggers. The server advertises its authorization server through the standard discovery metadata, so clients that support remote MCP servers find the flow on their own.
 - **API key**: configure the same URL with a header, `Authorization: Bearer <LIM_API_KEY>`. Use this where no browser is available, such as CI or a cloud agent. Keys live in the console under Settings, API Keys.
 
+The server is listed in the [official MCP registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=com.limrun/mcp) as `com.limrun/mcp` and on [Smithery](https://smithery.ai/server/@limrun/cloud-simulators), where you can also connect it through the Smithery gateway.
+
 ## What the server exposes
 
 Fifteen tools in three groups.
