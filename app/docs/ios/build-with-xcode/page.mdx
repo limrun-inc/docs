@@ -517,7 +517,7 @@ cloudSigning: {
 ```
 </CodeGroup>
 
-Three rules apply. Every capability must also be enabled on your App ID in the developer portal, or the export fails naming the missing one. Values must be fully expanded: build-setting references like `$(AppIdentifierPrefix)` are rejected, so write the concrete team prefix instead. And keys the export manages itself (`application-identifier`, `com.apple.developer.team-identifier`, `get-task-allow`, `beta-reports-active`) must be omitted; the export sets them from the generated profile and distribution method.
+Three rules apply. Every capability must be enabled on your App ID; the export auto-registers toggleable capabilities (HealthKit, push) there for you, but capabilities needing extra configuration (app group assignments, special-agreement entitlements) must be set up in the developer portal first or the export fails naming them. Values must be fully expanded: build-setting references like `$(AppIdentifierPrefix)` are rejected, so write the concrete team prefix instead. And keys the export manages itself (`application-identifier`, `com.apple.developer.team-identifier`, `get-task-allow`, `beta-reports-active`) must be omitted; the export sets them from the generated profile and distribution method.
 
 Verify what landed in the IPA:
 
