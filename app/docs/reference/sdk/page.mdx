@@ -225,7 +225,7 @@ Every successful `wait: true` create returns a `status` block with the URLs the 
 |---|---|---|---|---|
 | `token` | ✓ | ✓ | ✓ | Per-instance bearer for `apiUrl`, `endpointWebSocketUrl`, `adbWebSocketUrl`; embedded in `signedStreamUrl`. |
 | `apiUrl` | ✓ | ✓ | ✓ | HTTP base for the per-instance device daemon (SDK / CLI control client). |
-| `signedStreamUrl` | ✓ | ✓ |   | Browser watch URL with token embedded (no org API key in the browser). |
+| `signedStreamUrl` | ✓ | ✓ |   | Browser watch URL with the token in the URL fragment, so it never reaches a server (no org API key in the browser). Links that carry the token in the query string are no longer accepted. |
 | `endpointWebSocketUrl` | ✓ | ✓ |   | WebSocket for `<RemoteControl />`; pass `?token=<status.token>`. |
 | `mcpUrl` | ✓ | ✓ |   | Per-instance MCP HTTP endpoint. Auth with `status.token` as `Authorization: Bearer`, not your org API key. See [MCP](/docs/agents/mcp). |
 | `adbWebSocketUrl` |   | ✓ |   | ADB tunnel endpoint. Pass as `adbUrl` to `createInstanceClient`. |
