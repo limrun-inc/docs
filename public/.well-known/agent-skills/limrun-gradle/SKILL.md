@@ -1,6 +1,6 @@
 ---
 name: limrun-gradle
-description: "Build an Android app on a remote Gradle sandbox with `lim gradle build` instead of local Gradle or Android Studio, from any environment (Linux, Windows, macOS, VM, container). Use when the user wants to build an APK or AAB, sign a release with an upload key, or prepare a Play Store publish, for native Android projects, React Native, and Expo. To run, tap, screenshot, or otherwise interact with the built APK on an emulator, use the `lim android` commands shown here. For iOS builds, use limrun-xcode or limrun-expo-development."
+description: "Build an Android app on a remote Gradle sandbox with `lim gradle build` instead of local Gradle or Android Studio, from any environment (Linux, Windows, macOS, VM, container). Use when the user wants to build an APK or AAB, sign a release with an upload key, or prepare a Play Store publish, for native Android projects, React Native, and Expo. To run, tap, screenshot, or otherwise interact with the built APK on an emulator, use limrun-android-emulator. For iOS builds, use limrun-xcode or limrun-expo-development."
 user-invocable: true
 effort: high
 ---
@@ -15,8 +15,10 @@ Android SDK, or a local emulator. Your job doesn't end at a green build: get
 the app running or the artifact delivered, and iterate until the user is
 satisfied.
 
-For iOS work, use **`limrun-xcode`** (native) or **`limrun-expo-development`**
-(Expo dev loop) instead of this skill.
+For iOS builds, use **`limrun-xcode`** instead of this skill. For the Expo
+dev-client loop (Metro, hot reload) on either platform, use
+**`limrun-expo-development`**; it comes back here for the Android Debug
+build.
 
 ## Auth and CLI
 
@@ -64,6 +66,9 @@ pipeline and errors when no Expo app is detected:
 lim gradle build ./my-monorepo --expo-app-dir apps/mobile
 ```
 
+For iterating on an Expo app with Metro and hot reload rather than plain
+builds, use **`limrun-expo-development`**.
+
 ## Run it on an emulator
 
 Upload the built APK as a named asset, then install it on an Android instance:
@@ -73,15 +78,21 @@ lim gradle build . --upload myapp.apk
 lim android create --install-asset=myapp.apk
 ```
 
-If the create output includes a signed stream URL, share it with the user as a
-Markdown link, such as [Live emulator](<signed-stream-url>). Drive the device
-with `lim android` commands (`screenshot`, `tap`, `type`, `element-tree`,
-`record`; see `lim android --help`). For rebuild iterations, patch the
-installed APK in place instead of recreating the instance:
+Build uploads default to a 14-day TTL: each build pushes the asset's expiry
+to 14 days from that upload. Pass `--upload-ttl` with a Go duration (e.g.
+`720h`; `1d` is invalid) to change it.
+
+Share the signed stream URL from the create output with the user as a
+Markdown link, such as [Live emulator](<signed-stream-url>). For rebuild
+iterations, patch the installed APK in place instead of recreating the
+instance:
 
 ```bash
 lim android sync ./path/to/app-debug.apk
 ```
+
+For everything else on the device (tapping, typing, element tree, screenshots,
+video, logcat over adb), use **limrun-android-emulator**.
 
 ## Sign a release AAB
 
