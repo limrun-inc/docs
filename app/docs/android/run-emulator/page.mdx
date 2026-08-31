@@ -592,6 +592,30 @@ Some tools that can work with `adb`:
 - **scrcpy.** Run `scrcpy -s 127.0.0.1:<port>` to mirror and remote-control the device.
 - **Appium.** Set `appium:udid` (or `appium:deviceName`) to `127.0.0.1:<port>` on any upstream Appium server. See [Automated testing > Appium](/docs/testing/appium).
 
+### Shell and files without a tunnel
+
+For one-shot shell commands and file transfer, the CLI talks to the instance directly — no local `adb` install and no tunnel to keep alive. Everything runs with the same permissions the ADB shell user has, so protected locations are rejected just as they would be for `adb`.
+
+`adb-shell` runs a command and returns its stdout, stderr, and exit code (the CLI exits with the command's exit code). Pass the command after `--`; each argument is sent as a separate, quoted token, so shell features like pipes need an explicit shell:
+
+```bash
+lim android adb-shell -- pm list packages -3
+lim android adb-shell -- getprop ro.build.version.sdk
+lim android adb-shell --id <ID> -- sh -c "dumpsys battery | grep level"
+```
+
+`pull-file` and `push-file` behave like `adb pull` and `adb push`:
+
+```bash
+lim android pull-file /sdcard/Download/photo.jpeg
+lim android pull-file /data/local/tmp/log.txt ./device-log.txt
+
+lim android push-file ./document.pdf /sdcard/Download/document.pdf
+# Without a destination, the instance stores the file under an internal
+# name and the CLI prints the remote path.
+lim android push-file ./video.mp4
+```
+
 ## Read the screen
 
 Three primitives for inspecting the device using the SDK. All of these require an initiated `client`:
