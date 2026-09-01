@@ -243,12 +243,12 @@ lim ios app-log com.example.MyApp --tail 200
 
 ## Reach services on the agent machine
 
-Declare each exact TCP destination that the simulator app needs:
+Declare each exact TCP destination that the simulator app needs as a `host:port` selector:
 
 ```bash
 lim ios tunnel \
-  --route localhost:8000 \
-  --route 10.20.30.40:443 \
+  --selector localhost:8000 \
+  --selector 10.20.30.40:443 \
   --detach \
   --id <ios-instance-id>
 ```
@@ -264,9 +264,10 @@ Declaring `localhost:8000` makes simulator `localhost:8000`, `127.0.0.1:8000`,
 `[::1]:8000`, and `[::ffff:127.0.0.1]:8000` reach the agent machine's
 `localhost:8000`. Other hostnames are not supported in this release.
 
-A tunnel accepts up to ten exact TCP routes. Ports 1–65535 are supported except
-53; CIDRs and UDP are not supported. The route set is immutable, so stop and
-restart the tunnel with the complete route list when destinations change.
+A tunnel accepts up to ten exact TCP selectors. Ports 1–65535 are supported
+except 53; CIDRs and UDP are not supported. The selector set is immutable, so
+stop and restart the tunnel with the complete selector list when destinations
+change.
 An open idle tunnel does not count as instance activity and does not prevent the
 simulator's inactivity timeout.
 

@@ -523,33 +523,30 @@ With `loop: false` the feed freezes on the video's last frame after one pass, so
 
 ## Tunnel a local service
 
-The simulator runs remotely, but the app inside it sometimes needs to reach a service that runs on your side: a mock backend, a test runner, or a local Expo dev server. Declare each TCP destination and start one tunnel:
+The simulator runs remotely, but the app inside it sometimes needs to reach a service that runs on your side: a mock backend, a test runner, or a local Expo dev server. Declare each TCP destination as a `host:port` selector and start one tunnel:
 
 ```ts
 const tunnel = await client.startTunnel({
-  routes: [
-    { host: 'localhost', port: 8000 },
-    { host: '10.20.30.40', port: 443 },
-  ],
+  selectors: ['localhost:8000', '10.20.30.40:443'],
 });
 
 const status = await client.getTunnelStatus();
 await client.stopTunnel(tunnel.tunnelId);
 ```
 
-The app keeps using literal `localhost:8000`. The tunnel connects it to `localhost:8000` on the machine running the client. A localhost declaration also captures the exact loopback aliases `127.0.0.1`, `::1`, and `::ffff:127.0.0.1`. Literal IP routes work the same way for non-loopback addresses.
+The app keeps using literal `localhost:8000`. The tunnel connects it to `localhost:8000` on the machine running the client. A localhost selector also captures the exact loopback aliases `127.0.0.1`, `::1`, and `::ffff:127.0.0.1`. Literal IP selectors work the same way for non-loopback addresses; write IPv6 in brackets, as in `[::1]:8000`.
 
-The initial release supports TCP and up to ten exact host-and-port routes. Ports
-1–65535 are accepted except port 53. Hostnames other than `localhost`, CIDRs,
-and UDP are not supported.
+The initial release supports TCP and up to ten exact host-and-port selectors.
+Ports 1–65535 are accepted except port 53. Hostnames other than `localhost`,
+CIDRs, and UDP are not supported.
 
 The CLI can own the tunnel in a background process:
 
 ```bash
 lim ios tunnel \
   --id <ios-instance-id> \
-  --route localhost:8000 \
-  --route 10.20.30.40:443 \
+  --selector localhost:8000 \
+  --selector 10.20.30.40:443 \
   --detach
 
 lim ios tunnel status --id <ios-instance-id>
@@ -557,15 +554,19 @@ lim ios tunnel stop --id <ios-instance-id>
 ```
 
 Use `--json` for structured output. One instance accepts one active destination
-tunnel. Its route list is immutable: to add or remove a destination, stop the
-tunnel and start it again with the complete route list. A WebSocket loss closes
-its connections, so start a new tunnel to recover. An open idle tunnel does not
-count as instance activity and does not prevent the inactivity timeout.
+tunnel. Its selector list is immutable: to add or remove a destination, stop the
+tunnel and start it again with the complete selector list. A WebSocket loss
+closes its connections, so start a new tunnel to recover. An open idle tunnel
+does not count as instance activity and does not prevent the inactivity timeout.
 
-If the app attempts a route while its local service is stopped, only that
-connection fails; the tunnel and its other routes stay active. JSON status
+If the app attempts a selector while its local service is stopped, only that
+connection fails; the tunnel and its other selectors stay active. JSON status
 records the failure as `lastDialFailure`. Restart the service at the same
 destination and the existing tunnel carries later connections.
+
+Clients on `@limrun/api` 0.48 or older (`lim` before 0.31) speak an earlier
+tunnel protocol that current instances reject with `invalid_message`; upgrade
+to use tunnels.
 
 ### Expo and Metro
 
@@ -574,7 +575,7 @@ Metro can listen on its normal local port while Expo advertises localhost:
 ```bash
 METRO_PORT=8081
 lim ios tunnel \
-  --route "localhost:${METRO_PORT}" \
+  --selector "localhost:${METRO_PORT}" \
   --detach \
   --id <ios-instance-id>
 TUNNEL_URL="http://localhost:${METRO_PORT}"
@@ -590,7 +591,7 @@ over project dotenv values. Keep this shell open for Metro, and copy the printed
 `TUNNEL_URL` into a second terminal for the launch command.
 
 If port 8081 is already occupied, choose another explicit port and use the same
-value in the route, `TUNNEL_URL`, and Expo's `--port`.
+value in the selector, `TUNNEL_URL`, and Expo's `--port`.
 
 Open your development build with that URL:
 
