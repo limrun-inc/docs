@@ -208,6 +208,8 @@ Manual mode replaces `--signing-method` and `--team-id` with:
 
 The upload still uses the `--asc-*` flags. Add `--scheme <scheme>` when the project needs one. For tvOS or visionOS, use `--sdk appletvos` or `--sdk xros` with the matching scheme and App Store Connect app record. Cloud signing requires a team API key and its issuer ID. Spawn the CLI with an argument array instead of constructing a shell command, and redact the certificate password from logs.
 
+Both signing modes include the app's symbols in the IPA, so App Store Connect symbolicates crash reports for the build. This needs dSYMs from the build, which the Release configuration produces by default (`DEBUG_INFORMATION_FORMAT=dwarf-with-dsym`).
+
 The complete implementation is in [`startPublish`](https://github.com/limrun-inc/typescript-sdk/blob/main/examples/publish-to-stores/backend/publish.ts). A successful upload appears in App Store Connect and TestFlight. The user still attaches the processed build to an App Store version and submits that version for review in App Store Connect.
 
 ## 4. Add Google Play connection
