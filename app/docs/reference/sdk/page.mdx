@@ -132,7 +132,7 @@ The three SDKs are not equivalent. Every one covers the control plane (create / 
 
 | Capability | TypeScript | Python | Go |
 |---|---|---|---|
-| Instance CRUD (iOS, Android, Xcode) | ✓ | ✓ | iOS + Android only (no `XcodeInstances` service) |
+| Instance CRUD (iOS, Android, Xcode) | ✓ | iOS + Android only (no `xcode_instances` resource) | iOS + Android only (no `XcodeInstances` service) |
 | Asset CRUD | ✓ | ✓ | ✓ |
 | `assets.getOrUpload` (MD5 dedup + signed PUT) | ✓ | upload manually | ✓ (`Assets.GetOrUpload`) |
 | iOS device control (taps, screenshot, element-tree, typeText, simctl streaming, ...) | ✓ | use REST or CLI | ✓ (subset, see below) |
@@ -395,7 +395,7 @@ The Android operations have the same shape as iOS. Substitute `androidInstances`
 
 ### Xcode instances
 
-The TypeScript and Python SDKs expose a top-level `xcodeInstances` / `xcode_instances` resource with the same CRUD shape as iOS. The **Go SDK does not** ship an `XcodeInstances` service today; reach the same instances through one of these paths:
+The TypeScript SDK exposes a top-level `xcodeInstances` resource with the same CRUD shape as iOS, plus `createClient` for sync, builds and Xcode selection (`xcode.getXcode()`, `xcode.setXcode('27')`; see [Choose the Xcode version](/docs/ios/build-with-xcode#choose-the-xcode-version)). The **Python and Go SDKs do not** ship an Xcode instances resource today; reach the same instances through one of these paths:
 
 - Call `POST /v1/xcode_instances` directly over HTTP.
 - Or shell out to `lim xcode create` / `lim xcode build`.
