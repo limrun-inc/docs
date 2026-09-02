@@ -2,36 +2,36 @@
   "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
   "source": {
     "repository": "https://github.com/limrun-inc/skills",
-    "commit": "e29a129cea3d311d2bd348eef1aadcd1b20397d5"
+    "commit": "96e256e536dfd39685eeccac6fb2377dc98d00fe"
   },
   "skills": [
     {
       "name": "limrun-xcode",
       "type": "skill-md",
-      "description": "Build an iOS / Apple app on remote Xcode with `lim xcode build` instead of local xcodebuild, from any environment (Linux, Windows, macOS, VM, container). Use for non-Bazel projects (an `.xcodeproj` / `.xcworkspace`, an XcodeGen `project.yml` with a gitignored project, React Native / Expo native build) when the user wants to build, compile, reload, produce a preview build, or ship a signed device IPA. To run, tap, screenshot, or otherwise interact with the result on a simulator, use limrun-ios-simulator. For Bazel workspaces, use limrun-xcode-bazel.",
+      "description": "Build an iOS / Apple app on remote Xcode with `lim xcode build` instead of local xcodebuild, or run its XCTest suites with `lim xcode test`, from any environment (Linux, Windows, macOS, VM, container). Use for non-Bazel projects (an `.xcodeproj` / `.xcworkspace`, an XcodeGen `project.yml` with a gitignored project, React Native / Expo native build) when the user wants to build, compile, test, reload, produce a preview build, or ship a signed device IPA. To run, tap, screenshot, or otherwise interact with the result on a simulator, use limrun-ios-simulator. For Bazel workspaces, use limrun-xcode-bazel.",
       "url": "/.well-known/agent-skills/limrun-xcode/SKILL.md",
-      "digest": "sha256:c1502141a039019fd72f2122eec0cfc40cd514ffec7316931ab96b0869d4a9ea"
+      "digest": "sha256:12f74153796d0786be1fa4bed9068342d0028bf5376f03b2807cebaef45a5763"
     },
     {
       "name": "limrun-ios-simulator",
       "type": "skill-md",
-      "description": "Drive an app running on a Limrun cloud iOS simulator: launch, tap, type, read the accessibility element tree, screenshot, record video, play a video file as the camera, and run timed action chains. Use after a build (from any builder) when the user wants to see, test, or interact with their app on a simulator, or says 'show me a screenshot', 'tap', 'run the UI test', 'record a video', 'mock the camera', or 'launch on simulator'. To build the app first, use limrun-xcode-bazel (Bazel workspaces) or limrun-xcode (xcodebuild projects).",
+      "description": "Drive an app running on a Limrun cloud iOS simulator: launch, tap, type, read the accessibility element tree, screenshot, record video, connect the app to local services, play a video file as the camera, and run timed action chains. Use after a build (from any builder) when the user wants to see, test, or interact with their app on a simulator, or says 'show me a screenshot', 'tap', 'run the UI test', 'record a video', 'connect localhost', 'mock the camera', or 'launch on simulator'. To build the app first, use limrun-xcode-bazel (Bazel workspaces) or limrun-xcode (xcodebuild projects).",
       "url": "/.well-known/agent-skills/limrun-ios-simulator/SKILL.md",
-      "digest": "sha256:904645ba73253269e720b0bfb8c60551c13bf110087b663ed1ab51ea71ea41e8"
+      "digest": "sha256:0642dbe91b5f25ed7aa7bede6038f5ea7f435066dd8ca8817543cb48cafc2277"
     },
     {
       "name": "limrun-expo-development",
       "type": "skill-md",
       "description": "Prepare and run Expo / React Native apps on Limrun with Expo dev-client iteration. Use when the user wants an Expo dev build, Metro tunnel, hot reload, JS/TS iteration without repeated native rebuilds, or to run/test an Expo app on a remote iOS simulator or Android emulator.",
       "url": "/.well-known/agent-skills/limrun-expo-development/SKILL.md",
-      "digest": "sha256:fcc279369b149ea2e603e6ca0b216fa37a901f954aac353b2b46a6569d5bdc6d"
+      "digest": "sha256:fc65ed15c6f605c7105eadac2eb0719e35b472ba2fe9ffc77aee20edf7bceaba"
     },
     {
       "name": "limrun-detox-testing",
       "type": "skill-md",
-      "description": "Configure, run, or debug Detox on Limrun iOS simulators. Use when attaching the Limrun Detox runtime to an app, wiring Detox mediator connectivity, or validating app/tester connections over reverse tunnels.",
+      "description": "Configure, run, or debug Detox on Limrun iOS simulators. Use when attaching the Limrun Detox runtime to an app, wiring Detox mediator connectivity, or validating app/tester connections over destination tunnels.",
       "url": "/.well-known/agent-skills/limrun-detox-testing/SKILL.md",
-      "digest": "sha256:462daf1a196b25d797df0742de22d8679082d47e9071d84402de8cabd62fdc22"
+      "digest": "sha256:53755e1d0668b73645782bb7d7e703fc295bdf8fae14ff4c79bcbfb73be0d034"
     },
     {
       "name": "limrun-maestro-testing",
@@ -45,21 +45,21 @@
       "type": "skill-md",
       "description": "Build a Bazel-based iOS / macOS / Apple app on Limrun's remote build execution (RBE) instead of a local Mac, and install it on a remote iOS simulator. Use when the project is a Bazel workspace (MODULE.bazel / WORKSPACE) building rules_apple / rules_swift targets and the user wants to `bazel build` it or run it on a simulator, or when a `--config=limrun` build or install misbehaves. To then tap, type, screenshot, or otherwise interact with the running app, use limrun-ios-simulator. For non-Bazel (plain xcodebuild) projects use limrun-xcode instead.",
       "url": "/.well-known/agent-skills/limrun-xcode-bazel/SKILL.md",
-      "digest": "sha256:81f8ccb8c6d5acd1061530af1d7964e0aeaeb41708ef66fdbc489800daadd264"
+      "digest": "sha256:dc9c2ff5b878610d833f5215a1fc1fd5906f6a4a45c35e969bbb1d6c42dabc1b"
     },
     {
       "name": "limrun-gradle",
       "type": "skill-md",
       "description": "Build an Android app on a remote Gradle sandbox with `lim gradle build` instead of local Gradle or Android Studio, from any environment (Linux, Windows, macOS, VM, container). Use when the user wants to build an APK or AAB, sign a release with an upload key, or prepare a Play Store publish, for native Android projects, React Native, and Expo. To run, tap, screenshot, or otherwise interact with the built APK on an emulator, use limrun-android-emulator. For iOS builds, use limrun-xcode or limrun-expo-development.",
       "url": "/.well-known/agent-skills/limrun-gradle/SKILL.md",
-      "digest": "sha256:1ac9e0454cb93b6fff20b31856545b2b23296bf3843a01d18457a03741ecf476"
+      "digest": "sha256:44de67da5488347c63317e7546915a0f44f448f9bf6d909a57451eb9d7366631"
     },
     {
       "name": "limrun-android-emulator",
       "type": "skill-md",
       "description": "Drive an app running on a Limrun cloud Android emulator: install an APK, launch and terminate apps with crash reports, tap, type, read the UI element tree, screenshot, record video, inject microphone audio, shape network bandwidth, and use adb over the CLI's tunnel for logcat, files, and shell. Use after a build (from limrun-gradle or any builder) when the user wants to see, test, or interact with their app on an emulator, or says 'show me a screenshot', 'tap', 'run it on the emulator', 'check logcat', or 'record a video'. To build the APK or AAB first, use limrun-gradle.",
       "url": "/.well-known/agent-skills/limrun-android-emulator/SKILL.md",
-      "digest": "sha256:a09b7a94cf8ec1a164c6a15703d91966f84f66b762de67070db12a954f2dd7bd"
+      "digest": "sha256:3165b23b8a3f8e19f441c783116bb96efb8ec04a4f1c20d5430cc95c6ccd20e5"
     }
   ]
 }
