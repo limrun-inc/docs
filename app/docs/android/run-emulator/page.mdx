@@ -522,7 +522,7 @@ Use the SDK when you want strongly-typed results and built-in selectors. Use the
 | Install APK from HTTPS URL | `client.sendAsset(url)` (daemon downloads on the device side) | download locally, then `adb install ./out.apk` |
 | Install APK from local file | `assets.getOrUpload({ path })` then `sendAsset(asset.signedDownloadUrl)` | `adb install ./build.apk` |
 | Launch / force-stop app | not exposed | `adb shell am start -n pkg/.Activity` / `adb shell am force-stop pkg` |
-| Logcat | not exposed | `adb logcat` |
+| Logcat | `client.logcat(['-t', '50'])` streams with logcat's own flags | `adb logcat` |
 | File push / pull | not exposed | `adb push local /sdcard/...` / `adb pull /sdcard/...` |
 | Run arbitrary shell | not exposed | `adb shell <anything>` |
 | Mirror the device UI | use `signedStreamUrl` in a browser or `<RemoteControl />` | `scrcpy -s 127.0.0.1:<tunnel-port>` |
