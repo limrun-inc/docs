@@ -523,11 +523,11 @@ With `loop: false` the feed freezes on the video's last frame after one pass, so
 
 ## Tunnel a local service
 
-The simulator runs remotely, but the app inside it sometimes needs to reach a service that runs on your side: a mock backend, a test runner, or a local Expo dev server. Declare each TCP destination as a `host:port` selector and start one tunnel:
+The simulator runs remotely, but the app inside it sometimes needs to reach a service that runs on your side: a mock backend, a test runner, a local Expo dev server, or an API that only your machine or VPN can resolve. Declare each destination as a selector and start one tunnel:
 
 ```ts
 const tunnel = await client.startTunnel({
-  selectors: ['localhost:8000', '10.20.30.40:443'],
+  selectors: ['localhost:8000', '10.20.30.40:443', 'api.corp.example', '*.staging.example'],
 });
 
 const status = await client.getTunnelStatus();
@@ -536,9 +536,18 @@ await client.stopTunnel(tunnel.tunnelId);
 
 The app keeps using literal `localhost:8000`. The tunnel connects it to `localhost:8000` on the machine running the client. A localhost selector also captures the exact loopback aliases `127.0.0.1`, `::1`, and `::ffff:127.0.0.1`. Literal IP selectors work the same way for non-loopback addresses; write IPv6 in brackets, as in `[::1]:8000`.
 
-The initial release supports TCP and up to ten exact host-and-port selectors.
-Ports 1–65535 are accepted except port 53. Hostnames other than `localhost`,
-CIDRs, and UDP are not supported.
+Domain selectors are intercepted transparently on the instance and dialed from
+the machine running the client, whether or not the name resolves on public DNS,
+so your DNS, `/etc/hosts`, and VPN apply and TLS stays end to end. Write an
+exact name (`api.corp.example`) or a `*.` wildcard (`*.staging.example`);
+wildcards are label-bound, so `*.staging.example` covers `a.staging.example`
+but not `staging.example` itself. `localhost` and IP literals are not domains;
+declare those as `host:port` selectors.
+
+A tunnel carries TCP only and accepts up to ten exact `host:port` selectors and
+up to 64 domain selectors. Ports 1–65535 are accepted except port 53. CIDRs and
+UDP are not supported. Apps that resolve DNS themselves over HTTPS (DoH) bypass
+domain interception; declare the resolved IP instead.
 
 The CLI can own the tunnel in a background process:
 
@@ -547,6 +556,7 @@ lim ios tunnel \
   --id <ios-instance-id> \
   --selector localhost:8000 \
   --selector 10.20.30.40:443 \
+  --selector "*.staging.example" \
   --detach
 
 lim ios tunnel status --id <ios-instance-id>
