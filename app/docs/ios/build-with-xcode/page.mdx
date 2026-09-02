@@ -317,19 +317,46 @@ The webhook is sent whether the caller keeps streaming or detaches. Limrun POSTs
   "buildDurationMs": 205000,
   "instanceId": "xcode_usw1_...",
   "consoleUrl": "https://console.limrun.com/builds/xcode_usw1_...",
-  "logsUrl": "https://..."
+  "logsUrl": "https://...",
+  "assetId": "asset_01h455vb4pex5vsknk084sn02q",
+  "bundleIdentifier": "com.example.myapp",
+  "shortVersion": "1.2.3",
+  "buildVersion": "42",
+  "displayName": "MyApp",
+  "deeplink": "myapp",
+  "iconUrl": "https://..."
 }
 ```
 
-`logsUrl` is a time-limited link to the persisted plain-text build log. Read that log for build diagnostics when `status` is `FAILED`. The instance, console, log, timing, and exit-code fields are omitted when they are unavailable.
+`logsUrl` is a time-limited link to the persisted plain-text build log. Read that log for build diagnostics when `status` is `FAILED`. There is no `error` field: `xcodebuild` doesn't expose one deterministic diagnostic, so the log is the answer. The instance, console, log, timing, and exit-code fields are omitted when they are unavailable.
 
-Webhook delivery follows these rules:
+#### App identity in the payload
+
+The payload also describes the app the build produced, read from the built bundle's `Info.plist`:
+
+| Field | Carries |
+|---|---|
+| `bundleIdentifier` | `CFBundleIdentifier`, e.g. `com.example.myapp`. |
+| `shortVersion` | `CFBundleShortVersionString`, e.g. `1.2.3`. |
+| `buildVersion` | `CFBundleVersion`, e.g. `42`. |
+| `displayName` | `CFBundleDisplayName`, falling back to `CFBundleName`. |
+| `deeplink` | The app's primary URL scheme from `CFBundleURLTypes`, e.g. `myapp` for `myapp://` links. |
+| `assetId` | The Asset Storage asset the artifact was uploaded to. |
+| `iconUrl` | A time-limited link to the app icon PNG stored next to the asset. |
+
+This is what lets a receiver tell builds apart without downloading and opening the artifact. In a monorepo that ships several apps, key your own bookkeeping on `bundleIdentifier`, and use `assetId` to install exactly the build that a given webhook reported. The Android equivalents are documented in [Build with Gradle](/docs/android/build-with-gradle#app-identity-in-the-payload).
+
+These fields are set on successful builds that produced one app bundle. A [`lim xcode test`](/docs/ios/test-with-xctest) run builds for testing, producing an `xctestrun` tree rather than a single app, so it carries none. `assetId` and `iconUrl` additionally need `--upload`, which is what creates the asset; `--signed-upload-url` puts the artifact in your own bucket and mints no asset. Reading the bundle is best-effort: a bundle Limrun couldn't read leaves the fields out rather than failing a build that compiled and signed fine.
+
+#### Delivery rules
 
 - The URL must use HTTPS on a public DNS host. IP literals and private or cluster-internal targets are rejected when the build request is submitted.
 - Repeat `--webhook-header NAME=VALUE` to send multiple headers. At most 16 are accepted. `Host`, `Content-Length`, `Transfer-Encoding`, and `Connection` cannot be overridden.
 - Any 2xx response counts as delivered. Other responses and connection failures are retried up to two more times.
 - Delivery is best-effort. Exhausting retries does not change the build result.
 - Cancelled builds send a callback too. A new build on the same sandbox cancels the active one.
+
+#### Detached builds
 
 Add `--detach` when the caller should return as soon as limbuild accepts the build instead of holding the SSE stream open:
 
