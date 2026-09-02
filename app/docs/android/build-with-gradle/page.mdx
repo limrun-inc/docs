@@ -112,19 +112,32 @@ The webhook is sent whether the caller keeps streaming or detaches. Limrun POSTs
   "buildDurationMs": 130000,
   "instanceId": "gradle_usw1_...",
   "consoleUrl": "https://console.limrun.com/builds/gradle_usw1_...",
-  "logsUrl": "https://..."
+  "logsUrl": "https://...",
+  "applicationId": "com.example.myapp",
+  "versionName": "1.2.3",
+  "versionCode": 42
 }
 ```
 
-`logsUrl` is a time-limited link to the persisted plain-text build log. Read that log for build diagnostics when `status` is `FAILED`. The instance, console, log, timing, and exit-code fields are omitted when they are unavailable.
+`logsUrl` is a time-limited link to the persisted plain-text build log. Read that log for build diagnostics when `status` is `FAILED`. There is no `error` field: Gradle doesn't expose one deterministic diagnostic, so the log is the answer. The instance, console, log, timing, and exit-code fields are omitted when they are unavailable.
 
-Webhook delivery follows these rules:
+### App identity in the payload
+
+`applicationId`, `versionName`, and `versionCode` describe the app the build produced. They come from the built APK's or AAB's manifest, not from your Gradle scripts, so they reflect the merged manifest: product flavors, build-type suffixes, and manifest placeholders are all resolved the way the shipped artifact has them.
+
+This is what lets a receiver tell builds apart without downloading and opening the artifact. In a monorepo that ships several apps, key your own bookkeeping on `applicationId`. The iOS equivalents are documented in [Build with remote Xcode](/docs/ios/build-with-xcode#app-identity-in-the-payload).
+
+These fields are set on successful builds that produced an artifact, which means the request also asked for an upload (`--upload` or `--signed-upload-url`) or a Play Store publish. A build that packaged nothing has no artifact to describe. Reading the manifest is best-effort: an artifact Limrun couldn't read leaves the fields out rather than failing a build that packaged and uploaded fine. `versionCode` is omitted when the manifest declares none.
+
+### Delivery rules
 
 - The URL must use HTTPS on a public DNS host. IP literals and private or cluster-internal targets are rejected when the build request is submitted.
 - Repeat `--webhook-header NAME=VALUE` to send multiple headers. At most 16 are accepted. `Host`, `Content-Length`, `Transfer-Encoding`, and `Connection` cannot be overridden.
 - Any 2xx response counts as delivered. Other responses and connection failures are retried up to two more times.
 - Delivery is best-effort. Exhausting retries does not change the build result.
 - Cancelled builds send a callback too. A new build on the same sandbox cancels the active one.
+
+### Detached builds
 
 Add `--detach` when the caller should return as soon as the build is accepted instead of holding the SSE stream open:
 
