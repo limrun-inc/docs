@@ -89,7 +89,7 @@ if (bound.major !== '27') {
 
 </CodeGroup>
 
-The sandbox itself is bound to one Xcode at a time, and the workspace preference wins: when a build finds the sandbox on another major (a colleague switched it, or a fresh sandbox came up on the node default), it says so and switches before building. Every build prints the Xcode it runs with (`Building with Xcode 27.0 (27A5252f)`).
+The sandbox itself has one Xcode selected at a time, and the workspace preference wins: when a build finds the sandbox on another major (a colleague switched it, or a fresh sandbox came up on the node default), it says so and switches before building. Every build prints the Xcode it runs with (`Building with Xcode 27.0 (27A5252f)`).
 
 - Switching resets the DerivedData of every synced project, so the next build starts cold. The build cache is keyed by Xcode version too, so a cached workspace produced by another Xcode is not reused.
 - The switch is refused while a build, command, sync, or `lim xcode rbe` stack is running; stop them first (`lim xcode rbe --stop`).
