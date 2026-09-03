@@ -68,14 +68,16 @@ When you already know you'll test on a simulator right after the build, the CLI 
 
 ## Choose the Xcode version
 
-A sandbox builds with its node's default Xcode unless you bind it to another installed major. Xcode 27 (beta) is available beside the default; pass the major to any build entry point, or switch an existing sandbox explicitly:
+A sandbox builds with its node's default Xcode unless you pick another installed major. Xcode 27 (beta) is available beside the default. Pick it once per workspace (your git repo, or a `lim set-workspace-dir` assignment), the way a version manager remembers a version:
 
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
-lim xcode list-xcode                      # versions the sandbox can build with, and the current one
-lim xcode build . --xcode-version 27     # also on create, test and rbe
-lim xcode set-xcode 27                    # switch the remembered sandbox
-lim xcode get                             # shows "Xcode: 27.0 (27A5252f)"
+lim xcode version list                    # versions the sandbox can build with
+lim xcode version set 27                  # prefer 27 here; switches the remembered sandbox now
+lim xcode build .                         # builds with 27, so do test, rbe and new sandboxes
+lim xcode version                         # "27.0 (27A5252f)"
+lim xcode build . --xcode-version 26     # one-off override; the preference is unchanged
+lim xcode version unset                   # forget the preference; the sandbox keeps its Xcode
 ```
 
 ```ts
@@ -87,7 +89,7 @@ if (bound.major !== '27') {
 
 </CodeGroup>
 
-The version is a property of the sandbox, not of the command: once switched, every later build uses it until you switch again. Every build prints the Xcode it runs with (`Building with Xcode 27.0 (27A5252f)`).
+The sandbox itself is bound to one Xcode at a time, and the workspace preference wins: when a build finds the sandbox on another major (a colleague switched it, or a fresh sandbox came up on the node default), it says so and switches before building. Every build prints the Xcode it runs with (`Building with Xcode 27.0 (27A5252f)`).
 
 - Switching resets the DerivedData of every synced project, so the next build starts cold. The build cache is keyed by Xcode version too, so a cached workspace produced by another Xcode is not reused.
 - The switch is refused while a build, command, sync, or `lim xcode rbe` stack is running; stop them first (`lim xcode rbe --stop`).
