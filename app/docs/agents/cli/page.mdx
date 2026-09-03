@@ -129,7 +129,7 @@ lim xcode build . --workspace MyApp.xcworkspace --scheme MyApp
 | `--webhook-url URL` `--webhook-header NAME=VALUE` | POST the terminal build result and persisted-log URL to an HTTPS callback. Repeat the header flag as needed. |
 | `--detach` | Return once limbuild accepts the build instead of streaming until completion. Requires `--webhook-url`. |
 | `--inactivity-timeout 3s` | Create a fresh instance for this build and reap it shortly after its last activity. Cannot be combined with `--id`. |
-| `--build-setting KEY=VALUE` | Pass an allowlisted build setting (any `APP_CONFIG_*` key or `SWIFT_ACTIVE_COMPILATION_CONDITIONS`). Repeatable. |
+| `--build-setting KEY=VALUE` | Pass an xcodebuild build setting; it replaces a Limrun default with the same key. Repeatable. |
 | `--additional-file local=remote` | Sync an extra file (like `~/.netrc`) into the sandbox on every build. Repeatable. |
 | `--ignore 'regex'` | Skip paths during sync. Repeatable. |
 | `--include 'regex'` | Force-sync paths your `.gitignore` excludes, like generated sources the build needs. Repeatable. |

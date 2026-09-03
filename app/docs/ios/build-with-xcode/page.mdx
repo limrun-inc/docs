@@ -389,7 +389,7 @@ Match what you'd pass to local `xcodebuild`:
 | `scheme` | Required for multi-scheme apps. |
 | `sdk` | `iphonesimulator` (default), `iphoneos`, `watchsimulator`, `watchos`, `appletvos`, or `xros`. tvOS and visionOS are device-build only. |
 
-To pass a custom build setting, repeat `--build-setting KEY=VALUE` on the CLI or set `buildSettings` on the SDK call. Only allowlisted keys are accepted: any `APP_CONFIG_*` key, plus `SWIFT_ACTIVE_COMPILATION_CONDITIONS`. Other keys are rejected. `APP_CONFIG_*` values are treated as app configuration and redacted from build logs.
+To pass a custom build setting, repeat `--build-setting KEY=VALUE` on the CLI or set `buildSettings` on the SDK call. Any environment-style key (letters, digits, underscores) is accepted. Request values are applied after Limrun's managed settings and replace a managed value with the same key, so a project that needs it can override a default such as `ONLY_ACTIVE_ARCH`. `APP_CONFIG_*` values are treated as app configuration and redacted from build logs.
 
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
@@ -412,7 +412,9 @@ xcode.xcodebuild(
 
 </CodeGroup>
 
-Settings outside the allowlist, like `CURRENT_PROJECT_VERSION`, can't be passed here. Bump those in the Xcode project itself.
+### Device build defaults
+
+Device builds (`iphoneos`, `watchos`, `appletvos`, `xros`) compile every target for its standard architectures and turn code coverage instrumentation off, matching what Xcode's archive action produces. An embedded watch app keeps the `arm64_32` slice App Store Connect requires, and no binary carries coverage sections, so the IPA passes App Store validation. Projects that pin an unsupported architecture such as `armv7` in `ARCHS` fail as they do in Xcode. Simulator builds compile only the host architecture for speed.
 
 ### tvOS and visionOS
 
