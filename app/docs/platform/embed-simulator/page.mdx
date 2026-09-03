@@ -307,8 +307,7 @@ export function Simulator() {
 | `showFrame` | boolean | `true` | Draw the device bezel around the video. See [iPad and Apple Watch](#ipad-and-apple-watch); only iPhone and Pixel models ship native bezel art. |
 | `autoReconnect` | boolean | `false` | If a working session's connection drops, reconnect automatically instead of showing the Retry button. |
 | `className` | string | none | Extra class names applied on top of the component's defaults. |
-| `cameraResolutionCap` | `'auto' \| '1080p' \| '720p' \| '480p'` | `'auto'` | Preferred browser capture size using standard landscape dimensions. This is independent from the virtual-camera output aspect. |
-| `cameraAspect` | `'auto' \| '16:9' \| '4:3' \| '1:1' \| '9:16'` | `'auto'` | Virtual-camera output sizing. Auto follows the browser track; an explicit value pins the simulator or emulator camera aspect. |
+| `cameraResolutionCap` | `'auto' \| '1080p' \| '720p' \| '480p'` | `'auto'` | Preferred browser capture size using standard landscape dimensions. |
 | `onCameraDemandChange` | callback | none | Reports when an app opens or closes its camera and includes the browser's actual capture settings after permission or a track change. |
 
 ## Pre-wired interactions
@@ -339,25 +338,23 @@ browser capture with an `ideal` constraint. On a laptop with one camera, the
 browser naturally returns that camera again while the app still observes the
 selected virtual position and its normal front-camera mirroring behavior.
 
-By default, the virtual camera follows each decoded frame's rotated dimensions,
-including changes after a camera switch. Set `cameraAspect` to pin a host-side
-output shape. The host scales and center-crops frames into that shape without
-changing the browser's capture constraints:
+The virtual-camera output automatically follows each decoded frame's rotated
+dimensions, including changes after a camera switch. Use `cameraResolutionCap`
+to choose the preferred browser capture size:
 
 ```tsx
 <RemoteControl
   url={session.webrtcUrl}
   token={session.token}
   cameraResolutionCap="720p"
-  cameraAspect="9:16"
   onCameraDemandChange={(active, granted, camera) => {
     console.log({ active, granted, camera });
   }}
 />
 ```
 
-Use `cameraAspect="auto"` again to resume track-following. Camera capture
-requires HTTPS or `http://localhost`, as required by `getUserMedia`.
+Camera capture requires HTTPS or `http://localhost`, as required by
+`getUserMedia`.
 
 ### iOS extended touch area
 iOS treats the home-indicator strip as part of the gesture surface. To make swipe-up-from-home, app-switcher, and pull-from-bottom gestures work the same way they do on a real device, `<RemoteControl />` exposes a 60-pixel extended touch area below the visible screen. A drag started inside that strip and moved up enters the iOS gesture system the way it would on hardware.
