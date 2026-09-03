@@ -307,6 +307,7 @@ export function Simulator() {
 | `showFrame` | boolean | `true` | Draw the device bezel around the video. See [iPad and Apple Watch](#ipad-and-apple-watch); only iPhone and Pixel models ship native bezel art. |
 | `autoReconnect` | boolean | `false` | If a working session's connection drops, reconnect automatically instead of showing the Retry button. |
 | `className` | string | none | Extra class names applied on top of the component's defaults. |
+| `onCameraDemandChange` | callback | none | Reports when an app opens or closes its camera and includes the browser's actual capture settings after permission or a track change. |
 
 ## Pre-wired interactions
 
@@ -323,6 +324,35 @@ The component translates browser events into device input on its own. No wiring 
 | `Cmd + M` / `Ctrl + M` | Sends the Menu key |
 
 Keyboard events only forward while the embedded `<video>` element is focused. The component focuses the video on tap.
+
+### Camera simulation
+
+When an app opens its front or back virtual camera, `<RemoteControl />` asks
+the browser for the matching `user` or `environment` camera and sends that
+track to the instance. Switching cameras in the app replaces the WebRTC track
+automatically; your embed does not need its own camera toggle.
+
+Facing is a preference rather than a requirement. A facing change restarts
+browser capture with an `ideal` constraint. On a laptop with one camera, the
+browser naturally returns that camera again while the app still observes the
+selected virtual position and its normal front-camera mirroring behavior.
+
+The browser and WebRTC choose the capture resolution. The virtual-camera output
+automatically follows each decoded frame's rotated dimensions, including
+dimension changes after a camera switch.
+
+```tsx
+<RemoteControl
+  url={session.webrtcUrl}
+  token={session.token}
+  onCameraDemandChange={(active, granted, camera) => {
+    console.log({ active, granted, camera });
+  }}
+/>
+```
+
+Camera capture requires HTTPS or `http://localhost`, as required by
+`getUserMedia`.
 
 ### iOS extended touch area
 iOS treats the home-indicator strip as part of the gesture surface. To make swipe-up-from-home, app-switcher, and pull-from-bottom gestures work the same way they do on a real device, `<RemoteControl />` exposes a 60-pixel extended touch area below the visible screen. A drag started inside that strip and moved up enters the iOS gesture system the way it would on hardware.
