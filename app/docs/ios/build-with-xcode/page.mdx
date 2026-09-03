@@ -72,6 +72,7 @@ A sandbox builds with its node's default Xcode unless you bind it to another ins
 
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
+lim xcode list-xcode                      # versions the sandbox can build with, and the current one
 lim xcode build . --xcode-version 27     # also on create, test and rbe
 lim xcode set-xcode 27                    # switch the remembered sandbox
 lim xcode get                             # shows "Xcode: 27.0 (27A5252f)"
@@ -90,7 +91,7 @@ The version is a property of the sandbox, not of the command: once switched, eve
 
 - Switching resets the DerivedData of every synced project, so the next build starts cold. The build cache is keyed by Xcode version too, so a cached workspace produced by another Xcode is not reused.
 - The switch is refused while a build, command, sync, or `lim xcode rbe` stack is running; stop them first (`lim xcode rbe --stop`).
-- Asking for a major the node does not have fails with the installed list. Only majors are selectable; the minor is whatever the fleet carries for that major.
+- Asking for a major the node does not have fails with the available list. Only majors are selectable; the minor is whatever the fleet carries for that major.
 - Simulators keep running the fleet's default runtime. `lim xcode test` with a non-default Xcode warns and proceeds: XCTest bundles built by Xcode 27 run against the simulator's Xcode 26 frameworks, which works for most suites but is not guaranteed.
 - Apple rejects App Store uploads built with a beta Xcode, so keep `--upload-to-appstore` on the default until the GM ships.
 
