@@ -72,7 +72,7 @@ A sandbox builds with its node's default Xcode unless you pick another installed
 
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
-lim xcode version list                    # versions the sandbox can build with
+lim xcode version list                    # versions the sandbox can build with; notes mark beta N, selected, default, preferred
 lim xcode version set 27                  # prefer 27 here; switches the remembered sandbox now
 lim xcode build .                         # builds with 27, so do test, rbe and new sandboxes
 lim xcode version                         # "27.0 (27A5252f)"
@@ -92,8 +92,8 @@ if (bound.major !== '27') {
 The sandbox itself has one Xcode selected at a time, and the workspace preference wins: when a build finds the sandbox on another major (a colleague switched it, or a fresh sandbox came up on the node default), it says so and switches before building. Every build prints the Xcode it runs with (`Building with Xcode 27.0 (27A5252f)`).
 
 - Switching resets the DerivedData of every synced project, so the next build starts cold. The build cache is keyed by Xcode version too, so a cached workspace produced by another Xcode is not reused.
-- The switch is refused while a build, command, sync, or `lim xcode rbe` stack is running; stop them first (`lim xcode rbe --stop`).
-- Asking for a major the node does not have fails with the available list. Only majors are selectable; the minor is whatever the fleet carries for that major.
+- The switch is refused while a build, command, sync, or `lim xcode rbe` stack is running; stop them first (`lim xcode rbe --stop`). `lim xcode version set` keeps the preference in that case and the next command retries the switch.
+- Asking for a major the node does not have fails with the available list, and `lim xcode version set` does not record a preference for it. Only majors are selectable; the minor is whatever the fleet carries for that major. Beta majors are labeled with Apple's seed number in `lim xcode version list` (`beta 6`).
 - Simulators keep running the fleet's default runtime. `lim xcode test` with a non-default Xcode warns and proceeds: XCTest bundles built by Xcode 27 run against the simulator's Xcode 26 frameworks, which works for most suites but is not guaranteed.
 - Apple rejects App Store uploads built with a beta Xcode, so keep `--upload-to-appstore` on the default until the GM ships.
 
