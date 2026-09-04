@@ -507,6 +507,8 @@ Two ways to drive the device:
 
 Use the SDK when you want strongly-typed results and built-in selectors. Use the ADB tunnel when you need the long tail of Android tooling (logcat, file push/pull, debugger attach, scrcpy, Appium) or you're calling from Go or Python.
 
+There is a third connection for the app's own traffic: the destination tunnel (`lim android tunnel`) routes selected destinations from the emulator through your machine, so the app reaches your local dev server or VPN-only backend, and you can inspect its HTTP traffic or capture a HAR. See [Network Tunneling](/docs/platform/network-tunnel).
+
 | Capability | LIM SDK | ADB tunnel |
 |---|---|---|
 | Screenshot | `client.screenshot()` returns a base64 PNG data URI | `adb shell screencap -p > screen.png` |
@@ -1015,5 +1017,8 @@ The inactivity timeout fires if nobody talks to the daemon for that long. The ha
   </Card>
   <Card title="Asset Storage" href="/docs/platform/asset-storage">
     Upload APKs once, reuse them across instances via `initialAssets`.
+  </Card>
+  <Card title="Network Tunneling" href="/docs/platform/network-tunnel">
+    Route the app's destinations through your machine and inspect its HTTP traffic.
   </Card>
 </Cards>

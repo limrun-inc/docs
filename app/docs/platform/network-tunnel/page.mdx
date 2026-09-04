@@ -1,0 +1,171 @@
+---
+title: "Network Tunneling"
+description: "Route selected destinations from a cloud instance through your machine: reach local dev servers and private backends, inspect HTTP traffic live, capture HAR files, and persist network logs."
+order: 4
+icon: "network"
+---
+# Network Tunneling
+
+Your app runs on a cloud instance, but the services it talks to often live on
+your side: a dev server on your laptop, a staging API behind your VPN, a mock
+backend in CI. A **destination tunnel** routes the destinations you select
+from the instance through the machine running `lim`, so the app reaches them
+as if it ran locally. On Android, the tunnel can also decode the HTTP traffic
+flowing through it: watch requests live in the console, print summaries in
+the terminal, capture a HAR file, or persist a body-inclusive network log
+that outlives the instance.
+
+```bash
+# The app's connections to localhost:8080 land on your machine's localhost:8080.
+lim android tunnel --selector localhost:8080 --id <instance-ID>
+
+# Also intercept *.corp.example and dial it from your machine (your VPN, your DNS).
+lim android tunnel --selector localhost:8080 --selector "*.corp.example"
+
+# iOS: exact destinations only.
+lim ios tunnel --selector localhost:3000 --id <instance-ID>
+```
+
+Start the tunnel **before** launching your app: connections opened earlier
+keep their original route until they close.
+
+## How it works
+
+You declare **selectors**, the destinations to take over. The instance
+intercepts the app's connections to them and carries each one over a single
+WebSocket to the `lim` process, which dials the destination from your
+machine. Nothing else is rerouted; all other traffic leaves the instance
+directly as usual.
+
+There are two kinds of selectors:
+
+| Kind | Example | What happens |
+|---|---|---|
+| Exact route | `localhost:8080`, `10.20.30.40:443`, `[::1]:9090` | The instance takes over connections to that exact host and port. On Android they are also reachable at `10.0.2.2:<port>`, following the emulator convention. |
+| Domain (Android only) | `api.example.com`, `*.corp.example` | DNS answers for matching names are synthesized on the instance, and connections to them are intercepted transparently and dialed from your machine, so its DNS view and network position apply. |
+
+A tunnel takes at most **10 exact routes** and **64 domain selectors**, and
+an instance runs at most **one tunnel** at a time: starting a second one
+fails and points you at `tunnel status`. On Android, route ports must be
+1024 or higher.
+
+Because dialing happens on your machine, `localhost` selectors resolve to
+your loopback, and domain selectors resolve and egress through your network,
+which is what lets the instance reach services behind your VPN or in your
+private DNS zone.
+
+<Note>
+Apps that resolve DNS themselves over HTTPS (DoH) bypass domain
+interception, since the instance never sees their DNS queries. Exact route
+selectors are unaffected.
+</Note>
+
+## Keep it running with `--detach`
+
+Without flags the tunnel runs in the foreground until Ctrl+C. For scripts
+and agents, `--detach` starts a background process and returns once the
+tunnel reports READY:
+
+```bash
+lim android tunnel --selector localhost:8080 --detach --id <instance-ID>
+lim android tunnel status --id <instance-ID>   # state, per-selector binds, last dial failure
+lim android tunnel stop --id <instance-ID>     # stops both the tunnel and the detached process
+```
+
+`status` reads the instance-authoritative state, so it also sees tunnels
+started elsewhere (another machine, the SDK). Detached tunnels log to
+`~/.lim/tunnels/`; `status` prints the log location, and `--verbose` routes
+per-connection logs there.
+
+## Inspect HTTP traffic (Android)
+
+On Android, inspection is **on by default**: every HTTP and HTTPS exchange
+that flows through the tunnel is decoded on the instance, and each completed
+request prints as one summary line:
+
+```bash
+lim android tunnel --selector "*.api.example" --id <instance-ID>
+# GET https://api.example.com/v1/items 200 141ms 2.1kB
+```
+
+The same stream feeds the **network panel** in the console's live view:
+open the instance in the console while an inspected tunnel runs to watch
+requests and responses live, copy any request as cURL, or download the
+session as a HAR file.
+
+HTTPS is decoded with a per-instance certificate authority that only that
+emulator trusts; the tunnel serves the app a minted leaf certificate and
+re-establishes real TLS to the origin from your machine. Two consequences:
+
+- **Certificate pinning breaks.** An app that pins its backend's certificate
+  will refuse the minted leaf. Exclude that host from your selectors or pass
+  `--no-inspect`.
+- **Only tunneled traffic is visible.** Traffic to destinations outside your
+  selectors never passes through the tunnel and is never decoded.
+
+Pass `--no-inspect` to relay bytes opaquely with no decoding.
+
+### Capture a HAR file
+
+```bash
+lim android tunnel --selector "*.api.example" --har ./session.har
+```
+
+Writes the inspected traffic as HAR 1.2, bodies included. Each body is
+capped at 10 MiB by default; raise or lower it with
+`--har-body-limit <bytes>` (maximum 64 MiB).
+
+### Persist a network log
+
+```bash
+lim android tunnel --selector "*.api.example" --persist --ttl 604800
+```
+
+`--persist` uploads a body-inclusive network log as a session artifact when
+the tunnel stops or the instance terminates, so the capture survives the
+instance. Find it on the instance's session page in the console, next to the
+session video, events, and app logs, and download it as HAR from there.
+`--ttl` sets its lifetime in seconds (default 259200, i.e. 3 days; maximum
+2592000, i.e. 30 days). `--persist` implies inspection.
+
+## iOS differences
+
+`lim ios tunnel` supports exact route selectors only, and no inspection:
+
+```bash
+lim ios tunnel --selector localhost:3000 --id <instance-ID>
+```
+
+The app in the simulator reaches your machine's `localhost:3000` by
+connecting to `localhost:3000`. Domain selectors, HTTP summaries, `--har`,
+and `--persist` are Android-only for now; the console's network panel shows
+the tunnel's status for iOS but cannot display requests.
+
+For the opposite direction on iOS with a fixed port range, see
+[reverse tunnels](/docs/ios/run-simulator#reverse-tunnel-a-local-service);
+the destination tunnel is the more general mechanism and needs no port
+mapping.
+
+## From the TypeScript SDK
+
+The CLI covers most uses, but the TypeScript SDK exposes the same machinery
+when you need it programmatic:
+
+```ts
+const tunnel = await client.startTunnel({
+  selectors: ['localhost:8080', '*.corp.example'],
+});
+// ...
+await tunnel.close();
+```
+
+See the [SDK reference](/docs/reference/sdk) for the client setup per
+platform.
+
+## Relation to the ADB tunnel
+
+`lim android connect` opens the **ADB tunnel**, which exposes the emulator's
+`adb` socket on your machine so local tooling can attach; it does not route
+the app's traffic anywhere. The destination tunnel is the reverse concern:
+it brings the app's selected destinations to your machine. The two run
+independently and can run at the same time.

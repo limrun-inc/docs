@@ -627,6 +627,8 @@ lim ios open-url \
 
 Note the direction: this tunnel is **simulator → your service** (outbound from the device).
 
+The newer [destination tunnel](/docs/platform/network-tunnel) (`lim ios tunnel`) covers the same direction without the 57090-57099 port mapping: the app connects to `localhost:3000` and reaches your machine's `localhost:3000`. Prefer it when the app's code already targets a fixed local address; the reverse tunnel below remains useful when you want an explicit device-facing listener address to hand to the app.
+
 <Note>
   Reaching a server running *inside* the simulator from the outside (WebDriverAgent, for example) is the opposite direction and a separate feature: the reverse proxy via `targetHttpPortUrlPrefix`. See [Appium](/docs/testing/appium) for how that's used and the [status URL surface](/docs/reference/sdk#status-url-surface) in the SDK reference.
 </Note>
