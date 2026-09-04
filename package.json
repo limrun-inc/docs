@@ -35,7 +35,10 @@
       "@hono/node-server@<2.0.5": "^2.0.5",
       "fumadocs-core": "16.8.11",
       "fumadocs-ui": "16.8.11",
-      "fumadocs-openapi": "10.8.3"
+      "fumadocs-openapi": "10.8.3",
+      "fast-uri@<3.1.6": "^3.1.7",
+      "qs@<6.16.0": "^6.16.0",
+      "toml@<4.2.0": "^4.2.0"
     }
   }
 }
