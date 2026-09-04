@@ -469,7 +469,7 @@ A successful `create` returns the full instance resource.
     "apiUrl":               "https://us-west-1-1234567.limrun.net/v1/android_usw1_01krxv.../api",
     "adbWebSocketUrl":      "wss://us-west-1-1234567.limrun.net/v1/organizations/org_01kr52j.../android.limrun.com/v1/instances/android_usw1_01krxv.../adbWebSocket",
     "endpointWebSocketUrl": "wss://us-west-1-1234567.limrun.net/v1/organizations/org_01kr52j.../android.limrun.com/v1/instances/android_usw1_01krxv.../endpointWebSocket",
-    "signedStreamUrl":      "https://console.limrun.com/signedStream?token=lim_...&url=wss%3A%2F%2Fus-west-1-1234567.limrun.net%2F...%2FendpointWebSocket",
+    "signedStreamUrl":      "https://console.limrun.com/signedStream?url=wss%3A%2F%2Fus-west-1-1234567.limrun.net%2F...%2FendpointWebSocket#token=lim_...",
     "mcpUrl":               "https://us-west-1-1234567.limrun.net/v1/android_usw1_01krxv.../mcp",
     "targetHttpPortUrlPrefix": "wss://us-west-1-1234567.limrun.net/v1/organizations/org_01kr52j.../android.limrun.com/v1/instances/android_usw1_01krxv.../targetHttpPort",
     "token": "lim_..."
@@ -492,7 +492,7 @@ A successful `create` returns the full instance resource.
 | `status.apiUrl` | HTTP base for the Android control daemon. WebSocket control derives from it (`apiUrl + /ws`). Pass to `createInstanceClient`. |
 | `status.adbWebSocketUrl` | WebSocket endpoint for the ADB tunnel. Pass to `createInstanceClient` as `adbUrl`. |
 | `status.endpointWebSocketUrl` | WebSocket endpoint for the [`<RemoteControl />` web component](/docs/platform/embed-simulator) (append `?token=`). |
-| `status.signedStreamUrl` | Console-hosted watch URL with the token baked in. Open in a browser without your API key. |
+| `status.signedStreamUrl` | Console-hosted watch URL with the token in the URL fragment. Open in a browser without your API key. Links that carry the token in the query string are no longer accepted, so read the instance again for a current one. |
 | `status.mcpUrl` | Per-instance MCP HTTP endpoint. Authenticate with `status.token`, not your org API key. See [MCP](/docs/agents/mcp). |
 | `status.targetHttpPortUrlPrefix` | WebSocket prefix (`wss://...`) for reaching HTTP services running on the device. Append your target port to forward traffic through. |
 | `status.sandbox.playwrightAndroid.url` | Chrome DevTools Protocol URL when the Playwright sub-sandbox is enabled. |
