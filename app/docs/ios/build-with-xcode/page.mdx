@@ -25,7 +25,7 @@ The flow:
 | Sync source and run `xcodebuild` | ✓ | not in SDK | not in SDK | ✓ |
 | Run one-shot project commands | ✓ | not in SDK | not in SDK | ✓ |
 
-Python and Go users provision the instance with their SDK and drive the build with `lim xcode build`. See the [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix).
+Python and Go users provision the instance over REST (`POST /v1/xcode_instances`) or with `lim xcode create`, and drive the build with `lim xcode build`. See the [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix).
 
 ## Provision the Xcode sandbox
 
@@ -33,7 +33,7 @@ The Xcode sandbox and the iOS simulator are separate instances with separate lif
 
 Building before the simulator exists also matters practically: a simulator that sits idle during a long build can hit its inactivity timeout and disappear before the build finishes.
 
-<CodeGroup labels={["CLI","TypeScript","Python"]}>
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim xcode create --reuse-if-exists --label session=demo
 ```
@@ -52,16 +52,6 @@ const xcodeInstance = await lim.xcodeInstances.create({
 const xcode = await lim.xcodeInstances.createClient({ instance: xcodeInstance });
 ```
 
-```python
-# Python provisions the instance; the build step itself is not in the
-# Python SDK today. Drive the build with `lim xcode build` from your CI step.
-xcode_instance = client.xcode_instances.create(
-    wait=True,
-    reuse_if_exists=True,
-    metadata={"labels": {"session": "demo"}},
-)
-```
-
 </CodeGroup>
 
 On the SDK side, `xcode` is the handle you use in the sync and build sections below.
@@ -75,6 +65,37 @@ const xcode = await lim.xcodeInstances.createClient({ apiUrl, token });
 The **Go SDK doesn't yet have a standalone Xcode resource.** From Go, POST to `/v1/xcode_instances` directly or call `lim xcode create` from your process.
 
 When you already know you'll test on a simulator right after the build, the CLI can create both instances and attach them in one call: `lim ios create --xcode` (or `lim xcode create --ios`). The two instances are still separate; the flag just saves you the attach step described in [Auto-install on the simulator](#auto-install-on-the-simulator).
+
+## Choose the Xcode version
+
+A sandbox builds with its node's default Xcode unless you pick another installed major. Xcode 27 (beta) is available beside the default. Pick it once per workspace (your git repo, or a `lim set-workspace-dir` assignment), the way a version manager remembers a version:
+
+<CodeGroup labels={["CLI","TypeScript"]}>
+```bash
+lim xcode version list                    # versions the sandbox can build with; notes mark beta N, selected, default, preferred
+lim xcode version set 27                  # prefer 27 here; switches the remembered sandbox now
+lim xcode build .                         # builds with 27, so do test, rbe and new sandboxes
+lim xcode version                         # "27.0 (27A5252f)"
+lim xcode build . --xcode-version 26     # one-off override; the preference is unchanged
+lim xcode version unset                   # forget the preference; the sandbox goes back to the node default
+```
+
+```ts
+const { bound, installed } = await xcode.getXcode();
+if (bound.major !== '27') {
+  await xcode.setXcode('27');
+}
+```
+
+</CodeGroup>
+
+The sandbox itself has one Xcode selected at a time, and the workspace preference wins: when a build finds the sandbox on another major (a colleague switched it, or a fresh sandbox came up on the node default), it says so and switches before building. Every build prints the Xcode it runs with (`Building with Xcode 27.0 (27A5252f)`).
+
+- Switching resets the DerivedData of every synced project, so the next build starts cold. The build cache is keyed by Xcode version too, so a cached workspace produced by another Xcode is not reused.
+- The switch is refused while a build, command, sync, or `lim xcode rbe` stack is running; stop them first (`lim xcode rbe --stop`). `lim xcode version set` keeps the preference in that case and the next command retries the switch.
+- Asking for a major the node does not have fails with the available list, and `lim xcode version set` does not record a preference for it. Only majors are selectable; the minor is whatever the fleet carries for that major. Beta majors are labeled with Apple's seed number in `lim xcode version list` (`beta 6`).
+- Simulators keep running the fleet's default runtime. `lim xcode test` with a non-default Xcode warns and proceeds: XCTest bundles built by Xcode 27 run against the simulator's Xcode 26 frameworks, which works for most suites but is not guaranteed.
+- Apple rejects App Store uploads built with a beta Xcode, so keep `--upload-to-appstore` on the default until the GM ships.
 
 ## Sync your source
 

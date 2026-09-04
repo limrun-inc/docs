@@ -37,7 +37,7 @@ What `lim xcode rbe` did:
 
 - Provisioned an Xcode sandbox (or reused your most recent one) and started the RBE stack on it.
 - Opened a tunnel so the endpoint is reachable at `grpc://127.0.0.1:8980` (change with `--port`).
-- Generated a `.limrun/` directory in your workspace with the `--config=limrun` Bazel configuration matched to the fleet's Xcode version, and wired a `try-import` into your `.bazelrc`.
+- Generated a `.limrun/` directory in your workspace with the `--config=limrun` Bazel configuration matched to the sandbox's Xcode version, and wired a `try-import` into your `.bazelrc`. Pass `--xcode-version 27` to build with another installed major; see [Choose the Xcode version](/docs/ios/build-with-xcode#choose-the-xcode-version).
 
 Don't hand-edit `.limrun/`; it is regenerated on the next `lim xcode rbe`. To add your own flags to the Limrun build path, put them in **`user.limrun.bazelrc`** at the workspace root. The generated config imports it last, so your `build:limrun --...` lines win and survive regeneration.
 
@@ -110,7 +110,7 @@ lim xcode delete <id>    # delete the instance when you're done with it
 
 - **The built `.ipa` doesn't land on your machine.** The generated config carries `--remote_download_outputs=minimal`: Bazel prints its usual `Target //App:App up-to-date: .../App.ipa` line, but the artifact stays in the instance's cache, where auto-install and uploads read it from. If you genuinely need the file locally, add `--remote_download_outputs=toplevel` to the build command.
 - **Run `lim xcode rbe` from the workspace root**, not a subdirectory; it writes `.limrun/` there and fails fast otherwise.
-- **Re-run after fleet Xcode upgrades.** The generated config pins the fleet's Xcode version; `lim xcode rbe --stop` followed by `lim xcode rbe` refreshes it.
+- **Re-run after an Xcode change.** The generated config pins the sandbox's Xcode version; after a fleet upgrade or a `--xcode-version` switch, `lim xcode rbe --stop` followed by `lim xcode rbe` refreshes it.
 - **Changing `--auto-upload` needs a restart.** The CLI refuses to re-arm a running tunnel with a different upload config rather than silently ignoring it; `--stop` and re-run.
 
 ## Next steps
