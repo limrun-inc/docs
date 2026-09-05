@@ -148,7 +148,7 @@ jobs:
 
 ## Troubleshooting
 
-<Accordions>
+<AccordionGroup>
   <Accordion title="`Failed to run maestro --version`">
     The Maestro CLI isn't on PATH (or its Java runtime is missing). Install it per [Installing Maestro](https://docs.maestro.dev/getting-started/installing-maestro) and re-run; `lim` detects the version automatically.
   </Accordion>
@@ -167,11 +167,11 @@ jobs:
   <Accordion title="A selector fails and you can't see why">
     Maestro prints its debug output directory on failure. For the live screen, `lim ios element-tree` shows the accessibility tree of the remote simulator and `lim ios screenshot` captures it. See [Read the screen](/docs/ios/run-simulator#read-the-screen).
   </Accordion>
-</Accordions>
+</AccordionGroup>
 
 ## Next steps
 
-<Cards>
+<Columns cols={2}>
   <Card title="Run an iOS Simulator" href="/docs/ios/run-simulator">
     Provision, configure, and drive iOS instances directly. The control surface Maestro sits on top of.
   </Card>
@@ -181,4 +181,4 @@ jobs:
   <Card title="Asset Storage" href="/docs/platform/asset-storage">
     Upload the app under test once and reference it from every instance create.
   </Card>
-</Cards>
+</Columns>

@@ -206,7 +206,7 @@ This is the path the [Appium](/docs/testing/appium#run-an-android-test) page use
 
 ## Troubleshooting
 
-<Accordions>
+<AccordionGroup>
   <Accordion title="`Playwright Android sandbox URL not found`">
     `instance.status.sandbox.playwrightAndroid.url` is undefined. Either `wait: true` wasn't set on `create` (so the status hasn't populated yet), or `spec.sandbox.playwrightAndroid.enabled` wasn't passed. Recreate with both.
   </Accordion>
@@ -219,11 +219,11 @@ This is the path the [Appium](/docs/testing/appium#run-an-android-test) page use
   <Accordion title="Tests are slow despite the sub-sandbox">
     Check that you're calling `_android.connect(url)` with the URL from `status.sandbox.playwrightAndroid.url`, not `_android.devices()` after opening an ADB tunnel. The two paths look similar in code but the second one routes every CDP call through your laptop's ADB.
   </Accordion>
-</Accordions>
+</AccordionGroup>
 
 ## Next steps
 
-<Cards>
+<Columns cols={2}>
   <Card title="Appium" href="/docs/testing/appium">
     Cross-platform mobile automation: iOS Safari + native, Android native apps.
   </Card>
@@ -233,4 +233,4 @@ This is the path the [Appium](/docs/testing/appium#run-an-android-test) page use
   <Card title="Asset Storage" href="/docs/platform/asset-storage">
     Configuration assets like the Chrome flag used here, plus app assets for native testing.
   </Card>
-</Cards>
+</Columns>

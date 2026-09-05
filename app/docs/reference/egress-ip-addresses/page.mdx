@@ -22,17 +22,11 @@ The addresses below are shared by Limrun infrastructure in each region. They are
 
 ## Egress IPs by region
 
-<a
-  href="/downloads/limrun-egress-ip-addresses.md"
-  download
-  className="not-prose mb-4 inline-flex items-center rounded-md border border-fd-border bg-fd-card px-3 py-2 text-sm font-medium text-fd-foreground no-underline transition-colors hover:bg-fd-accent"
->
-  Download as Markdown
-</a>
+<a href="/downloads/limrun-egress-ip-addresses.md" download>Download as Markdown</a>
 
-<Accordions type="multiple" defaultValue={["us-west2", "us-east2", "as-south1"]}>
+<AccordionGroup>
 
-<Accordion title={<span><code key="region">us-west2</code> <span key="count" className="text-fd-muted-foreground">1 IP</span></span>} value="us-west2" id="us-west2">
+<Accordion title="us-west2 (1 IP)" defaultOpen id="us-west2">
 
 ```text
 66.160.175.34
@@ -40,7 +34,7 @@ The addresses below are shared by Limrun infrastructure in each region. They are
 
 </Accordion>
 
-<Accordion title={<span><code key="region">us-east2</code> <span key="count" className="text-fd-muted-foreground">1 IP</span></span>} value="us-east2" id="us-east2">
+<Accordion title="us-east2 (1 IP)" defaultOpen id="us-east2">
 
 ```text
 38.104.247.131
@@ -48,7 +42,7 @@ The addresses below are shared by Limrun infrastructure in each region. They are
 
 </Accordion>
 
-<Accordion title={<span><code key="region">as-south1</code> <span key="count" className="text-fd-muted-foreground">1 IP</span></span>} value="as-south1" id="as-south1">
+<Accordion title="as-south1 (1 IP)" defaultOpen id="as-south1">
 
 ```text
 125.253.92.199
@@ -56,7 +50,7 @@ The addresses below are shared by Limrun infrastructure in each region. They are
 
 </Accordion>
 
-<Accordion title={<span><code key="region">eu-north1</code> <span key="count" className="text-fd-muted-foreground">75 IPs</span></span>} value="eu-north1" id="eu-north1">
+<Accordion title="eu-north1 (75 IPs)" id="eu-north1">
 
 ```text
 37.27.118.220
@@ -138,7 +132,7 @@ The addresses below are shared by Limrun infrastructure in each region. They are
 
 </Accordion>
 
-<Accordion title={<span><code key="region">us-east1</code> <span key="count" className="text-fd-muted-foreground">46 IPs</span></span>} value="us-east1" id="us-east1">
+<Accordion title="us-east1 (46 IPs)" id="us-east1">
 
 ```text
 38.22.0.83
@@ -191,7 +185,7 @@ The addresses below are shared by Limrun infrastructure in each region. They are
 
 </Accordion>
 
-</Accordions>
+</AccordionGroup>
 
 ## Updates
 

@@ -231,8 +231,8 @@ Reference your asset as an entry on the `spec.initialAssets` array during the pr
 
 Each entry must resolve to a binary the pod can fetch: either an existing Asset Storage entry (by name or ID), or a publicly reachable HTTPS URL such as a GitHub release asset, an S3 presigned URL, or anything else the cloud can reach. URLs on your LAN won't work.
 
-<Tabs items={["iOS", "Android"]}>
-<Tab value="iOS">
+<Tabs>
+<Tab title="iOS">
 
 <CodeGroup labels={["CLI","TypeScript","Go","Python"]}>
 ```bash
@@ -335,7 +335,7 @@ instance = lim.ios_instances.create(
 | `launchMode` | `'ForegroundIfRunning' \| 'RelaunchIfRunning'` | Launch behavior post-install. Omit to install without launching. |
 
 </Tab>
-<Tab value="Android">
+<Tab title="Android">
 
 <CodeGroup labels={["CLI","TypeScript","Go","Python"]}>
 ```bash
@@ -444,8 +444,8 @@ When the user rebuilds while the embedded session is live, push the new asset an
 
 The URL handed to the daemon has the same reachability rule as `initialAssets`: it must be a publicly reachable HTTPS URL (GitHub release asset, S3 presigned URL) or come from [Asset Storage](#upload-an-asset). The CLI's `install-app` accepts either a local path (uploaded to Asset Storage first, MD5-deduplicated) or a URL.
 
-<Tabs items={["iOS", "Android"]}>
-<Tab value="iOS">
+<Tabs>
+<Tab title="iOS">
 
 <CodeGroup labels={["CLI","TypeScript","Go"]}>
 ```bash
@@ -488,7 +488,7 @@ Python doesn't ship a WebSocket instance client. Run `lim ios install-app` from 
 | `launchMode` | `'ForegroundIfRunning' \| 'RelaunchIfRunning'` | Launch behavior after install. Omit to install without launching. |
 
 </Tab>
-<Tab value="Android">
+<Tab title="Android">
 
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
@@ -814,7 +814,7 @@ The CLI maps these to `--name`, `--download-url`, `--upload-url`, and `--include
 
 ## Next steps
 
-<Cards>
+<Columns cols={2}>
   <Card title="Embed the simulator" icon="monitor-play" href="/docs/platform/embed-simulator">
     Render `<RemoteControl />` with `initialAssets` so the embedded device opens straight into the customer's app.
   </Card>
@@ -827,4 +827,4 @@ The CLI maps these to `--name`, `--download-url`, `--upload-url`, and `--include
   <Card title="SDK Reference" icon="book-open" href="/docs/reference/sdk">
     `assets.list` / `getOrCreate` / `getOrUpload` parameters across TypeScript, Python, and Go.
   </Card>
-</Cards>
+</Columns>

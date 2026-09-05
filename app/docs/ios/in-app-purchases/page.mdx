@@ -254,7 +254,7 @@ await ios.setStoreKitConfig(bundleId, fs.readFileSync('./OtherProducts.storekit'
 
 ## Troubleshooting
 
-<Accordions>
+<AccordionGroup>
   <Accordion title="discoverStoreKitConfig times out">
     Two common causes. First, the bundle ID has no IAPs registered in App Store Connect sandbox; discover has nothing to read. Second, the app never fetched products during the wait window; open the paywall (or any screen that calls `Product.products(for:)` or the StoreKit 1 equivalent) while discover is running. Increasing `timeoutSeconds` doesn't fix either cause.
   </Accordion>
@@ -267,11 +267,11 @@ await ios.setStoreKitConfig(bundleId, fs.readFileSync('./OtherProducts.storekit'
   <Accordion title="Purchase sheet shows Environment: Xcode but Transaction.updates never fires">
     StoreKit 2 transactions are delivered through the same channel they would be in production, but they need an active listener. Confirm your app starts an `await for await transaction in Transaction.updates` loop early in its lifecycle, not lazily on the paywall.
   </Accordion>
-</Accordions>
+</AccordionGroup>
 
 ## Next steps
 
-<Cards>
+<Columns cols={2}>
   <Card title="Run an iOS Simulator" href="/docs/ios/run-simulator">
     The full device-control surface: taps, element queries, screenshots, app lifecycle.
   </Card>
@@ -281,4 +281,4 @@ await ios.setStoreKitConfig(bundleId, fs.readFileSync('./OtherProducts.storekit'
   <Card title="Automatic PR Previews" href="/docs/ios/pr-previews">
     Ship every PR with a built app and a live preview link from GitHub Actions.
   </Card>
-</Cards>
+</Columns>

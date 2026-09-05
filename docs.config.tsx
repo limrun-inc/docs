@@ -7,6 +7,7 @@ import {
   Database,
   FlaskConical,
   Hammer,
+  MonitorPlay,
   Play,
   Rocket,
   Smartphone,
@@ -219,13 +220,11 @@ export default defineDocs({
   ordering: "numeric",
 
   icons: {
-    introduction: <BookOpen size={15} />,
-    quickstart: <Zap size={15} />,
     smartphone: <Smartphone size={15} />,
     rocket: <Rocket size={15} />,
     hammer: <Hammer size={15} />,
     terminal: <Terminal size={15} />,
-    bookopen: <BookOpen size={15} />,
+    "book-open": <BookOpen size={15} />,
     bot: <Bot size={15} />,
     "tablet-smartphone": <TabletSmartphone size={15} />,
     "flask-conical": <FlaskConical size={15} />,
@@ -233,6 +232,8 @@ export default defineDocs({
     "credit-card": <CreditCard size={15} />,
     database: <Database size={15} />,
     play: <Play size={15} />,
+    zap: <Zap size={15} />,
+    "monitor-play": <MonitorPlay size={15} />,
   },
 
   feedback: {

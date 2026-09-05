@@ -41,9 +41,9 @@ What `lim xcode rbe` did:
 
 Don't hand-edit `.limrun/`; it is regenerated on the next `lim xcode rbe`. To add your own flags to the Limrun build path, put them in **`user.limrun.bazelrc`** at the workspace root. The generated config imports it last, so your `build:limrun --...` lines win and survive regeneration.
 
-<Callout type="info">
+<Note>
 Always keep `--digest_function=sha256` in front of `build`, exactly as the printed command has it. The Limrun cache is SHA256-only while Bazel 9 defaults to BLAKE3, and it's a startup flag, so it can't live inside `--config=limrun`.
-</Callout>
+</Note>
 
 ## Run it on a simulator
 
@@ -115,7 +115,7 @@ lim xcode delete <id>    # delete the instance when you're done with it
 
 ## Next steps
 
-<Cards>
+<Columns cols={2}>
   <Card title="Automatic PR Previews" icon="git-pull-request" href="/docs/ios/pr-previews">
     Post a live preview link on every pull request, for Bazel and xcodebuild projects alike.
   </Card>
@@ -128,4 +128,4 @@ lim xcode delete <id>    # delete the instance when you're done with it
   <Card title="Build with remote Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
     The `xcodebuild` path for non-Bazel projects: sync, build, sign, ship.
   </Card>
-</Cards>
+</Columns>

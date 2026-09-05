@@ -1,0 +1,58 @@
+name: Docs7 mirror
+
+# docs7/ is generated from app/docs by scripts/build-docs7.mjs and committed,
+# because Docs7 reads it straight from the repository. On a PR from a branch in
+# this repo the job regenerates the mirror and commits it onto the PR branch,
+# so authors never run the generator. On fork PRs (no write token) and on main
+# it can only report a stale mirror. The run also fails when a page uses
+# markup the mirror cannot publish or a link that does not resolve.
+#
+# A push made with the built-in token starts no workflows, so the bot commit
+# has no check runs of its own and does not re-trigger this job.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs7-mirror-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Regenerate docs7/
+        run: node scripts/build-docs7.mjs
+
+      - name: Commit the mirror when it changed
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          CAN_PUSH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          if [ -z "$(git status --porcelain docs7)" ]; then
+            echo "docs7/ is up to date."
+            exit 0
+          fi
+          if [ "$CAN_PUSH" != "true" ]; then
+            echo "docs7/ is out of date and this run cannot push. Run 'pnpm build-docs7' and commit the result."
+            git --no-pager diff --stat docs7
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs7
+          git commit -m "docs7: regenerate mirror"
+          git push origin "HEAD:$HEAD_REF"
