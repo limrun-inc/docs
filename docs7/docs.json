@@ -1,0 +1,99 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Limrun",
+  "description": "Cloud infrastructure for mobile development: iOS simulators, Android emulators, and Xcode builds in the cloud, controlled through one CLI or SDK.",
+  "colors": {
+    "primary": "#ff5100"
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": [
+          "index",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Agents",
+        "icon": "bot",
+        "pages": [
+          "agents/cli",
+          "agents/remote-mcp",
+          "agents/mcp"
+        ]
+      },
+      {
+        "group": "Remote iOS development",
+        "icon": "smartphone",
+        "pages": [
+          "ios/build-with-xcode",
+          "ios/build-with-bazel",
+          "ios/test-with-xctest",
+          "ios/run-simulator",
+          "ios/pr-previews",
+          "ios/in-app-purchases"
+        ]
+      },
+      {
+        "group": "Remote Android development",
+        "icon": "smartphone",
+        "pages": [
+          "android/run-emulator",
+          "android/build-with-gradle"
+        ]
+      },
+      {
+        "group": "Platform integration",
+        "icon": "blocks",
+        "pages": [
+          "platform/embed-simulator",
+          "platform/asset-storage",
+          "platform/publish-to-stores"
+        ]
+      },
+      {
+        "group": "Automated Testing",
+        "icon": "flask-conical",
+        "pages": [
+          "testing/appium",
+          "testing/maestro",
+          "testing/playwright"
+        ]
+      },
+      {
+        "group": "Reference",
+        "icon": "book-open",
+        "pages": [
+          "reference/sdk",
+          "reference/egress-ip-addresses",
+          {
+            "group": "Single Sign-On",
+            "icon": "book-open",
+            "pages": [
+              "reference/single-sign-on",
+              "reference/single-sign-on/okta"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Console",
+        "href": "https://console.limrun.com"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/limrun-inc"
+    }
+  }
+}

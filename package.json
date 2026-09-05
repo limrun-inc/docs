@@ -2,11 +2,13 @@
   "name": "lim-run-docs",
   "version": "0.0.1",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "refresh-agent-skills": "node scripts/refresh-agent-skills.mjs"
+    "refresh-agent-skills": "node scripts/refresh-agent-skills.mjs",
+    "build-docs7": "node scripts/build-docs7.mjs"
   },
   "dependencies": {
     "@farming-labs/docs": "0.1.108",

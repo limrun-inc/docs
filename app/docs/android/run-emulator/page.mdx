@@ -167,8 +167,8 @@ instance = lim.android_instances.create(
 
 ### Create parameters
 
-<Tabs items={['CLI', 'SDK']}>
-<Tab value="CLI">
+<Tabs>
+<Tab title="CLI">
 
 Flags for `lim android create`:
 
@@ -189,7 +189,7 @@ Flags for `lim android create`:
 `spec.clues` and `spec.sandbox.playwrightAndroid` are SDK-only.
 
 </Tab>
-<Tab value="SDK">
+<Tab title="SDK">
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -211,9 +211,9 @@ Flags for `lim android create`:
 
 ### Pre-install APKs
 
-Set `initialAssets` at provisioning time to install one or more APKs while the pod boots. Each APK must come from a publicly reachable HTTPS URL (a GitHub release asset, an S3 presigned URL) or Limrun's [Asset Storage](/platform/asset-storage/). After a successful installation, the app is launched automatically so the instance is ready to interact with on first connect.
+Set `initialAssets` at provisioning time to install one or more APKs while the pod boots. Each APK must come from a publicly reachable HTTPS URL (a GitHub release asset, an S3 presigned URL) or Limrun's [Asset Storage](/docs/platform/asset-storage). After a successful installation, the app is launched automatically so the instance is ready to interact with on first connect.
 
-For local files, the CLI's `--install` and the TypeScript/Go SDK's `assets.getOrUpload({ path })` upload to Asset Storage first and hand the daemon a signed URL. Python's SDK doesn't ship that helper. Upload manually with `assets.get_or_create` plus a PUT to the returned upload URL before calling `create`. See [Asset Storage](/platform/asset-storage/).
+For local files, the CLI's `--install` and the TypeScript/Go SDK's `assets.getOrUpload({ path })` upload to Asset Storage first and hand the daemon a signed URL. Python's SDK doesn't ship that helper. Upload manually with `assets.get_or_create` plus a PUT to the returned upload URL before calling `create`. See [Asset Storage](/docs/platform/asset-storage).
 
 <CodeGroup labels={["CLI", "TypeScript", "Go", "Python"]}>
 ```bash
@@ -766,9 +766,9 @@ Prefer selectors. Layouts shift between OS versions; coordinates don't survive t
 
 ### Install an APK
 
-`sendAsset(url)` tells the daemon to download an APK and install it. The URL has to be publicly reachable (a GitHub release asset, an S3 presigned URL) or come from Limrun's [Asset Storage](/platform/asset-storage/).
+`sendAsset(url)` tells the daemon to download an APK and install it. The URL has to be publicly reachable (a GitHub release asset, an S3 presigned URL) or come from Limrun's [Asset Storage](/docs/platform/asset-storage).
 
-The CLI's `lim android install-app` accepts either a path or a URL: paths are uploaded to Asset Storage first (MD5-deduplicated), URLs are passed straight to the daemon. From TypeScript / Go, upload local files with `assets.getOrUpload({ path })` and pass the returned `signedDownloadUrl` to `sendAsset`. Python users upload manually with `assets.get_or_create` plus a PUT before calling `sendAsset`. See [Asset Storage](/platform/asset-storage/).
+The CLI's `lim android install-app` accepts either a path or a URL: paths are uploaded to Asset Storage first (MD5-deduplicated), URLs are passed straight to the daemon. From TypeScript / Go, upload local files with `assets.getOrUpload({ path })` and pass the returned `signedDownloadUrl` to `sendAsset`. Python users upload manually with `assets.get_or_create` plus a PUT before calling `sendAsset`. See [Asset Storage](/docs/platform/asset-storage).
 
 <CodeGroup labels={["CLI", "TypeScript"]}>
 ```bash
@@ -1003,7 +1003,7 @@ The inactivity timeout fires if nobody talks to the daemon for that long. The ha
 
 ## See also
 
-<Cards>
+<Columns cols={2}>
   <Card title="Automated testing with Appium" href="/docs/testing/appium">
     Wire any upstream Appium server to the ADB tunnel for native or hybrid Android tests.
   </Card>
@@ -1016,4 +1016,4 @@ The inactivity timeout fires if nobody talks to the daemon for that long. The ha
   <Card title="Asset Storage" href="/docs/platform/asset-storage">
     Upload APKs once, reuse them across instances via `initialAssets`.
   </Card>
-</Cards>
+</Columns>

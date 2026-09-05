@@ -561,7 +561,7 @@ The CI runner doesn't need Xcode, the iOS SDK, or a local Android emulator. For 
 
 ## Troubleshooting
 
-<Accordions>
+<AccordionGroup>
   <Accordion title="`Error: socket hang up` on session create">
     WDA isn't responding. Hit `${wdaUrl}/status` with `Authorization: Bearer ${instance.status.token}`; if it 502s, relaunch WDA via `simctl launch booted com.facebook.WebDriverAgentRunner.xctrunner`. Long-running suites should do this check before every session.
   </Accordion>
@@ -574,11 +574,11 @@ The CI runner doesn't need Xcode, the iOS SDK, or a local Android emulator. For 
   <Accordion title="`adb devices` shows `offline` after a few minutes">
     The tunnel was idle long enough for the WebSocket to close. The SDK auto-reconnects; if you used `lim android connect` and it exited, restart it. Bumping the instance's `inactivityTimeout` also helps for long suites.
   </Accordion>
-</Accordions>
+</AccordionGroup>
 
 ## Next steps
 
-<Cards>
+<Columns cols={2}>
   <Card title="Run an iOS Simulator" href="/docs/ios/run-simulator">
     Provision, configure, and drive iOS instances directly. The control surface Appium sits on top of.
   </Card>
@@ -591,4 +591,4 @@ The CI runner doesn't need Xcode, the iOS SDK, or a local Android emulator. For 
   <Card title="Asset Storage" href="/docs/platform/asset-storage">
     Cache the WebDriverAgent bundle and your app builds so CI runs don't pull them from GitHub on every job.
   </Card>
-</Cards>
+</Columns>
