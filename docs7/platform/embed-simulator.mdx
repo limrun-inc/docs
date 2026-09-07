@@ -16,6 +16,8 @@ This is the path platform integrators take: companies whose end users need a liv
 
 The Limrun console's Playground uses this exact component for its own streaming view, so what you ship to your users looks the same.
 
+iOS simulator streams are capped at 30 fps. WebRTC handles network and encoder-load adaptation, so video resolution can change during a session. These changes affect the streamed image, not the simulator's native display geometry or app layout. You don't need an additional resolution controller in your integration.
+
 ## Architecture overview for platforms
 
 ```
