@@ -221,6 +221,11 @@ What to know:
 
 ## Run project commands
 
+Build scripts and remote commands must write temporary files under the provided
+`TMPDIR`. Host temp paths such as `/tmp`, `/var/tmp`, and `/var/folders` are
+inaccessible. If a tool reports `Operation not permitted` at one of these paths,
+configure its temp directory under `$TMPDIR`.
+
 Use `lim xcode run` when the repository needs a macOS command such as a Make target or code generator. The command syncs the current directory, then runs after `--` in the remote workspace:
 
 ```bash
