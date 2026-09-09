@@ -200,7 +200,7 @@ Flags for `lim android create`:
 | `spec.inactivityTimeout` | duration string | `1m`, `10m`, `3h`, etc. Defaults to `3m`. Passing `'0'` defers to the organization-level default. |
 | `spec.hardTimeout` | duration string | Forced termination after this wall-clock window. `'0'` means no cap; the pod runs until inactivity or explicit delete. Defaults to `0`. |
 | `spec.clues[].kind` | `'ClientIP' \| 'OSVersion'` | Scheduling hint: bias by OS version or by user location. |
-| `spec.clues[].clientIp` | string | Required when `kind: 'ClientIP'`. Set this to the IP of the end user whose browser will stream the emulator. The scheduler geolocates this IP and provisions in the nearest region for low-latency streaming. `spec.region` overrides this clue. |
+| `spec.clues[].clientIp` | string | Set this to the end user's IP for geographic placement. An explicit nonempty clue takes precedence over Cloudflare's `CF-Connecting-IP` header, which Limrun uses when the clue is missing or empty. Region preferences, jurisdiction, availability, and organization routing policies still apply. |
 | `spec.clues[].osVersion` | string | Required when `kind: 'OSVersion'`. One of `'13'`, `'14'`, `'15'`. |
 | `spec.initialAssets[]` | array of `InitialAsset` | APKs to install while provisioning. See [Pre-install APKs](#pre-install-apks). |
 | `spec.sandbox.playwrightAndroid.enabled` | boolean | Provision a Playwright-Android sub-sandbox alongside the emulator and surface its CDP URL on `status.sandbox.playwrightAndroid.url`. Defaults to `false`. See [Automated testing > Playwright](/testing/playwright). |
