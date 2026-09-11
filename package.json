@@ -16,7 +16,7 @@
     "@farming-labs/theme": "0.1.108",
     "fumadocs-ui": "^16.7.16",
     "lucide-react": "^0.564.0",
-    "next": "16.2.11",
+    "next": "16.3.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
