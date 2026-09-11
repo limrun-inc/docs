@@ -68,7 +68,7 @@ Three credentials show up in SDK integrations.
 | **Per-instance token** (`instance.status.token`) | Returned in `status` when the instance is `ready` | `apiUrl` device daemon, the per-instance MCP server (`mcpUrl`), `endpointWebSocketUrl` (append `?token=`), `adbWebSocketUrl`, and SDK helpers like `Ios.createInstanceClient`. Embedded in `signedStreamUrl` for browser streaming. |
 | **Scoped registry token** (`lim_st_...`) | Minted by your backend with `scopedTokens.create` | Browser connections to the device-install and Apple relay endpoints. Its scopes limit which endpoints and assets the browser can use. |
 
-The org API key must never ship to a browser or end-user client. For embedded simulators, your backend holds the API key and passes only `endpointWebSocketUrl` + `status.token` to `<RemoteControl />`. See [Embed the simulator](/platform/embed-simulator#authentication).
+The org API key must never ship to a browser or end-user client. For embedded simulators, your backend holds the API key and passes only `endpointWebSocketUrl` + `status.streamToken` to `<RemoteControl />`. See [Embed the simulator](/platform/embed-simulator#authentication).
 
 For device installation or Apple account flows in a browser, mint a scoped registry token on your backend:
 
@@ -223,10 +223,11 @@ Every successful `wait: true` create returns a `status` block with the URLs the 
 
 | Field | iOS | Android | Xcode | Use |
 |---|---|---|---|---|
-| `token` | ✓ | ✓ | ✓ | Per-instance bearer for `apiUrl`, `endpointWebSocketUrl`, `adbWebSocketUrl`; embedded in `signedStreamUrl`. |
+| `token` | ✓ | ✓ | ✓ | Per-instance bearer for `apiUrl`, `endpointWebSocketUrl`, `adbWebSocketUrl`; embedded in `signedStreamUrl`. Grants every action; keep it server-side. |
+| `streamToken` | ✓ |   |   | Browser-only bearer for `endpointWebSocketUrl`: grants the screen and nothing else. Pass it to `<RemoteControl />`. Android returns it in a following release. |
 | `apiUrl` | ✓ | ✓ | ✓ | HTTP base for the per-instance device daemon (SDK / CLI control client). |
 | `signedStreamUrl` | ✓ | ✓ |   | Browser watch URL with the token in the URL fragment, so it never reaches a server (no org API key in the browser). Links that carry the token in the query string are no longer accepted. |
-| `endpointWebSocketUrl` | ✓ | ✓ |   | WebSocket for `<RemoteControl />`; pass `?token=<status.token>`. |
+| `endpointWebSocketUrl` | ✓ | ✓ |   | WebSocket for `<RemoteControl />`; pass `?token=` with `status.streamToken` from a browser, or `status.token` from your backend. |
 | `mcpUrl` | ✓ | ✓ |   | Per-instance MCP HTTP endpoint. Auth with `status.token` as `Authorization: Bearer`, not your org API key. See [MCP](/agents/mcp). |
 | `adbWebSocketUrl` |   | ✓ |   | ADB tunnel endpoint. Pass as `adbUrl` to `createInstanceClient`. |
 | `targetHttpPortUrlPrefix` | ✓ | ✓ |   | Reverse-proxy prefix for tunneled HTTP ports (used by Appium/WDA). |
