@@ -16,6 +16,12 @@ https://api.limrun.com
 
 Override with a per-client option in TypeScript, Python, or Go.
 
+## Instance placement
+
+Android, iOS, Xcode, and Gradle creation use an explicit `ClientIP` scheduling clue for geographic placement. If that clue is missing or empty, Limrun uses the caller's address from Cloudflare's `CF-Connecting-IP` header. If the address is missing or cannot be geolocated, placement falls back to the receiving region. Capacity, requested regions, jurisdiction, and organization routing policies still apply.
+
+For an integration that creates instances from your backend, pass the end user's IP in the clue. Otherwise the header identifies your backend's connection, which may be far from the user's browser.
+
 ## Authentication
 
 Every request authenticates with a single API key (prefix `lim_`). Generate keys at [console.limrun.com](https://console.limrun.com).
