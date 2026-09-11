@@ -221,6 +221,8 @@ What to know:
 
 ## Run project commands
 
+Build commands cannot directly read or write the host Mac's `/Library/Preferences/com.apple.networkextension.plist` or `com.apple.networkextension.uuidcache.plist`, including through `/System/Volumes/Data`. Keep project settings in your workspace; permission errors for these host files are expected.
+
 Use `lim xcode run` when the repository needs a macOS command such as a Make target or code generator. The command syncs the current directory, then runs after `--` in the remote workspace:
 
 ```bash
