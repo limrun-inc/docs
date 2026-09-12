@@ -8,6 +8,12 @@ icon: "smartphone"
 
 Your iOS instance is `ready`. For provisioning, see the [Quickstart](/quickstart); for builds, see [Build with remote Xcode](/ios/build-with-xcode).
 
+## Network access
+
+On nodes where workload egress filtering is enabled, direct off-host TCP/UDP connections opened by your workload to protected cluster, private, and link-local networks are blocked unless the destination is an approved service. Other destinations follow the configured policy. This rollout is controlled by Limrun; there is no instance flag to disable it.
+
+This policy covers workload-owned TCP/UDP sockets. It does not describe raw protocols or upstream connections opened by macOS system services. Local development tunnels have separate access rules.
+
 ## Connect to your instance
 
 Open a WebSocket client to drive the instance.

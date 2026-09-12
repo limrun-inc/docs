@@ -27,6 +27,12 @@ The flow:
 
 Python and Go users provision the instance over REST (`POST /v1/xcode_instances`) or with `lim xcode create`, and drive the build with `lim xcode build`. See the [SDK capability matrix](/reference/sdk#sdk-capability-matrix).
 
+## Network access
+
+On nodes where workload egress filtering is enabled, direct off-host TCP/UDP connections opened by your workload to protected cluster, private, and link-local networks are blocked unless the destination is an approved service. Other destinations follow the configured policy. This rollout is controlled by Limrun; there is no instance flag to disable it.
+
+This policy covers workload-owned TCP/UDP sockets. It does not describe raw protocols or upstream connections opened by macOS system services. Local development tunnels have separate access rules.
+
 ## Provision the Xcode sandbox
 
 The Xcode sandbox and the iOS simulator are separate instances with separate lifecycles. You create the sandbox, build on it, and attach a simulator only when it's time to run the app. This composability is the point: get an Xcode sandbox for the build, attach a simulator to test, drop the simulator and go back to just Xcode (or swap to Android) when you're not testing. You only pay for what's currently running.
