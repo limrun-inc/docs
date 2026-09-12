@@ -31,18 +31,22 @@ The Limrun console's Playground uses this exact component for its own streaming 
                  │                              Limrun control plane
                  ▼                                     │
           Limrun instance ◀─────────────────────────────┘
-          (status.endpointWebSocketUrl, status.token)
+          (status.endpointWebSocketUrl, status.streamToken)
 ```
 
 Three parts of the system:
 
-- **End user's browser.** Renders `<RemoteControl />`, sees only a per-instance WebSocket URL and a per-instance token. Never sees your API key.
+- **End user's browser.** Renders `<RemoteControl />`, sees only a per-instance WebSocket URL and the instance's stream token. Never sees your API key or the instance's control token.
 - **Your backend.** Holds your API key, creates the instance via the Limrun SDK, returns `{ webrtcUrl, token }` to the browser, and handles teardown.
-- **Limrun control plane.** Provisions the instance and returns a token scoped to it.
+- **Limrun control plane.** Provisions the instance and returns two tokens scoped to it: `status.token` for control and `status.streamToken` for the screen.
 
 ### Authentication
 
-The client browser never sees your API key, it uses a WebSocket URL and a token scoped to just the **one** instance. This token works only as long as that instance is running, and can't be used to access anything else.
+The client browser never sees your API key. It gets a WebSocket URL and `instance.status.streamToken`, a token scoped to the screen of just the **one** instance: video, touch, keyboard, screenshots, accessibility inspection, open URL, quit app, camera and microphone sharing. It cannot install apps, run commands, read files or open ADB, so a user who lifts it from the browser cannot drive the simulator beyond what the embed already shows. It has no expiry of its own and stops working when the instance terminates.
+
+`instance.status.token` is the control token. It grants everything on the instance, including the SDK, the CLI and MCP, so keep it on your backend and never send it to the browser.
+
+Android instances return `streamToken` in a following release. Until then, Android embeds keep passing `instance.status.token`.
 
 ## Prerequisites
 
@@ -52,7 +56,7 @@ Before you embed, you need:
 - **A way to create an instance from your backend.** Follow [Run an iOS simulator](/ios/run-simulator) (covers iPhone, iPad, Apple Watch) or [Run an Android emulator](/android/run-emulator).
 - **A React 18+ frontend.** Vite, Next.js, Create React App, Remix, etc.
 
-The single contract between your backend and `<RemoteControl />` is the pair `endpointWebSocketUrl + token` from `instance.status`. Every spec field, region clue, label pattern, and lifecycle knob lives on the per-platform pages above.
+The single contract between your backend and `<RemoteControl />` is the pair `endpointWebSocketUrl + streamToken` from `instance.status`. Every spec field, region clue, label pattern, and lifecycle knob lives on the per-platform pages above.
 
 If your platform also builds your customers' apps in the cloud (not just runs them), [Build with remote Xcode](/ios/build-with-xcode) is the companion page for compiling iOS apps on a remote Mac.
 
@@ -94,7 +98,7 @@ app.post('/sessions/start', async (req, res) => {
   res.json({
     id:        instance.metadata.id,
     webrtcUrl: instance.status.endpointWebSocketUrl,
-    token:     instance.status.token,
+    token:     instance.status.streamToken,
   });
 });
 
@@ -161,7 +165,7 @@ func startHandler(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(map[string]string{
         "id":        inst.Metadata.ID,
         "webrtcUrl": inst.Status.EndpointWebSocketURL,
-        "token":     inst.Status.Token,
+        "token":     inst.Status.StreamToken,
     })
 }
 
@@ -211,7 +215,7 @@ async def start(req: Request):
     return {
         "id":        instance.metadata.id,
         "webrtcUrl": instance.status.endpoint_web_socket_url,
-        "token":     instance.status.token,
+        "token":     instance.status.stream_token,
     }
 
 @app.post("/sessions/stop")
@@ -301,7 +305,7 @@ export function Simulator() {
 | Prop | Type | Default | Use |
 |---|---|---|---|
 | `url` | string | required | WebSocket URL from the instance. Pass `instance.status.endpointWebSocketUrl`. |
-| `token` | string | required | Per-instance bearer. Pass `instance.status.token`. The component appends it to the connection URL as `?token=…`. |
+| `token` | string | required | Per-instance bearer. Pass `instance.status.streamToken`; it grants the screen and nothing else. The component appends it to the connection URL as `?token=…`. |
 | `sessionId` | string | random | A unique signaling-session identifier. Prevents collisions when multiple browser tabs resolve to the same reusable instance. Use a fresh value per tab (e.g. `tab-${Date.now()}`). |
 | `openUrl` | string | none | A URL or deep link to open on the device once the control channel opens (e.g. `https://example.com`, `myapp://orders/42`, `exp://…` for Expo Go). |
 | `showFrame` | boolean | `true` | Draw the device bezel around the video. See [iPad and Apple Watch](#ipad-and-apple-watch); only iPhone and Pixel models ship native bezel art. |
@@ -467,7 +471,7 @@ app.post('/sessions/start', async (req: Request, res: Response) => {
     res.json({
       id:        instance.metadata.id,
       webrtcUrl: instance.status.endpointWebSocketUrl,
-      token:     instance.status.token,
+      token:     instance.status.streamToken,
     });
   } catch (err) {
     res.status(500).json({
