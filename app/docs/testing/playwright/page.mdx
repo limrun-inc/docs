@@ -141,6 +141,10 @@ When the call resolves, two things on the instance object matter for Playwright:
 - **The CDP WebSocket URL.** This is the endpoint Playwright connects to. On the returned object, it's `instance.status.sandbox.playwrightAndroid.url`.
 - **The bearer token.** Authenticates the URL above. It's `instance.status.token`.
 
+Every Playwright WebSocket connection requires this instance token, supplied
+as `Authorization: Bearer <token>` or `?token=<token>`. Missing or invalid
+tokens receive HTTP 401; a valid token for another instance receives HTTP 403.
+
 ## Connect Playwright
 
 `playwright-python`, `playwright-java`, and `playwright-dotnet` don't expose the Android device API. If your stack can't run Node, use the [Appium](/docs/testing/appium) Android flow instead.
