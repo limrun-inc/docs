@@ -248,6 +248,8 @@ lim xcode run -- mise run generate
 
 Commands are one-shot. They stream stdout and stderr, return the remote exit code, and do not provide an interactive terminal.
 
+Keep generated files in the synced workspace and temporary files under `$TMPDIR`. Host logs and unrelated host configuration under `/etc` or `/var` are unavailable. Sync project configuration into the workspace instead of depending on host files.
+
 TypeScript clients can use the same execution path after syncing:
 
 ```ts
