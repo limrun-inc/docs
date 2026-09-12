@@ -45,6 +45,21 @@ summary:
 Swift test classes are reported module-qualified (`Module.Class`), Objective-C
 classes bare.
 
+## Launch settings and attachments
+
+Limrun preserves the launch arguments and environment recorded in the
+`.xctestrun` manifest. Test-host settings and UI app settings stay separate:
+`CommandLineArguments` and `EnvironmentVariables` configure the test runner;
+`UITargetAppCommandLineArguments` and `UITargetAppEnvironmentVariables`
+configure the application under UI test. Arguments containing spaces remain
+single arguments.
+
+Every enabled test-plan configuration runs, including configurations that
+repeat the same test targets. XCTest activities are enabled, so tests can use
+`XCTContext.runActivity` and add `XCTAttachment` objects. The streamed results
+contain case outcomes and summaries; they do not include attachment downloads
+or an `.xcresult` bundle.
+
 ## Select tests
 
 Use xcodebuild's identifier format `Target[/Class[/method]]`. Repeat the flag
