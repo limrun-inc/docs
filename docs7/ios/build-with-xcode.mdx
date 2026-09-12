@@ -66,6 +66,16 @@ The **Go SDK doesn't yet have a standalone Xcode resource.** From Go, POST to `/
 
 When you already know you'll test on a simulator right after the build, the CLI can create both instances and attach them in one call: `lim ios create --xcode` (or `lim xcode create --ios`). The two instances are still separate; the flag just saves you the attach step described in [Auto-install on the simulator](#auto-install-on-the-simulator).
 
+## Reuse a build cache
+
+Pass a cache key to restore a saved workspace and publish it under that key when the instance terminates after a successful build:
+
+```bash
+lim xcode build . --cache-key=my-app
+```
+
+If no archive matches the key, or the saved archive no longer exists, the build continues with a cold workspace. The CLI reports `No cache restored`; this is an expected cache miss. Permission errors and other transfer failures still stop the build.
+
 ## Choose the Xcode version
 
 A sandbox builds with its node's default Xcode unless you pick another installed major. Xcode 27 (beta) is available beside the default. Pick it once per workspace (your git repo, or a `lim set-workspace-dir` assignment), the way a version manager remembers a version:
