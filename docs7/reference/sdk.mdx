@@ -168,7 +168,11 @@ Errors are returned as JSON with an HTTP status code that maps to a typed error 
 | n/a | `APIConnectionTimeoutError` | Request timed out. |
 | n/a | `APIUserAbortError` | The request was aborted by the caller. |
 
-The SDKs auto-retry on `408`, `409`, `429`, `5xx`, and connection errors. The default is 2 retries with exponential backoff. Configure or disable with the per-client `maxRetries` option.
+During instance creation, Limrun tries the next eligible region when forwarding to a remote region fails or returns `5xx`. Fallback respects jurisdiction and enforced region restrictions. Other HTTP responses, including `4xx`, return to the caller.
+
+A remote `5xx` or timeout can occur after an instance was created. Retrying in another region can leave an extra instance. `reuseIfExists` checks the selected region and does not deduplicate across regions.
+
+The SDKs also auto-retry on `408`, `409`, `429`, `5xx`, and connection errors. The default is 2 retries with exponential backoff. Configure or disable with the per-client `maxRetries` option.
 
 ```ts
 import Limrun from '@limrun/api';
@@ -235,7 +239,7 @@ Every successful `wait: true` create returns a `status` block with the URLs the 
 
 ## Regions and labels
 
-`spec.region` pins an instance to a region (e.g. `eu-north1`, `us-east1`). If omitted, Limrun schedules based on `spec.clues` and current availability. The console's **Analytics** tab breaks down runtime minutes per platform and per region, which is the canonical place to see which regions an org has used:
+`spec.region` sets a preferred region, such as `eu-north1` or `us-east1`. Creation can fall back to another eligible region when capacity is unavailable or forwarding to the preferred region fails. `spec.jurisdiction` restricts that fallback to its jurisdiction. The `limrun.com/zone-override` label pins creation to one region. If `spec.region` is omitted, Limrun schedules based on `spec.clues` and current availability. The console's **Analytics** tab breaks down runtime minutes per platform and per region, which is the canonical place to see which regions an org has used:
 
 <Frame>
   <img src="/images/console/11-analytics.png" alt="Console Analytics tab showing daily runtime minutes for Android, iOS, and XCode, broken down by eu-north1 and us-east1 regions" />
