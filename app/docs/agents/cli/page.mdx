@@ -112,6 +112,7 @@ lim xcode build . --workspace MyApp.xcworkspace --scheme MyApp
 ### Developer tool versions
 
 ```bash
+lim xcode use xcode@27
 lim xcode use node@24 pnpm@10 ruby@3.3
 lim xcode run -- mise install
 lim xcode use --global node@24
@@ -120,7 +121,9 @@ lim xcode tools
 
 `lim xcode tools` inspects an existing sandbox without syncing or creating an instance. Use `lim xcode tools --sync` to upload local changes first, and `--cwd apps/mobile` to inspect a nested project. Both forms require an existing sandbox; use `--id` to choose one.
 
-`use` saves and syncs client mise preferences. Install missing versions with `lim xcode run -- mise install`. Each run or build resolves the mise environment once and uses it throughout that operation. Project requests override personal defaults. Most tools follow the requested major; Ruby, Python, Go, Flutter, Dart and pre-1.0 tools follow `major.minor`. Client patch pins and `mise.lock` do not freeze the image's release. For an exact sandbox override, use `lim xcode run -- mise use --pin node@24.5.0`. Image tools are excluded from workspace caches; user installs can be cached after a successful managed build. See [tool selection](/docs/ios/build-with-xcode#select-developer-tools) for the tool list and precedence.
+`lim xcode use xcode@27` selects the workspace Xcode major through the existing Xcode selector, just like `lim xcode version set 27`. It switches an existing sandbox or saves the preference for the next one, without syncing or writing mise configuration. You can combine it with mise requests, such as `lim xcode use xcode@27 node@24`. Xcode accepts only a major and does not support `--global`; `--cwd` applies only to mise tools.
+
+For other tools, `use` saves and syncs client mise preferences. Install missing versions with `lim xcode run -- mise install`. Each run or build resolves the mise environment once and uses it throughout that operation. Project requests override personal defaults. Most tools follow the requested major; Ruby, Python, Go, Flutter, Dart and pre-1.0 tools follow `major.minor`. Client patch pins and `mise.lock` do not freeze the image's release. For an exact sandbox override, use `lim xcode run -- mise use --pin node@24.5.0`. Image tools are excluded from workspace caches; user installs can be cached after a successful managed build. See [tool selection](/docs/ios/build-with-xcode#select-developer-tools) for the tool list and precedence.
 
 ### Build flags
 

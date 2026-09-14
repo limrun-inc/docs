@@ -73,7 +73,7 @@ A sandbox builds with its node's default Xcode unless you pick another installed
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim xcode version list                    # versions the sandbox can build with; * marks the one in use, beta majors show their seed
-lim xcode version set 27                  # prefer 27 here; switches the remembered sandbox now
+lim xcode use xcode@27                    # prefer 27 here; switches the remembered sandbox now
 lim xcode build .                         # builds with 27, so do test, rbe and new sandboxes
 lim xcode version                         # "27.0 (27A5252f)"
 lim xcode build . --xcode-version 26     # one-off override; the preference is unchanged
@@ -89,11 +89,13 @@ if (bound.major !== '27') {
 
 </CodeGroup>
 
+`lim xcode use xcode@27` is equivalent to `lim xcode version set 27`: it remembers the workspace Xcode major and switches the existing sandbox. With no sandbox, it saves the preference for the next one. This Xcode-only request does not sync files or write a mise configuration. You can combine requests, for example `lim xcode use xcode@27 node@24`; only the other tools go into mise. Xcode requires a bare major and does not support `--global`. `--cwd` applies only to mise tools; `--workspace` chooses the Limrun workspace preference.
+
 The sandbox itself has one Xcode selected at a time, and the workspace preference wins: when a build finds the sandbox on another major (a colleague switched it, or a fresh sandbox came up on the node default), it says so and switches before building. Every build prints the Xcode it runs with (`Building with Xcode 27.0 (27A5252f)`).
 
 - Switching Xcode versions invalidates the build cache produced with the other version, so the next build starts cold.
-- The switch is refused while a build, command, sync, or `lim xcode rbe` stack is running; stop them first (`lim xcode rbe --stop`). `lim xcode version set` keeps the preference in that case and the next command retries the switch.
-- Asking for a major the node does not have fails with the available list, and `lim xcode version set` does not record a preference for it. Only majors are selectable; the minor is whatever the fleet carries for that major. Beta majors show Apple's seed number in `lim xcode version list` (`27.0 beta 6`).
+- The switch is refused while a build, command, sync, or `lim xcode rbe` stack is running; stop them first (`lim xcode rbe --stop`). `lim xcode use xcode@<major>` keeps the preference in that case and the next command retries the switch.
+- Asking for a major the node does not have fails with the available list, and `lim xcode use xcode@<major>` does not record a preference for it. Only majors are selectable; the minor is whatever the fleet carries for that major. Beta majors show Apple's seed number in `lim xcode version list` (`27.0 beta 6`).
 - Simulators keep running the fleet's default runtime. `lim xcode test` with a non-default Xcode warns and proceeds: XCTest bundles built by Xcode 27 run against the simulator's Xcode 26 frameworks, which works for most suites but is not guaranteed.
 - Apple rejects App Store uploads built with a beta Xcode, so keep `--upload-to-appstore` on the default until the GM ships.
 
@@ -232,7 +234,7 @@ lim xcode build .
 
 `lim xcode tools` inspects an existing sandbox without syncing or creating an instance. Use `lim xcode tools --sync` to upload local changes first, and `--cwd apps/mobile` to inspect a nested project. Both forms require an existing sandbox; use `--id` to choose one.
 
-`use` saves compatibility lines in the highest-precedence existing `mise.toml`, `.mise.toml`, `mise.local.toml`, or `.mise.local.toml` in the current directory, creating `mise.toml` when none exists. It syncs the project and shows the selected versions. It does not install tools; run `lim xcode run -- mise install` when a selected version is missing. `--cwd apps/mobile` selects a directory inside the sync root; `--id` selects a sandbox. The command rewrites the selected TOML file, preserving its configuration values but not comments or formatting.
+For mise tools, `use` saves compatibility lines in the highest-precedence existing `mise.toml`, `.mise.toml`, `mise.local.toml`, or `.mise.local.toml` in the current directory, creating `mise.toml` when none exists. It syncs the project and shows the selected versions. It does not install tools; run `lim xcode run -- mise install` when a selected version is missing. `--cwd apps/mobile` selects a directory inside the sync root; `--id` selects a sandbox. The command rewrites the selected TOML file, preserving its configuration values but not comments or formatting.
 
 Use `lim xcode use --global node@24` for personal defaults. The CLI and TypeScript Xcode client read `[tools]` from the client global mise file, normally `~/.config/mise/config.toml`. `MISE_GLOBAL_CONFIG_FILE` and `XDG_CONFIG_HOME` override that location. Project tool requests take precedence over personal defaults, followed by the project's detected package-manager major and Limrun's defaults. Deeper project files override parent files within the synced directory. Global defaults are captured when the Xcode client is created.
 
@@ -270,7 +272,7 @@ The image provides these tools:
 
 Install additional tools and compatibility lines explicitly with `lim xcode run -- mise install`. Select another Java vendor with a request such as `java@corretto-17`. Upstream support for macOS and the selected runtime still applies. The managed CocoaPods resolver uses the selected CocoaPods tool; a project `Gemfile` does not select its gems.
 
-Homebrew, Xcode, Apple SDKs and simulator runtimes have separate management. Use `lim xcode version` for Xcode. Mise itself and Limrun's runtime helpers are part of the image.
+Homebrew, Xcode, Apple SDKs and simulator runtimes have separate management. Select Xcode with `lim xcode use xcode@27` and inspect it with `lim xcode version`. Mise itself and Limrun's runtime helpers are part of the image.
 
 `NODE_BINARY` points to the Node selected by mise in both runs and builds. For React Native and Expo builds, Limrun rewrites `ios/.xcode.env.local` with that binary and the selected tool PATH so Xcode phases use the same tools as dependency installation. Do not copy a client Node path into this file. The selected Java and Flutter installations also provide `JAVA_HOME` and `FLUTTER_ROOT`.
 
