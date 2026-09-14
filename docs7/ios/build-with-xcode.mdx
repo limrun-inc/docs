@@ -131,7 +131,7 @@ The SDK skips these paths regardless of `.gitignore`:
 - Dependency caches: `.swiftpm/`, `Pods/`, `Carthage/Build/`.
 - Anything under `xcuserdata/` or ending in `.dSYM/`.
 
-On top of that, paths matched by your `.gitignore` files are skipped, root and nested ones alike, with git's usual precedence. One exception: `.xcconfig` files always sync because Xcode needs them on the remote. If a file is both tracked by git and ignored, the SDK warns you so you can fix the mismatch.
+On top of that, paths matched by your `.gitignore` files are skipped, root and nested ones alike, with git's usual precedence. Built-in force-includes keep `.xcconfig` and `.env` files in the sync because builds commonly need them on the remote. If a file is both tracked by git and ignored, the SDK warns you so you can fix the mismatch.
 
 Symlinks sync as symlinks when their target is a relative path that stays inside the synced folder, so setups that link shared sources into an app directory build the same remotely as locally. Symlinks with absolute targets are skipped with a warning, and relative links that escape the synced folder fail the sync (pass `--ignore` to skip them instead).
 
@@ -155,6 +155,8 @@ await xcode.sync('./my-app', {
     relPath.startsWith('Secrets/') || relPath.endsWith('.local.json'),
 });
 ```
+
+An explicit CLI `--ignore` takes precedence over built-in force-includes and `--include`. It can exclude `.env` or `.xcconfig` files, and adding a matching `--include` does not restore them. Non-overridable safety exclusions also remain excluded.
 
 The reverse exists too: `--include` force-syncs paths your `.gitignore` excludes. Use it when a local codegen step produces gitignored files the build needs.
 
