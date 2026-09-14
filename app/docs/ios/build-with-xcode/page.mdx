@@ -270,6 +270,8 @@ Install additional tools and compatibility lines explicitly with `lim xcode run 
 
 Homebrew, Xcode, Apple SDKs and simulator runtimes have separate management. Use `lim xcode version` for Xcode. Mise itself and Limrun's runtime helpers are part of the image.
 
+`NODE_BINARY` points to the Node selected by mise in both runs and builds. For React Native and Expo builds, Limrun rewrites `ios/.xcode.env.local` with that binary and the selected tool PATH so Xcode phases use the same tools as dependency installation. Do not copy a client Node path into this file. The selected Java and Flutter installations also provide `JAVA_HOME` and `FLUTTER_ROOT`.
+
 For an exact version or an explicit update, call mise inside the sandbox:
 
 ```bash
