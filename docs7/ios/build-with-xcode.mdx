@@ -230,6 +230,8 @@ lim xcode tools
 lim xcode build .
 ```
 
+`lim xcode tools` inspects an existing sandbox without syncing or creating an instance. Use `lim xcode tools --sync` to upload local changes first, and `--cwd apps/mobile` to inspect a nested project. Both forms require an existing sandbox; use `--id` to choose one.
+
 `use` saves compatibility lines in the highest-precedence existing `mise.toml`, `.mise.toml`, `mise.local.toml`, or `.mise.local.toml` in the current directory, creating `mise.toml` when none exists. It syncs the project and shows the selected versions. It does not install tools; run `lim xcode run -- mise install` when a selected version is missing. `--cwd apps/mobile` selects a directory inside the sync root; `--id` selects a sandbox. The command rewrites the selected TOML file, preserving its configuration values but not comments or formatting.
 
 Use `lim xcode use --global node@24` for personal defaults. The CLI and TypeScript Xcode client read `[tools]` from the client global mise file, normally `~/.config/mise/config.toml`. `MISE_GLOBAL_CONFIG_FILE` and `XDG_CONFIG_HOME` override that location. Project tool requests take precedence over personal defaults, followed by the project's detected package-manager major and Limrun's defaults. Deeper project files override parent files within the synced directory. Global defaults are captured when the Xcode client is created.
@@ -277,7 +279,7 @@ For an exact version or an explicit update, call mise inside the sandbox:
 ```bash
 lim xcode run -- mise install node@24.5.0
 lim xcode run -- mise use --pin node@24.5.0
-lim xcode tools --no-sync
+lim xcode tools
 ```
 
 `mise install` adds a version without changing the selection. `mise use` installs and records an explicit sandbox override for later operations in `.limrun-runtime-mise.toml`; it takes precedence over client defaults. `lim xcode use node@24` clears that tool's override in the selected directory and returns to the compatibility-line policy. A running operation keeps its environment snapshot. The next run or build picks up a version change; use `mise exec` explicitly when a child command in the same operation needs the new version immediately.
