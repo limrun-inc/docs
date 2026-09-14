@@ -626,10 +626,10 @@ The build result includes a signed download URL when you've configured an upload
 
 | Build output | What it means | Fix |
 |---|---|---|
-| `Unknown issuer hash` | The certificate's issuing CA isn't recognized and the p12 carries no CA chain. | Re-export the p12 with the certificate chain included (see the OpenSSL command above). |
+| `Unknown issuer hash` or `not a valid code-signing identity` | The p12 holds no Apple Distribution or Apple Development certificate with its private key, or its issuing CA isn't recognized because the p12 carries no CA chain. | Re-export the p12 with the certificate, its private key and the certificate chain included (see the OpenSSL command above). |
 | `code signature verification failed` | The produced signature failed Apple's verifier. | Retry the build; contact support if it persists. |
 | `MAC verification failed` or other password errors | The certificate password doesn't match the p12. | Check the value you pass as the certificate password. |
-| `signing preflight failed: no provisioning profile covers ...` | An embedded bundle (extension, watch app) has no matching provisioning profile. | Pass one `--provisioning-profile` per bundle id named in the error. |
+| `no provisioning profile covers ...` or `requires a provisioning profile` | An embedded bundle (extension, watch app) has no matching provisioning profile. | Pass one `--provisioning-profile` per bundle id named in the error. |
 | `Cloud signing permission error` | The API key cannot use cloud-managed distribution certificates. | Use an Admin key or enable **Access to cloud-managed distribution certificates** for the key. |
 | `No Account for Team` | `--team-id` does not match the API key's team. | Pass the Apple Developer team ID associated with the API key. |
 | `Failed Registering Bundle Identifier` | The bundle ID cannot be registered to this team, usually because another team owns it. | Use a bundle ID already owned by the team or one that is available to register. |
