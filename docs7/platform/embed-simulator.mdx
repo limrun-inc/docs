@@ -402,7 +402,7 @@ ctrlRef.current?.sendKeyEvent({ type: 'keydown', code: 'Enter' });
 ctrlRef.current?.reconnect();
 ```
 
-These are browser-side imperatives. If you need richer **backend-side** control of the same device (taps by accessibility selector, element-tree inspection, video recording, reverse tunnels, soft-resets), drive the instance from your server with [`Ios.createInstanceClient`](/ios/run-simulator#connect-to-your-instance) or the Android equivalent. The two paths are fully compatible; you can run both at once.
+These are browser-side imperatives. If you need richer **backend-side** control of the same device (taps by accessibility selector, element-tree inspection, video recording, tunnels, soft-resets), drive the instance from your server with [`Ios.createInstanceClient`](/ios/run-simulator#connect-to-your-instance) or the Android equivalent. The two paths are fully compatible; you can run both at once.
 
 ## iPad and Apple Watch
 
@@ -578,7 +578,7 @@ A more elaborate version of the same pattern lives in [`typescript-sdk/examples/
     Upload customer builds and reference them in `spec.initialAssets` so the embedded simulator opens on their app.
   </Card>
   <Card title="Run an iOS Simulator" icon="smartphone" href="/ios/run-simulator">
-    Backend-side device control: tap by accessibility selector, element-tree, recording, reverse tunnels.
+    Backend-side device control: tap by accessibility selector, element-tree, recording, tunnels.
   </Card>
   <Card title="Run an Android Emulator" icon="tablet-smartphone" href="/android/run-emulator">
     Same embed wiring, Android side. ADB tunnel, scrcpy, Appium, OS-version clues.
