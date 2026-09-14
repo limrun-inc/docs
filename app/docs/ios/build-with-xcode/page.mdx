@@ -221,7 +221,7 @@ What to know:
 
 ## Select developer tools
 
-Each `lim xcode run` and `lim xcode build` resolves `mise env --json` once at the start and passes that environment to its commands. Version selection does not install tools. Set a project preference, then install any missing versions:
+Each `lim xcode run` and `lim xcode build` resolves `mise env --json` once at the start. Dependency installation, project generation, builds and their child processes use that environment. Tool selection requires a sandbox image with mise support. Set a project preference, then install any missing versions:
 
 ```bash
 lim xcode use node@24 pnpm@10 ruby@3.3
