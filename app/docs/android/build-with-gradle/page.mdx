@@ -147,6 +147,12 @@ for the instance's lifetime. Gradle does not transfer them, or its workspace,
 to a new instance. The image still includes warmed Gradle caches and a pnpm 10
 store; another pnpm major may need an initial registry download.
 
+Builds and commands preserve the instance's temporary files and dependency
+caches. Reuse the same instance for warm builds; shared temporary files remain
+until the instance is removed. Only installed tool selections contribute to
+dependency cache invalidation, so unused missing tools in a shared mise file
+do not force reinstalls or block unrelated commands.
+
 ### Commands through the TypeScript SDK
 
 After syncing a project, use `run` to install tools or execute a command:
