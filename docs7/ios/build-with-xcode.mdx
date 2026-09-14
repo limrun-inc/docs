@@ -221,15 +221,16 @@ What to know:
 
 ## Select developer tools
 
-The sandbox installs and selects one version per developer tool with mise before shell commands and managed builds. Set a project preference from your client:
+Each `lim xcode run` and `lim xcode build` resolves `mise env --json` once at the start and passes that environment to its commands. Version selection does not install tools. Set a project preference, then install any missing versions:
 
 ```bash
 lim xcode use node@24 pnpm@10 ruby@3.3
+lim xcode run -- mise install
 lim xcode tools
 lim xcode build .
 ```
 
-`use` saves compatibility lines in the highest-precedence existing `mise.toml`, `.mise.toml`, `mise.local.toml`, or `.mise.local.toml` in the current directory, creating `mise.toml` when none exists. It syncs the project and prepares missing tools remotely. It does not install tools on your client. `--cwd apps/mobile` selects a directory inside the sync root; `--id` selects a sandbox. The command rewrites the selected TOML file, preserving its configuration values but not comments or formatting.
+`use` saves compatibility lines in the highest-precedence existing `mise.toml`, `.mise.toml`, `mise.local.toml`, or `.mise.local.toml` in the current directory, creating `mise.toml` when none exists. It syncs the project and shows the selected versions. It does not install tools; run `lim xcode run -- mise install` when a selected version is missing. `--cwd apps/mobile` selects a directory inside the sync root; `--id` selects a sandbox. The command rewrites the selected TOML file, preserving its configuration values but not comments or formatting.
 
 Use `lim xcode use --global node@24` for personal defaults. The CLI and TypeScript Xcode client read `[tools]` from the client global mise file, normally `~/.config/mise/config.toml`. `MISE_GLOBAL_CONFIG_FILE` and `XDG_CONFIG_HOME` override that location. Project tool requests take precedence over personal defaults, followed by the project's detected package-manager major and Limrun's defaults. Deeper project files override parent files within the synced directory. Global defaults are captured when the Xcode client is created.
 
@@ -253,10 +254,10 @@ The image provides these tools:
 | Node.js, npm, npx | Node 22; npm and npx ship with Node |
 | pnpm | 10; 9 and 11 are also preinstalled |
 | Yarn | 1; 4 is also preinstalled |
-| Bun, bunx | 1 |
+| Bun, bunx | 1; temporarily mapped to the image canary containing the sandbox cwd fix |
 | Ruby, RubyGems | 3.3 |
 | Bundler | 4 |
-| CocoaPods, cocoapods-patch | 1 |
+| CocoaPods | 1, including the cocoapods-patch plugin |
 | CMake, ctest, cpack | 3 |
 | Java | JetBrains Runtime 21; Corretto 21 is available for Gradle vendor detection |
 | Flutter and its Dart SDK | Flutter 3.44 |
@@ -265,21 +266,21 @@ The image provides these tools:
 | xcbeautify | 3 |
 | zsign | 1, with Limrun's signing fixes |
 
-Additional tools and compatibility lines are installed through mise when requested. Select another Java vendor with a request such as `java@corretto-17`. Upstream support for macOS and the selected runtime still applies. The managed CocoaPods resolver uses the selected CocoaPods tool; a project `Gemfile` does not select its gems.
+Install additional tools and compatibility lines explicitly with `lim xcode run -- mise install`. Select another Java vendor with a request such as `java@corretto-17`. Upstream support for macOS and the selected runtime still applies. The managed CocoaPods resolver uses the selected CocoaPods tool; a project `Gemfile` does not select its gems.
 
 Homebrew, Xcode, Apple SDKs and simulator runtimes have separate management. Use `lim xcode version` for Xcode. Mise itself and Limrun's runtime helpers are part of the image.
 
 For an exact version or an explicit update, call mise inside the sandbox:
 
 ```bash
-lim xcode run -- mise exec node@24.5.0 -- node --version
+lim xcode run -- mise install node@24.5.0
 lim xcode run -- mise use --pin node@24.5.0
 lim xcode tools --no-sync
 ```
 
-`mise exec` selects tools for one command. `mise use` records an explicit sandbox override for later operations in `.limrun-runtime-mise.toml`; it takes precedence over client defaults. `lim xcode use node@24` clears that tool's override in the selected directory and returns to the compatibility-line policy. A version switch affects new commands; use `mise exec` when the same shell needs the new version immediately.
+`mise install` adds a version without changing the selection. `mise use` installs and records an explicit sandbox override for later operations in `.limrun-runtime-mise.toml`; it takes precedence over client defaults. `lim xcode use node@24` clears that tool's override in the selected directory and returns to the compatibility-line policy. A running operation keeps its environment snapshot. The next run or build picks up a version change; use `mise exec` explicitly when a child command in the same operation needs the new version immediately.
 
-Image installations stay outside the workspace cache. A restored user installation cannot replace the image's default release unless an explicit sandbox override selects it. User-installed mise tools live under `.limbuild-sandbox/home/.mise/` and are included when your cache paths cover that directory. Existing cache publication rules still apply: running a command alone does not make a workspace eligible; a successful managed build is required. Dependency installs rerun when the resolved tool versions change. Switching Xcode still invalidates the workspace cache.
+Image installations stay outside the workspace cache. Mise selects among compatible image and user installations, including restored user versions. User-installed mise tools live under `.limbuild-sandbox/home/.mise/` and are included when your cache paths cover that directory. Existing cache publication rules still apply: running a command alone does not make a workspace eligible; a successful managed build is required. Dependency installs rerun when the resolved tool versions change. Switching Xcode still invalidates the workspace cache. Mise gem wrappers contain absolute paths: after a cache restore moves the sandbox home, reinstall an affected user gem explicitly, for example `lim xcode run -- mise install --force bundler`. Image gem wrappers are packaged to support relocation.
 
 ## Run project commands
 

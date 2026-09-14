@@ -113,11 +113,12 @@ lim xcode build . --workspace MyApp.xcworkspace --scheme MyApp
 
 ```bash
 lim xcode use node@24 pnpm@10 ruby@3.3
+lim xcode run -- mise install
 lim xcode use --global node@24
 lim xcode tools
 ```
 
-`use` saves client mise preferences, syncs them, and prepares the sandbox tools. Project requests override personal defaults. Most tools follow the requested major; Ruby, Python, Go, Flutter, Dart and pre-1.0 tools follow `major.minor`. Client patch pins and `mise.lock` do not freeze the image's release. For an exact sandbox override, use `lim xcode run -- mise use --pin node@24.5.0`. Image tools are excluded from workspace caches; user installs can be cached after a successful managed build. See [tool selection](/docs/ios/build-with-xcode#select-developer-tools) for the tool list and precedence.
+`use` saves and syncs client mise preferences. Install missing versions with `lim xcode run -- mise install`. Each run or build resolves the mise environment once and uses it throughout that operation. Project requests override personal defaults. Most tools follow the requested major; Ruby, Python, Go, Flutter, Dart and pre-1.0 tools follow `major.minor`. Client patch pins and `mise.lock` do not freeze the image's release. For an exact sandbox override, use `lim xcode run -- mise use --pin node@24.5.0`. Image tools are excluded from workspace caches; user installs can be cached after a successful managed build. See [tool selection](/docs/ios/build-with-xcode#select-developer-tools) for the tool list and precedence.
 
 ### Build flags
 
