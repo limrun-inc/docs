@@ -77,6 +77,49 @@ Expo managed-workflow projects have no `android/` directory. The sandbox detects
 lim gradle build ./my-monorepo --expo-app-dir apps/mobile
 ```
 
+## Sync source without building
+
+`lim gradle sync [path]` uploads a project to a Gradle sandbox without running
+Gradle or installing dependencies. The path defaults to the current directory.
+The command reuses the instance remembered for your worktree or creates one
+when needed. Pass `--id` to choose a target.
+
+```bash
+lim gradle sync
+lim gradle sync ./my-app --id <gradle-instance-id>
+lim gradle sync ./my-app --watch
+```
+
+`--watch` keeps pushing source changes until you press Ctrl+C. Each completed
+sync reports its duration and bytes sent. Use `--basis-cache-dir` to choose the
+local delta cache, `--ignore <regex>` to exclude paths, and `--include <regex>`
+to force-sync inputs. Both filters are repeatable.
+
+Upload extra files outside the source tree with repeatable
+`--additional-file localPath=remotePath`. Remote paths are relative to the
+sandbox workspace:
+
+```bash
+lim gradle sync ./my-app --additional-file ~/.npmrc=.npmrc
+```
+
+Additional files are included in every sync pass but are not watched directly.
+`lim gradle build` already syncs once before building, so it does not require a
+separate sync command.
+
+The TypeScript SDK supports the same watch mode:
+
+```ts
+const watcher = await gradle.sync('.', {
+  watch: true,
+  onSyncComplete: ({ bytesSent, durationMs }) => {
+    console.log(`Synced ${bytesSent} bytes in ${durationMs}ms`);
+  },
+});
+// Stop watching when the session ends.
+await watcher.stopWatching?.();
+```
+
 ## Select tools and run commands
 
 The sandbox includes these mise-managed tools:
