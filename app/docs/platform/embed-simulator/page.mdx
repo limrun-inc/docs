@@ -1,6 +1,6 @@
 ---
 title: "Embed the simulator"
-description: "Render a live iOS, iPadOS, watchOS, or Android device inside your web app with `<RemoteControl />` from `@limrun/ui`. Your backend keeps the API key; the browser only sees a per-instance URL and token."
+description: "Render a live iOS or Android device inside your web app with `<RemoteControl />` from `@limrun/ui`. Your backend keeps the API key; the browser only sees a per-instance URL and token."
 order: 1
 icon: "monitor-play"
 ---
@@ -8,7 +8,7 @@ icon: "monitor-play"
 
 `<RemoteControl />` from [`@limrun/ui`](https://www.npmjs.com/package/@limrun/ui) streams a Limrun instance into a `<div>` in your web app. It opens a WebSocket + WebRTC connection to the instance, paints the screen, forwards touch and keyboard input, and exposes imperative control through a React ref.
 
-This is the path platform integrators take: companies whose end users need a live mobile device on the page. Cloud coding agents that work on iOS, iPadOS, watchOS, or Android. Mobile preview tools. Internal QA dashboards. Same component, same wiring, on every one of those.
+This is the path platform integrators take: companies whose end users need a live mobile device on the page. Cloud coding agents that work on iOS or Android. Mobile preview tools. Internal QA dashboards. Same component, same wiring, on every one of those.
 
 <Frame>
   <img src="/images/console/05-ios-stream-booting.png" alt="A live iOS simulator running inside a device frame, rendered by `<RemoteControl />`. The same look-and-feel ships in your app." />
@@ -225,7 +225,7 @@ async def stop(req: Request):
 A few details worth calling out. Full coverage of each lives on [Run an iOS simulator](/docs/ios/run-simulator#configure-the-instance) and [Run an Android emulator](/docs/android/run-emulator#configure-the-instance).
 
 - **Scheduling clues.** Network latency between client browser and Limrun's hosting region can be minised by hinting Limrun's scheduler to provision the instance closer to the end user's location. To do this, forward the end user's IP (`X-Forwarded-For` or `req.socket.remoteAddress`) as a `ClientIP` clue so the instance lands near them. 
-- **Labels for tenant scope and reuse.** Labels are free-form key-value pairs which can be used to organise multiple tenants or reuse hot instances. If `reuseIfExists` is set to `true`, scheduler returns existing hot instance whose `region` and `labels` match the current create call, so a user reopening their tab lands back on the same warm instance.
+- **Labels for tenant scope and reuse.** Labels are free-form key-value pairs which can be used to organise multiple tenants or reuse hot instances. If `reuseIfExists` is set to `true`, the scheduler returns an existing hot instance whose `labels` match the current create call exactly, looked up in the region that handles the call, so a user reopening their tab lands back on the same warm instance.
 - **Pre-install the customer's app.** Reference an uploaded build (or an [App Store catalog entry like Expo Go](/docs/platform/asset-storage#working-with-expo-go)) via `spec.initialAssets`, and the embedded simulator is launched with the app pre-installed during provisioning. See [Asset Storage](/docs/platform/asset-storage).
 - **Session lifecycle.** `inactivityTimeout` defaults to `3m`, almost always too short for an embedded UI; set 10 to 30 minutes. `hardTimeout` is a forced-termination safety cap, default `'0'` (no cap). Always wire up an explicit `delete` on tab close.
 

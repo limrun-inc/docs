@@ -41,7 +41,7 @@ From your project root, install the skill:
 lim skills install
 ```
 
-The command fetches the latest skills from `limrun-inc/skills`, then prompts for the target agent, skill, and install scope. Keep the catalog defaults unless you are setting up a different workflow.
+The command fetches the latest skills from `limrun-inc/skills` and installs them without prompting. By default it targets every agent that already has a skills directory (or all agents when none exists), installs all skills, and uses project scope. Narrow it with `--agents claude|cursor|codex`, `--skills <name>`, or `--scope global`.
 
 ### 4. Start a coding session
 
@@ -70,7 +70,7 @@ The rest of this page is the command reference behind each step.
 lim ios create --attach --reuse-if-exists
 ```
 
-`--attach` attaches the new simulator to the most recent Xcode build target, installing the latest successful build immediately — run it after `lim xcode build`. `--reuse-if-exists` returns an existing instance in the same region instead of provisioning a new one, so retries land back on the same warm instance. Scope reuse to a specific task by adding a label (`--label issue=<ID>`); without one, every reuse call in your org matches the same unlabeled instance.
+`--attach` attaches the new simulator to the most recent Xcode build target, installing the latest successful build immediately. Run it after `lim xcode build`. `--reuse-if-exists` returns an existing instance with exactly the same labels instead of provisioning a new one, so retries land back on the same warm instance. The lookup runs in the region that handles the create, and placement follows your location and capacity, so a retry from a different network can miss and start a fresh instance. Scope reuse to a specific task by adding a label (`--label issue=<ID>`); without one, every reuse call in your org matches the same unlabeled instance.
 
 The output includes the instance ID and the **Signed Stream URL**. Open the Signed Stream URL in any browser to watch the simulator live; the token is in the URL, so no login is required. Share the Signed Stream URL with the user at the start of a task.
 
@@ -80,9 +80,9 @@ The output includes the instance ID and the **Signed Stream URL**. Open the Sign
 |---|---|
 | `--attach` | Attach the simulator to the most recent Xcode build target; installs the latest successful build immediately. |
 | `--xcode` | Also create a Mac build sandbox and attach the simulator to it. Use when you want both instances before the first build. |
-| `--reuse-if-exists` | Return an existing instance with the same labels instead of creating a new one. |
+| `--reuse-if-exists` | Return an existing instance with exactly the same labels instead of creating a new one. Looked up in the region that handles the create. |
 | `--label key=value` | Repeatable. Used by `--reuse-if-exists` and for cleanup. |
-| `--region us-west` | Pin to a region. |
+| `--jurisdiction us\|eu\|as` | Keep the instance inside one jurisdiction. Hard constraint: creation fails when no region there has capacity. `--region` is deprecated and only a preference. |
 | `--inactivity-timeout 10m` | Auto-delete after this much idle time. `1m`, `10m`, `3h`. Org default applies if you skip it. |
 | `--hard-timeout 3h` | Force-delete after this much wall time. `0` (default) means no cap. |
 | `--install ./build.app` | Local app to upload and install at boot. Repeatable. |
