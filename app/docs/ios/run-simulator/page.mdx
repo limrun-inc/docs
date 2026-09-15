@@ -78,6 +78,40 @@ The instance status carries everything you need:
 | `targetHttpPortUrlPrefix` | Reverse-proxy prefix for tunneled HTTP ports on the device. |
 | `state` | `unknown` → `creating` → `assigned` → `ready` → `terminated`. |
 
+## iPhone Duo preview
+
+The `iphone-duo-preview` model is an experimental Limrun profile running real
+iOS 27.0. It approximates the Duo display and Home layout; it is not Apple's
+official Duo simulator. Availability is limited to enabled preview pools.
+An ordinary iPhone pool does not satisfy a request for this model.
+
+Create the instance with `spec.model: 'iphone-duo-preview'`. After connecting
+with a TypeScript SDK that supports the preview, inspect `client.deviceInfo.duo`
+and switch poses:
+
+```ts
+if (client.deviceInfo.duo) {
+  await client.setDuoPose('closed'); // 466 × 678 points
+  await client.setDuoPose('open');   // 890 × 626 points
+}
+```
+
+Both poses use a 3× display scale. The simulator keeps the same UDID and running
+app through the fold. The viewer displays a Fold/Unfold button when the server
+advertises this capability. Touch input pauses until the new display size is
+acknowledged, and the SDK updates `client.deviceInfo` with the new dimensions.
+Use fresh screenshots and element trees after folding before choosing coordinates.
+
+Finish active gestures and stop video recording before folding. Orientation
+changes are disabled for the preview; use `setDuoPose` instead. If a native
+transition fails, the instance stops accepting input and becomes unavailable;
+create a new preview instance. Reconnecting refreshes the viewport but does not
+repair a failed native transition.
+
+The preview requires the pinned iOS runtime and native patches on its host.
+It cannot be enabled by renaming an existing iPhone instance. Older viewers
+without the preview protocol cannot send touch input to it.
+
 ## Read the screen
 
 Before any action, read what's actually on the screen. The element tree is the source of truth for what's interactable; the screenshot is the fastest visual sanity check.
