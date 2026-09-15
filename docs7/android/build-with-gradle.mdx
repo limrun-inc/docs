@@ -93,10 +93,11 @@ The sandbox includes these mise-managed tools:
 Builds use your project's Gradle wrapper. Android SDK, NDK, and CMake packages
 remain managed by `sdkmanager`.
 
-Select tool versions:
+Select tool versions and install missing versions explicitly:
 
 ```bash
 lim gradle use node@24 java@temurin-17 pnpm@10
+lim gradle run -- mise install
 lim gradle tools
 ```
 
@@ -104,9 +105,9 @@ lim gradle tools
 
 `use` writes compatibility lines to your project mise configuration and syncs
 the project. It preserves configuration values but rewrites comments and
-formatting. Use `--cwd apps/mobile` for a nested project. Runs and builds in that
-directory automatically install missing selected tools.
-You can also install tools explicitly with `lim gradle run apps/mobile -- mise install`.
+formatting. Use `--cwd apps/mobile` for a nested project. Use the same working
+directory when installing its tools:
+`lim gradle run apps/mobile -- mise install`.
 
 Project `[tools]` declarations override package-manager detection and image
 defaults. Personal mise configuration on the client is not read or forwarded.
@@ -117,11 +118,8 @@ Ruby, Python, Go, Flutter, Dart, and pre-1.0 tools retain `major.minor`.
 Limrun can update patch and minor releases within those lines independently.
 `latest` opts out of a fixed line.
 
-Each build or run resolves its mise environment once. Mise automatically installs
-missing configured tools in the sandbox home before the command starts. Existing
-compatible installations are reused. An unavailable tool or failed download stops
-the operation, even if the command does not use that tool. Fix its project request
-and sync again to retry. To select an exact release in the sandbox, run
+Each build or run resolves its mise environment once. Missing tools are never
+installed automatically. To select an exact release in the sandbox, run
 `lim gradle run -- mise use --pin node@24.5.0`. Subsequent operations respect
 that override. `lim gradle use node@24` clears the Node override in the selected
 directory and returns to the client preference.
@@ -151,16 +149,19 @@ store; another pnpm major may need an initial registry download.
 
 Builds and commands preserve the instance's temporary files and dependency
 caches. Reuse the same instance for warm builds; shared temporary files remain
-until the instance is removed. Resolved tool versions control dependency cache
-invalidation. Reusing the same versions preserves the dependency cache.
+until the instance is removed. Only installed tool selections contribute to
+dependency cache invalidation, so unused missing tools in a shared mise file
+do not force reinstalls or block unrelated commands.
 
 ### Commands through the TypeScript SDK
 
-After syncing a project, builds and commands install missing selected tools automatically:
+After syncing a project, use `run` to install tools or execute a command:
 
 ```ts
 const gradle = await lim.gradleInstances.createClient({ instance });
 await gradle.sync('.');
+const install = await gradle.run('mise install', { cwd: 'apps/mobile' });
+if (install.exitCode !== 0) throw new Error('Tool installation failed');
 const result = await gradle.gradlebuild({ env: ['APP_ENV=staging'] });
 ```
 
