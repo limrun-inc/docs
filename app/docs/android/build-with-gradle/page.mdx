@@ -97,17 +97,19 @@ Select tool versions and install missing versions explicitly:
 
 ```bash
 lim gradle use node@24 java@temurin-17 pnpm@10
-lim gradle run -- mise install
+lim gradle tools install
 lim gradle tools
 ```
 
 `lim gradle tools` inspects an existing sandbox without syncing or creating an instance. Use `lim gradle tools --sync` to upload local changes first, and `--cwd apps/mobile` to inspect a nested project. Both forms require an existing sandbox; use `--id` to choose one.
 
+`lim gradle tools install` syncs the project and runs `mise install` in that sandbox. Use `--no-sync` to install its current selections without syncing, `--cwd apps/mobile` for a nested project, and `--id` to choose an existing sandbox. The command never creates or replaces an instance.
+
 `use` writes compatibility lines to your project mise configuration and syncs
 the project. It preserves configuration values but rewrites comments and
 formatting. Use `--cwd apps/mobile` for a nested project. Use the same working
 directory when installing its tools:
-`lim gradle run apps/mobile -- mise install`.
+`lim gradle tools install --cwd apps/mobile`.
 
 Project `[tools]` declarations override package-manager detection and image
 defaults. Personal mise configuration on the client is not read or forwarded.
@@ -118,8 +120,11 @@ Ruby, Python, Go, Flutter, Dart, and pre-1.0 tools retain `major.minor`.
 Limrun can update patch and minor releases within those lines independently.
 `latest` opts out of a fixed line.
 
-Each build or run resolves its mise environment once. Missing tools are never
-installed automatically. To select an exact release in the sandbox, run
+Each build or run resolves its mise environment once. The first sandbox operation
+that reads a project mise file runs `mise install` before exporting that environment.
+This happens once per sandbox. Without a project mise file, commands use image defaults.
+Later changes require `lim gradle tools install`. A failed or cancelled first install
+stops that operation and also requires an explicit retry. To select an exact release, run
 `lim gradle run -- mise use --pin node@24.5.0`. Subsequent operations respect
 that override. `lim gradle use node@24` clears the Node override in the selected
 directory and returns to the client preference.
@@ -150,8 +155,8 @@ store; another pnpm major may need an initial registry download.
 Builds and commands preserve the instance's temporary files and dependency
 caches. Reuse the same instance for warm builds; shared temporary files remain
 until the instance is removed. Only installed tool selections contribute to
-dependency cache invalidation, so unused missing tools in a shared mise file
-do not force reinstalls or block unrelated commands.
+dependency cache invalidation. After the first installation attempt, unused missing
+tools do not force reinstalls or block unrelated commands.
 
 ### Commands through the TypeScript SDK
 
