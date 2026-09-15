@@ -193,9 +193,9 @@ Two query params show up on every `create` call across resources.
 | Param | Type | Meaning |
 |---|---|---|
 | `wait` | boolean | Return only after the instance reaches `ready`. Without `wait`, the call returns immediately with `state: 'creating'`. |
-| `reuseIfExists` | boolean | If an instance with the same `(region, labels)` exists, return it instead of creating a new one. |
+| `reuseIfExists` | boolean | If an instance with exactly the same labels exists in the region that handles the create, return it instead of creating a new one. |
 
-Use `wait: true` for interactive workflows where you need the URLs immediately. Use `reuseIfExists: true` whenever you want repeated calls (CLI re-runs, retries, the same PR's CI runs) to converge on the same instance.
+Use `wait: true` for interactive workflows where you need the URLs immediately. Use `reuseIfExists: true` whenever you want repeated calls (CLI re-runs, retries, the same PR's CI runs) to converge on the same instance. Placement follows the caller's location and capacity, so a call from a different network can land in another region and start a fresh instance.
 
 ## Instance state machine
 
@@ -225,7 +225,7 @@ Every successful `wait: true` create returns a `status` block with the URLs the 
 |---|---|---|---|---|
 | `token` | ✓ | ✓ | ✓ | Per-instance bearer for `apiUrl`, `endpointWebSocketUrl`, `adbWebSocketUrl`; embedded in `signedStreamUrl`. |
 | `apiUrl` | ✓ | ✓ | ✓ | HTTP base for the per-instance device daemon (SDK / CLI control client). |
-| `signedStreamUrl` | ✓ | ✓ |   | Browser watch URL with the token in the URL fragment, so it never reaches a server (no org API key in the browser). Links that carry the token in the query string are no longer accepted. |
+| `signedStreamUrl` | ✓ | ✓ |   | Browser watch URL with the token in the URL fragment, so it never reaches a server (no org API key in the browser). |
 | `endpointWebSocketUrl` | ✓ | ✓ |   | WebSocket for `<RemoteControl />`; pass `?token=<status.token>`. |
 | `mcpUrl` | ✓ | ✓ |   | Per-instance MCP HTTP endpoint. Auth with `status.token` as `Authorization: Bearer`, not your org API key. See [MCP](/agents/mcp). |
 | `adbWebSocketUrl` |   | ✓ |   | ADB tunnel endpoint. Pass as `adbUrl` to `createInstanceClient`. |
@@ -235,7 +235,7 @@ Every successful `wait: true` create returns a `status` block with the URLs the 
 
 ## Regions and labels
 
-`spec.region` pins an instance to a region (e.g. `eu-north1`, `us-east1`). If omitted, Limrun schedules based on `spec.clues` and current availability. The console's **Analytics** tab breaks down runtime minutes per platform and per region, which is the canonical place to see which regions an org has used:
+`spec.jurisdiction` (`us`, `eu`, or `as`) keeps an instance inside one jurisdiction. It is a hard constraint: creation fails when no region there has capacity. `spec.region` is deprecated. It is a preference (e.g. `eu-north1`, `us-east1`) that is tried first and overflows to other regions by proximity when the preferred ones are full. If both are omitted, Limrun schedules based on `spec.clues` and current availability. `jurisdiction` is available in the TypeScript SDK and the CLI today; the Python and Go SDKs expose only `region`. The console's **Analytics** tab breaks down runtime minutes per platform and per region, which is the canonical place to see which regions an org has used:
 
 <Frame>
   <img src="/images/console/11-analytics.png" alt="Console Analytics tab showing daily runtime minutes for Android, iOS, and XCode, broken down by eu-north1 and us-east1 regions" />
@@ -260,7 +260,7 @@ curl -X POST "https://api.limrun.com/v1/ios_instances?wait=true&reuseIfExists=tr
     "metadata": { "labels": { "session": "demo" } },
     "spec": {
       "model": "iphone",
-      "region": "us-west",
+      "jurisdiction": "us",
       "forceBundleId": "com.example.myapp"
     }
   }'
@@ -273,7 +273,7 @@ const instance = await lim.iosInstances.create({
   metadata: { labels: { session: 'demo' } },
   spec: {
     model: 'iphone',
-    region: 'us-west',
+    jurisdiction: 'us',
     forceBundleId: 'com.example.myapp',
   },
 });
@@ -286,7 +286,6 @@ instance = client.ios_instances.create(
     metadata={"labels": {"session": "demo"}},
     spec={
         "model": "iphone",
-        "region": "us-west",
     },
 )
 ```
@@ -300,15 +299,12 @@ instance, err := client.IosInstances.New(ctx, limrun.IosInstanceNewParams{
     Metadata: limrun.IosInstanceNewParamsMetadata{
         Labels: map[string]string{"session": "demo"},
     },
-    Spec: limrun.IosInstanceNewParamsSpec{
-        Region: param.NewOpt("us-west"),
-    },
 })
 ```
 
 ```bash CLI
 lim ios create --reuse-if-exists \
-  --model iphone --region us-west \
+  --model iphone --jurisdiction us \
   --force-bundle-id com.example.myapp \
   --label session=demo
 ```

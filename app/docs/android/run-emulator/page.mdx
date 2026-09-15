@@ -87,8 +87,8 @@ With the CLI or SDK set up and authenticated, provisioning is a simple command:
 # Boot an instance and open an ADB tunnel (defaults: --connect=true).
 lim android create
 
-# Auto-delete the pod when this CLI process exits, and pin to a region with a label.
-lim android create --rm --region us-west --label app=demo --label session=docs
+# Auto-delete the pod when this CLI process exits, keep it in the US, and label it.
+lim android create --rm --jurisdiction us --label app=demo --label session=docs
 
 # Pre-install a local APK (uploaded to Asset Storage first, MD5-deduplicated).
 lim android create --install ./build.apk
@@ -107,7 +107,7 @@ const instance = await lim.androidInstances.create({
   reuseIfExists: true,   // return the existing match instead of creating a new pod
   metadata: { labels: { app: 'demo', session: 'docs' } },
   spec: {
-    region: 'us-west',           // optional; otherwise picked by clues + availability
+    jurisdiction: 'us',          // optional; hard constraint on where the instance runs
     inactivityTimeout: '10m',    // 1m, 10m, 3h, ...
     hardTimeout: '0',            // '0' = no hard cap
     clues: [{ kind: 'OSVersion', osVersion: '15' }],   // '13' | '14' | '15'
@@ -135,7 +135,6 @@ inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
         Labels: map[string]string{"app": "demo", "session": "docs"},
     },
     Spec: limrun.AndroidInstanceNewParamsSpec{
-        Region:            param.NewOpt("us-west"),
         InactivityTimeout: param.NewOpt("10m"),
         HardTimeout:       param.NewOpt("0"),
         Clues: []limrun.AndroidInstanceNewParamsSpecClue{
@@ -155,7 +154,6 @@ instance = lim.android_instances.create(
     reuse_if_exists=True,
     metadata={"labels": {"app": "demo", "session": "docs"}},
     spec={
-        "region": "us-west",
         "inactivity_timeout": "10m",
         "hard_timeout": "0",
         "clues": [{"kind": "OSVersion", "os_version": "15"}],
@@ -174,10 +172,11 @@ Flags for `lim android create`:
 
 | Flag | Use this to |
 |---|---|
-| `--region <name>` | Pin the region (e.g. `us-west`). Otherwise scheduled by availability. |
+| `--jurisdiction us\|eu\|as` | Keep the instance inside one jurisdiction. Hard constraint: creation fails when no region there has capacity. |
+| `--region <name>` | Deprecated. A region preference such as `us-east1`: tried first, overflows to other regions when full. Use `--jurisdiction`. |
 | `--display-name <name>` | Set the human-readable name shown in the console. |
 | `--label key=value` | Attach a metadata label. Repeat for multiple labels. |
-| `--reuse-if-exists` | Return the existing instance with matching labels + region instead of creating a new pod. Defaults to `false`. |
+| `--reuse-if-exists` | Return the existing instance with exactly the same labels instead of creating a new pod. Looked up in the region that handles the create. Defaults to `false`. |
 | `--inactivity-timeout <duration>` | Inactivity timeout (`1m`, `10m`, `3h`). Defaults to the organization setting. |
 | `--hard-timeout <duration>` | Forced termination after this wall-clock window. Defaults to no cap. |
 | `--install <path>` | Pre-install a local APK while provisioning. Repeatable. See [Pre-install APKs](#pre-install-apks). |
@@ -194,10 +193,11 @@ Flags for `lim android create`:
 | Field | Type | Meaning |
 |---|---|---|
 | `wait` | boolean | When `true`, the call returns only after `status.state === 'ready'`. Without it, you'll need to poll. Defaults to `false`. |
-| `reuseIfExists` | boolean | When `true`, return the existing instance with matching `metadata.labels` and `spec.region` instead of creating a new pod. Defaults to `false`. |
+| `reuseIfExists` | boolean | When `true`, return the existing instance whose `metadata.labels` match exactly instead of creating a new pod. The lookup runs in the region that handles the create, so a placement change can miss. Defaults to `false`. |
 | `metadata.displayName` | string | Human-readable name surfaced in the web console alongside `metadata.id`. |
 | `metadata.labels` | `Record<string, string>` | Free-form `key=value` map for tagging and grouping. |
-| `spec.region` | string | Pin region (e.g. `us-west`). When omitted, the scheduler picks based on `clues` plus availability. |
+| `spec.jurisdiction` | `'us' \| 'eu' \| 'as'` | Hard constraint: schedule only inside this jurisdiction; creation fails when no region there has capacity. TypeScript SDK and CLI today; the Python and Go SDKs expose only `region`. |
+| `spec.region` | string | Deprecated. A region preference (e.g. `us-east1`), not a hard pin: the request overflows to other regions by proximity when the preferred ones are full. When omitted, the scheduler picks based on `clues` plus availability. |
 | `spec.inactivityTimeout` | duration string | `1m`, `10m`, `3h`, etc. Defaults to `3m`. Passing `'0'` defers to the organization-level default. |
 | `spec.hardTimeout` | duration string | Forced termination after this wall-clock window. `'0'` means no cap; the pod runs until inactivity or explicit delete. Defaults to `0`. |
 | `spec.clues[].kind` | `'ClientIP' \| 'OSVersion'` | Scheduling hint: bias by OS version or by user location. |
@@ -462,7 +462,7 @@ A successful `create` returns the full instance resource.
   },
   "spec": {
     "inactivityTimeout": "10m0s",
-    "region": "us-west"
+    "region": "us-west2"
   },
   "status": {
     "state": "ready",
@@ -492,7 +492,7 @@ A successful `create` returns the full instance resource.
 | `status.apiUrl` | HTTP base for the Android control daemon. WebSocket control derives from it (`apiUrl + /ws`). Pass to `createInstanceClient`. |
 | `status.adbWebSocketUrl` | WebSocket endpoint for the ADB tunnel. Pass to `createInstanceClient` as `adbUrl`. |
 | `status.endpointWebSocketUrl` | WebSocket endpoint for the [`<RemoteControl />` web component](/docs/platform/embed-simulator) (append `?token=`). |
-| `status.signedStreamUrl` | Console-hosted watch URL with the token in the URL fragment. Open in a browser without your API key. Links that carry the token in the query string are no longer accepted, so read the instance again for a current one. |
+| `status.signedStreamUrl` | Console-hosted watch URL with the token in the URL fragment. Open in a browser without your API key. |
 | `status.mcpUrl` | Per-instance MCP HTTP endpoint. Authenticate with `status.token`, not your org API key. See [MCP](/docs/agents/mcp); for one org-level endpoint that also creates instances, see the [remote MCP server](/docs/agents/remote-mcp). |
 | `status.targetHttpPortUrlPrefix` | WebSocket prefix (`wss://...`) for reaching HTTP services running on the device. Append your target port to forward traffic through. |
 | `status.sandbox.playwrightAndroid.url` | Chrome DevTools Protocol URL when the Playwright sub-sandbox is enabled. |
