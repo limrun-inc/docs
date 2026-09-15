@@ -137,7 +137,7 @@ instance = limrun.ios_instances.create(
 The Python SDK covers control-plane operations (create, list, get, delete). It doesn't ship a device-control client, so the WDA health check below stays in TypeScript or Go. The Appium session itself runs in whatever language your test code is in.
 
 <Note>
-  `reuseIfExists` matches existing instances by labels **and** region. If you don't pin `spec.region`, the platform may schedule your next create in a different region (closer to your current IP, for example), and the label match misses, so a fresh instance gets created instead. For repeatable reuse across CI runs or local dev sessions, pin `region: 'us-west'` (or whichever region you prefer) explicitly.
+  `reuseIfExists` returns an instance whose labels match exactly, looked up in the region that handles the create. Placement follows your location and capacity, so a create from a different network can land in another region, miss the match, and start a fresh instance. Give each CI job or dev session its own label set. Pass `jurisdiction` (`us`, `eu`, or `as`; TypeScript SDK and CLI) when the instance must stay in one geography; it narrows placement but does not pin one region. `spec.region` is deprecated and only a preference.
 </Note>
 
 When the call resolves, three fields on the returned instance object feed into Appium over the next few sections:

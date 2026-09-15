@@ -29,8 +29,8 @@ Create the two instances separately and attach the simulator to the sandbox — 
 
 <CodeGroup>
 ```bash CLI
-lim xcode create --reuse-if-exists --region us-west --label name=iap-test
-lim ios create --attach --reuse-if-exists --region us-west --label name=iap-test
+lim xcode create --reuse-if-exists --label name=iap-test
+lim ios create --attach --reuse-if-exists --label name=iap-test
 ```
 
 ```ts TypeScript
@@ -39,20 +39,18 @@ import { Limrun, Ios } from '@limrun/api';
 const lim = new Limrun({ apiKey: process.env.LIM_API_KEY });
 
 // `wait: true` blocks until each instance is `ready`. `reuseIfExists` keeps
-// you on the same warm instances on re-runs; pin a region if you want that
-// to be reliable across networks (see Run an iOS Simulator).
+// you on the same warm instances on re-runs that land in the same region
+// (see Run an iOS Simulator).
 const xcodeInstance = await lim.xcodeInstances.create({
   wait: true,
   reuseIfExists: true,
   metadata: { labels: { name: 'iap-test' } },
-  spec: { region: 'us-west' },
 });
 
 const instance = await lim.iosInstances.create({
   wait: true,
   reuseIfExists: true,
   metadata: { labels: { name: 'iap-test' } },
-  spec: { region: 'us-west' },
 });
 
 const xcode = await lim.xcodeInstances.createClient({ instance: xcodeInstance });
@@ -69,14 +67,12 @@ xcode_instance = limrun.xcode_instances.create(
     wait=True,
     reuse_if_exists=True,
     metadata={"labels": {"name": "iap-test"}},
-    spec={"region": "us-west"},
 )
 
 instance = limrun.ios_instances.create(
     wait=True,
     reuse_if_exists=True,
     metadata={"labels": {"name": "iap-test"}},
-    spec={"region": "us-west"},
 )
 
 # Attach the simulator with a direct HTTP call: POST {xcode status.api_url}/simulator
