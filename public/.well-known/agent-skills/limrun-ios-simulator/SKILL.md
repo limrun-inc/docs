@@ -1,6 +1,6 @@
 ---
 name: limrun-ios-simulator
-description: "Drive an app running on a Limrun cloud iOS simulator: launch, tap, type, read the accessibility element tree, screenshot, record video, connect the app to local services, play a video file as the camera, and run timed action chains. Use after a build (from any builder) when the user wants to see, test, or interact with their app on a simulator, or says 'show me a screenshot', 'tap', 'run the UI test', 'record a video', 'connect localhost', 'mock the camera', or 'launch on simulator'. To build the app first, use limrun-xcode-bazel (Bazel workspaces) or limrun-xcode (xcodebuild projects)."
+description: "Drive an app running on a Limrun cloud iOS simulator: launch, tap, type, read the accessibility element tree, screenshot, record video, connect the app to local services, play a video file as the camera, and run timed action chains. Use after a build (from any builder) when the user wants to see, test, or interact with their app on a simulator, or says 'show me a screenshot', 'tap', 'run the UI test', 'record a video', 'connect localhost', 'reach my local server from the simulator', 'mock the camera', or 'launch on simulator'. To build the app first, use limrun-xcode-bazel (Bazel workspaces) or limrun-xcode (xcodebuild projects)."
 user-invocable: true
 effort: high
 ---
@@ -102,27 +102,34 @@ resolves on its own. When controlling multiple instances, always pass `--id`.
 
 ## Reaching services on the local machine
 
-Destination tunnels let an iPhone simulator app keep calling exact localhost
-or literal-IP TCP destinations while the CLI connects those destinations from
-the machine running `lim`:
+Destination tunnels let an iPhone simulator app keep calling its normal
+destinations while the CLI dials them from the machine running `lim`. Select
+exact `localhost:port` or literal `IP:port` destinations, or domains that only
+your machine or VPN can reach:
 
 ```bash
 lim ios tunnel \
   --id <ios-instance-id> \
-  --route localhost:3000 \
-  --route localhost:8081 \
+  --selector localhost:3000 \
+  --selector localhost:8081 \
+  --selector "*.staging.example" \
   --detach
 ```
 
 Use the app's normal URLs, such as `http://localhost:3000`. Declaring
 `localhost:3000` also captures loopback forms such as `127.0.0.1:3000` and
-`[::1]:3000`, plus `[::ffff:127.0.0.1]:3000`. This release supports TCP and up
-to ten exact routes. Port 53, hostnames other than `localhost`, CIDRs, and UDP
-are not supported.
+`[::1]:3000`, plus `[::ffff:127.0.0.1]:3000`. Domain selectors (exact
+`api.corp.example` or label-bound wildcard `"*.staging.example"`) are
+intercepted on the simulator and dialed from your machine whether or not the
+name resolves on public DNS, so your DNS and VPN apply and TLS stays end to
+end. Apps that resolve DNS themselves over HTTPS bypass domain interception.
+A tunnel carries TCP only: up to ten exact selectors and 64 domain selectors,
+ports 1-65535 except 53; CIDRs and UDP are not supported. Start the tunnel
+before launching the app: connections opened earlier keep their original route.
 
-One instance accepts one active destination tunnel, and its route set is
+One instance accepts one active destination tunnel, and its selector set is
 immutable. To add or remove a destination, stop the tunnel and start it again
-with the complete route list:
+with the complete selector list:
 
 ```bash
 lim ios tunnel status --id <ios-instance-id> --json
