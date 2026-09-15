@@ -8,6 +8,14 @@ icon: "smartphone"
 
 Your iOS instance is `ready`. For provisioning, see the [Quickstart](/quickstart); for builds, see [Build with remote Xcode](/ios/build-with-xcode).
 
+## App isolation
+
+Simulator apps run in an isolated device set. Use your app's writable data
+container for files and the documented tunnels to connect to development
+services. Apps cannot connect to arbitrary host Unix-domain sockets or modify
+the runtime libraries Limrun stages for camera simulation, DNS, or testing.
+Simulator logging, XCTest, and Safari debugging use dedicated permitted sockets.
+
 ## Connect to your instance
 
 Open a WebSocket client to drive the instance.
