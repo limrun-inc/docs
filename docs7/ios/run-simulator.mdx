@@ -856,14 +856,14 @@ Add `--xcode` to also create an Xcode build sandbox and attach the simulator to 
 | `inactivityTimeout` | duration string | `1m`, `10m`, `3h`. Default comes from your org settings. Passing `0` is equivalent to omitting it. |
 | `hardTimeout` | duration string | Forced termination. Default `0` = no hard cap. |
 | `forceBundleId` | string | After this app first enters the foreground, bring it back whenever it is closed or backgrounded. |
-| `clues` | array | Scheduling hints. `{ kind: 'ClientIP', clientIp }` picks a region close to the end user. |
+| `clues` | array | Scheduling hints. `{ kind: 'ClientIP', clientIp }` supplies the end user's IP for geographic placement. If missing or empty, Limrun uses Cloudflare's `CF-Connecting-IP` header. Region preferences, jurisdiction, availability, and organization routing policies still apply. |
 | `initialAssets` | array | Apps or keychain state to apply at boot. See [Asset Storage](/platform/asset-storage). |
 | `sandbox.xcode.enabled` | boolean | Legacy: create an embedded Xcode sandbox with the simulator. Kept for old clients; create the sandbox separately and attach instead. See [Build with remote Xcode](/ios/build-with-xcode). |
 
 `metadata.labels` is free-form `key=value` and powers `reuseIfExists`, listing, and cleanup queries.
 
 <Note>
-  **For platform integrators:** pass the end user's IP as a `ClientIP` clue (`clues: [{ kind: 'ClientIP', clientIp: '203.0.113.42' }]`). The scheduler places the instance in a region close to that IP, which is the difference between a snappy embedded simulator and a laggy one across continents.
+  **For platform integrators:** pass the end user's IP as a `ClientIP` clue (`clues: [{ kind: 'ClientIP', clientIp: '203.0.113.42' }]`). Without it, Cloudflare's header identifies your backend's connection rather than the user's browser. See [Instance placement](/reference/sdk#instance-placement) for fallback behavior.
 </Note>
 
 <Frame>
