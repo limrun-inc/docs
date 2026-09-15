@@ -223,7 +223,7 @@ What to know:
 
 ## Select developer tools
 
-Each `lim xcode run` and `lim xcode build` resolves `mise env --json` once at the start. Dependency installation, project generation, builds and their child processes use that environment. Tool selection requires a sandbox image with mise support. Set a project preference and install later changes explicitly:
+Each `lim xcode run` and `lim xcode build` resolves `mise env --json` once at the start. Dependency installation, project generation, builds and their child processes use that environment. Tool selection requires a sandbox image with mise support. Sync your project, then select tools in the sandbox:
 
 ```bash
 lim xcode use node@24 pnpm@10 ruby@3.3
@@ -236,7 +236,7 @@ lim xcode build .
 
 `lim xcode tools install` syncs the project and runs `mise install` in that sandbox. Use `--no-sync` to install its current selections without syncing, `--cwd apps/mobile` for a nested project, and `--id` to choose an existing sandbox. The command never creates or replaces an instance.
 
-For mise tools, `use` saves the requested names and versions unchanged in the highest-precedence existing `mise.toml`, `.mise.toml`, `mise.local.toml`, or `.mise.local.toml` in the current directory, creating `mise.toml` when none exists. It syncs the project and shows the selected versions. The sandbox applies Limrun's major/minor compatibility rules. For example, `lim xcode use node@24.5.0` writes `node = "24.5.0"` locally and selects Node 24 remotely. The first sandbox operation with a project mise file runs `mise install` once. Later changes require `lim xcode tools install`. `--cwd apps/mobile` selects a directory inside the sync root; `--id` selects a sandbox. The command rewrites the selected TOML file, preserving its configuration values but not comments or formatting.
+`lim xcode use` selects tools in an existing sandbox without editing local files or syncing the project. Sync the project first. Mise installs a requested version if needed; `lim xcode tools install` installs selections from synced project files. Use `--cwd apps/mobile` for a nested project and `--id` to choose a sandbox. Explicit sandbox selections take precedence over project requests and apply to subsequent commands.
 
 Project tool requests take precedence over the detected package-manager major and Limrun's image defaults. Deeper project files override parent files within the synced directory. Personal mise configuration on the client, including `~/.config/mise/config.toml`, is not read or forwarded.
 
@@ -286,7 +286,7 @@ lim xcode run -- mise use --pin node@24.5.0
 lim xcode tools
 ```
 
-`mise install` adds a version without changing the selection. `mise use` installs and records an explicit sandbox override for later operations in `.limrun-runtime-mise.toml`; it takes precedence over project tool requests. `lim xcode use node@24` clears that tool's override in the selected directory and returns to the compatibility-line policy. A running operation keeps its environment snapshot. The next run or build picks up a version change; use `mise exec` explicitly when a child command in the same operation needs the new version immediately.
+`mise install` adds a version without changing the selection. `mise use` installs and records an explicit sandbox override for later operations in `.limrun-runtime-mise.toml`; it takes precedence over project tool requests. `lim xcode use node@24` replaces that override with a Node 24 selection. A running operation keeps its environment snapshot. The next run or build picks up a version change; use `mise exec` explicitly when a child command in the same operation needs the new version immediately.
 
 Image installations stay outside the workspace cache. Mise selects among compatible image and user installations, including restored user versions. User-installed mise tools live under `.limbuild-sandbox/home/.mise/` and are included when your cache paths cover that directory. Existing cache publication rules still apply: running a command alone does not make a workspace eligible; a successful managed build is required. Dependency installs rerun when the resolved tool versions change. Switching Xcode still invalidates the workspace cache. Mise gem wrappers contain absolute paths: after a cache restore moves the sandbox home, reinstall an affected user gem explicitly, for example `lim xcode run -- mise install --force bundler`. Image gem wrappers are packaged to support relocation.
 

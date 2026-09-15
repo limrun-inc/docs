@@ -105,17 +105,13 @@ lim gradle tools
 
 `lim gradle tools install` syncs the project and runs `mise install` in that sandbox. Use `--no-sync` to install its current selections without syncing, `--cwd apps/mobile` for a nested project, and `--id` to choose an existing sandbox. The command never creates or replaces an instance.
 
-`use` writes the requested names and versions unchanged to your project mise configuration
-and syncs the project. The sandbox applies Limrun's major/minor compatibility rules.
-The CLI preserves configuration values but rewrites comments and formatting. Use `--cwd apps/mobile` for a nested project. Use the same working
-directory when installing its tools:
-`lim gradle tools install --cwd apps/mobile`.
+`lim gradle use` selects tools in an existing sandbox without editing local files or syncing the project. Sync the project first. Mise installs a requested version if needed. Use `--cwd apps/mobile` for a nested project, and the same directory with `lim gradle tools install --cwd apps/mobile` when installing its synced project tools.
 
 Project `[tools]` declarations override package-manager detection and image
 defaults. Personal mise configuration on the client is not read or forwarded.
 Limrun imports only tool declarations, without executing client mise tasks or
 loading its environment settings. Client `mise.lock` pins do not control the
-sandbox selection. Most numeric requests retain the major version;
+sandbox selection. Most numeric project requests retain the major version;
 Ruby, Python, Go, Flutter, Dart, and pre-1.0 tools retain `major.minor`.
 Limrun can update patch and minor releases within those lines independently.
 `latest` opts out of a fixed line.
@@ -126,8 +122,7 @@ This happens once per sandbox. Without a project mise file, commands use image d
 Later changes require `lim gradle tools install`. A failed or cancelled first install
 stops that operation and also requires an explicit retry. To select an exact release, run
 `lim gradle run -- mise use --pin node@24.5.0`. Subsequent operations respect
-that override. `lim gradle use node@24` clears the Node override in the selected
-directory and returns to the client preference.
+that override. `lim gradle use node@24` replaces it with a Node 24 selection in the sandbox.
 
 Run a command with the selected tools, or supply environment variables to a build:
 
