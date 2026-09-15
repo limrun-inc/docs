@@ -501,6 +501,65 @@ lim ios record stop -o /tmp/demo.mp4
 lim ios record stop --presigned-url "<url>"
 ```
 
+## Persist session captures
+
+Recordings, app logs, and an event log of user actions can be persisted to Limrun storage so they survive instance termination. Persisted captures are kept for 3 days by default (`--persist-ttl`, up to 30 days) and are listed with a short-lived download URL until they expire.
+
+Start everything at create time:
+
+```bash
+lim ios create --record --app-logs com.example.MyApp --events --persist-ttl 24h
+```
+
+- `--record` persists the full session video as an MP4.
+- `--app-logs <bundleId>` persists that app's logs as timestamped JSON lines (`{"ts": <epoch millis>, "line": "..."}`).
+- `--events` persists coalesced user actions — taps, drags, scrolls, text bursts, and commands like `launchApp` — as timestamped JSON lines. Typed text is never logged, only keystroke counts.
+
+Or persist an ad-hoc capture through the SDK; a `persist` option is available on each start call:
+
+```ts
+await client.startRecording({ persist: { ttlSeconds: 86400 } });
+await client.startAppLogCapture({ bundleId: 'com.example.MyApp', persist: true });
+await client.startEventCapture({ persist: true });
+// ... drive the UI ...
+await client.stopEventCapture();
+await client.stopAppLogCapture();
+await client.stopRecording({});
+```
+
+Captures upload when they stop or when the instance terminates. One capture of each kind runs at a time. List them any time, even after termination:
+
+```bash
+lim ios recordings --id <instance-ID> --json
+lim ios app-logs --id <instance-ID> --json
+lim ios events --id <instance-ID> --json
+```
+
+```ts
+const recordings = await limrun.iosInstances.listRecordings(id);
+const appLogs = await limrun.iosInstances.listAppLogs(id);
+const events = await limrun.iosInstances.listEvents(id);
+// each entry: { id, kind, bundleId?, startedAt, stoppedAt, expiresAt, sizeBytes, downloadUrl }
+```
+
+Log and event timestamps share the recording's clock (`startedAt`), so entries can be aligned with playback offsets. The web console plays persisted recordings with app logs and events following the video.
+
+While a capture is running, tail it live through the SDK — for example to show logs in your own dashboard in real time:
+
+```ts
+const stopLogs = client.streamAppLogCapture({
+  onLine: (line) => console.log(new Date(line.ts).toISOString(), line.line),
+});
+const stopEvents = client.streamEventCapture({
+  onEvent: (event) => console.log(event.type, event.summary ?? ''),
+});
+// ... later
+stopLogs();
+stopEvents();
+```
+
+On connect the stream replays the most recent entries (up to 1000) before tailing, so a capture that is already running is covered. A dropped connection reconnects and resumes exactly where it left off; every entry is delivered exactly once, in order.
+
 ## Simulate the camera with a video
 
 Play a video file as the simulator's camera — useful for QR-code scanning, document capture, video-call UIs, or any `AVCaptureSession`-driven flow that needs deterministic frames. The file is uploaded to the instance and replaces the live browser camera until cleared; apps see it through their regular capture pipeline.
