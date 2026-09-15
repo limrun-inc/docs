@@ -73,7 +73,7 @@ The instance status carries everything you need:
 | `token` | Per-instance bearer for `apiUrl` and `endpointWebSocketUrl`. Embedded in `signedStreamUrl`. |
 | `endpointWebSocketUrl` | WebSocket endpoint for the [`<RemoteControl />` web component](/docs/platform/embed-simulator) (pass with `?token=`). |
 | `signedStreamUrl` | Console-hosted watch URL with the token in the URL fragment; open in a browser without your API key. Links that carry the token in the query string are no longer accepted, so read the instance again for a current one. |
-| `mcpUrl` | Per-instance MCP HTTP endpoint. Auth with the per-instance `status.token`, not your org API key. See [MCP](/docs/agents/mcp). |
+| `mcpUrl` | Per-instance MCP HTTP endpoint. Auth with the per-instance `status.token`, not your org API key. See [MCP](/docs/agents/mcp); for one org-level endpoint that also creates instances, see the [remote MCP server](/docs/agents/remote-mcp). |
 | `sandbox.xcode.url` | Legacy: embedded Xcode sandbox API URL on instances created by old clients with `spec.sandbox.xcode.enabled`. New clients create the sandbox separately and attach; see [Build with remote Xcode](/docs/ios/build-with-xcode). |
 | `targetHttpPortUrlPrefix` | Reverse-proxy prefix for tunneled HTTP ports on the device. |
 | `state` | `unknown` → `creating` → `assigned` → `ready` → `terminated`. |
@@ -884,5 +884,11 @@ Add `--xcode` to also create an Xcode build sandbox and attach the simulator to 
   </Card>
   <Card title="Test in-app purchases" icon="credit-card" href="/docs/ios/in-app-purchases">
     StoreKit local testing without an Apple Account or sandbox tester (advanced).
+  </Card>
+  <Card title="Run XCTest suites" icon="flask-conical" href="/docs/ios/test-with-xctest">
+    Run your unit and UI test targets on this simulator with `lim xcode test`.
+  </Card>
+  <Card title="Remote MCP server" icon="plug" href="/docs/agents/remote-mcp">
+    Let an agent create and drive simulators through one org-level MCP endpoint.
   </Card>
 </Columns>
