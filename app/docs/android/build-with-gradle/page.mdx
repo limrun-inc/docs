@@ -105,9 +105,9 @@ lim gradle tools
 
 `lim gradle tools install` syncs the project and runs `mise install` in that sandbox. Use `--no-sync` to install its current selections without syncing, `--cwd apps/mobile` for a nested project, and `--id` to choose an existing sandbox. The command never creates or replaces an instance.
 
-`use` writes compatibility lines to your project mise configuration and syncs
-the project. It preserves configuration values but rewrites comments and
-formatting. Use `--cwd apps/mobile` for a nested project. Use the same working
+`use` writes the requested names and versions unchanged to your project mise configuration
+and syncs the project. The sandbox applies Limrun's major/minor compatibility rules.
+The CLI preserves configuration values but rewrites comments and formatting. Use `--cwd apps/mobile` for a nested project. Use the same working
 directory when installing its tools:
 `lim gradle tools install --cwd apps/mobile`.
 
