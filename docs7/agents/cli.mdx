@@ -70,7 +70,7 @@ The rest of this page is the command reference behind each step.
 lim ios create --attach --reuse-if-exists
 ```
 
-`--attach` attaches the new simulator to the most recent Xcode build target, installing the latest successful build immediately — run it after `lim xcode build`. `--reuse-if-exists` returns an existing instance in the same region instead of provisioning a new one, so retries land back on the same warm instance. Scope reuse to a specific task by adding a label (`--label issue=<ID>`); without one, every reuse call in your org matches the same unlabeled instance.
+`--attach` attaches the new simulator to the most recent Xcode build target, installing the latest successful build immediately. Run it after `lim xcode build`. `--reuse-if-exists` returns an existing instance in the same region instead of provisioning a new one, so retries land back on the same warm instance. Scope reuse to a specific task by adding a label (`--label issue=<ID>`); without one, every reuse call in your org matches the same unlabeled instance.
 
 The output includes the instance ID and the **Signed Stream URL**. Open the Signed Stream URL in any browser to watch the simulator live; the token is in the URL, so no login is required. Share the Signed Stream URL with the user at the start of a task.
 
@@ -269,6 +269,15 @@ Supported `type`s: `tap`, `tapElement`, `incrementElement`, `decrementElement`, 
 
 Hardware button names for `buttonDown` and `buttonUp`: `home`, `lock`, `side`, `applePay`, `softwareKeyboard`.
 
+For two-finger gestures, supply `x2` and `y2` together on every `touchDown`, `touchMove`, and `touchUp`. Both fingers share the optional `screenWidth` and `screenHeight` coordinate space. For example, a two-finger tap:
+
+```bash
+lim ios perform \
+  --action type=touchDown,x=100,y=300,x2=200,y2=300 \
+  --action type=wait,durationMs=100 \
+  --action type=touchUp,x=100,y=300,x2=200,y2=300
+```
+
 ## Apps and logs
 
 ```bash
@@ -318,7 +327,7 @@ end to end; wildcards are label-bound (`*.staging.example` does not cover
 interception.
 
 A tunnel accepts up to ten exact TCP selectors and up to 64 domain selectors.
-Ports 1–65535 are supported except 53; CIDRs and UDP are not supported. The
+Ports 1 to 65535 are supported except 53; CIDRs and UDP are not supported. The
 selector set is immutable, so
 stop and restart the tunnel with the complete selector list when destinations
 change.
