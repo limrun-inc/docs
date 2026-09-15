@@ -143,7 +143,7 @@ For other tools, `use` saves and syncs project mise preferences. Install missing
 | `--asc-wait-timeout N` | Seconds to watch App Store Connect's processing verdict (default 0: return once the upload commits, max 1800). |
 | `--auto-build-number` | Set the build number to one more than the highest already in App Store Connect, or 1 for a new app. Requires `--upload-to-appstore` and Xcode-standard versioning. |
 | `--webhook-url URL` `--webhook-header NAME=VALUE` | POST the terminal build result and persisted-log URL to an HTTPS callback. Repeat the header flag as needed. |
-| `--detach` | Return once limbuild accepts the build instead of streaming until completion. Requires `--webhook-url`. |
+| `--detach` | Return once the build is accepted. Prints a follow-up `lim xcode logs` command; a webhook is optional. |
 | `--inactivity-timeout 3s` | Create a fresh instance for this build and reap it shortly after its last activity. Cannot be combined with `--id`. |
 | `--build-setting KEY=VALUE` | Pass an xcodebuild build setting; it replaces a Limrun default with the same key. Repeatable. |
 | `--additional-file local=remote` | Sync an extra file (like `~/.netrc`) into the sandbox on every build. Repeatable. |
@@ -156,6 +156,36 @@ The sync skips `.git`, `.DS_Store`, the basis cache, and anything in your `.giti
 Use `--sdk appletvos --scheme <tvOS-scheme>` or `--sdk xros --scheme <visionOS-scheme>` for tvOS and visionOS. These builds produce IPAs but do not support simulator attachment, installation, or XCTest yet.
 
 If the project's `.xcodeproj` is gitignored and a `project.yml` exists (the standard XcodeGen setup), the sandbox generates the project with XcodeGen before building, no flags needed; see [Build with remote Xcode](/docs/ios/build-with-xcode#generated-xcode-projects).
+
+### Detached builds and build logs
+
+Use `--detach` to return after a build is accepted; `--webhook-url` is optional.
+Read the latest build on the remembered instance without supplying an exec ID:
+
+```bash
+lim xcode build . --detach
+lim xcode logs
+lim xcode logs --follow
+```
+
+For Android builds, use `lim gradle build . --detach`, `lim gradle logs`, and
+`lim gradle logs --follow`.
+
+`logs` prints a snapshot, including a `RUNNING` status when the build is still
+in progress. `--follow` waits for the selected build to finish. Stopping it leaves
+the remote build running. Check the reported build status before declaring success.
+
+The CLI reads the daemon's latest retained stream, then falls back to persisted
+S3/R2 logs on a 404, including after instance deletion. It never creates a
+replacement instance. Other errors are reported without showing an older log.
+Use `--id <instance-id>` to select another instance, or copy the detached build's
+printed `logsCommand` to keep inspecting that build after newer builds start.
+Exec IDs are optional; do not ask the user for one to inspect the latest build.
+
+The SDK's `observeBuildLogs('latest')` reads only the retained daemon stream.
+SDK callers fetch persisted logs separately with `listBuildLogs(instanceId)` and
+the returned `downloadUrl`. See the [Xcode](/docs/ios/build-with-xcode#build-completion-webhooks-and-detached-builds)
+and [Gradle](/docs/android/build-with-gradle#build-completion-webhooks-and-detached-builds) examples.
 
 ## Read the screen, then act
 

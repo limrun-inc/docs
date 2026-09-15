@@ -446,22 +446,58 @@ These fields are set on successful builds that produced one app bundle. A [`lim 
 Add `--detach` when the caller should return as soon as limbuild accepts the build instead of holding the SSE stream open:
 
 ```bash
-lim xcode build . \
-  --detach \
-  --inactivity-timeout 3s \
-  --webhook-url https://ci.example.com/hooks/limrun \
-  --webhook-header Authorization="Bearer $HOOK_SECRET"
+lim xcode build . --detach --inactivity-timeout 3s
 ```
 
-Once the build is accepted, the CLI prints the instance ID, the console page where progress and logs appear, and the webhook target. Pass `--json` to receive one object with `instanceId`, `execId`, `consoleUrl`, and `webhookUrl` fields.
+Once the build is accepted, the CLI prints the instance ID, a Console link, and the exact command to retrieve its logs. Pass `--json` for `instanceId`, `execId`, `consoleUrl`, and `logsCommand`. If a webhook is configured, the output also includes `webhookUrl`.
 
-`--detach` requires `--webhook-url`. `--inactivity-timeout` skips the cached Xcode target and creates a fresh instance with the requested lifecycle, so it cannot be combined with `--id`. Active builds continually report activity; the short timeout begins expiring only after build and upload work stops. The inactivity controller checks about every 15 seconds, so a `3s` timeout usually tears the instance down 3 to 18 seconds after its last activity rather than at exactly three seconds.
+`--webhook-url` is optional; add it to receive the terminal result automatically. `--inactivity-timeout` skips the cached Xcode target and creates a fresh instance with the requested lifecycle, so it cannot be combined with `--id`. Active builds continually report activity; the short timeout begins expiring only after build and upload work stops. The inactivity controller checks about every 15 seconds, so a `3s` timeout usually tears the instance down 3 to 18 seconds after its last activity rather than at exactly three seconds.
 
 The TypeScript process can detach after the build request is accepted:
 
 ```ts
 const execId = await build.detach();
 ```
+
+Read the latest build on the remembered instance, or follow it to completion. No exec ID is required:
+
+```bash
+lim xcode logs
+lim xcode logs --follow
+```
+
+`logs` prints a snapshot of the latest build, including one still running. `--follow` replays its output and waits for that build to finish. Stopping `--follow` stops observation; the remote build keeps running. A snapshot with status `RUNNING` does not mean the build succeeded.
+
+The CLI first requests the daemon's `latest` retained stream. If the daemon or instance returns 404, the CLI lists persisted logs and downloads the newest build's log from S3/R2. Other errors are reported without substituting an older log. Persisted logs remain readable after instance deletion, and reading logs never creates a replacement instance.
+
+Use `--id <instance-id>` to choose another instance. To keep inspecting a particular detached build even after a newer one starts, copy the `logsCommand` printed when it detached. An exec ID is optional:
+
+```bash
+lim xcode logs build-1776140344112378000 --id <instance-id>
+```
+
+The SDK can replay or follow a build while its daemon remains available:
+
+```ts
+const result = await xcode.observeBuildLogs('latest', {
+  follow: true,
+  onEvent: (event) => {
+    if (event.type === 'stdout' || event.type === 'stderr') {
+      process.stdout.write(event.data + '\n');
+    }
+  },
+});
+```
+
+`observeBuildLogs('latest')` reads only the daemon's retained stream, which can include a completed build. It does not fall back to S3/R2. Omit `follow` for a snapshot, or replace `'latest'` with the exec ID returned by `detach()` to observe a specific build.
+
+To retrieve persisted logs from the SDK, list the completed builds and download the selected record's `downloadUrl`:
+
+```ts
+const completedBuilds = await lim.xcodeInstances.listBuildLogs(xcodeInstance.metadata.id);
+```
+
+This list remains available after the instance is deleted. For an iOS-backed build, use the attached Xcode sandbox ID rather than the simulator ID.
 
 ### Build settings
 
