@@ -356,6 +356,57 @@ await client.performActions([
 ]);
 ```
 
+For a two-finger gesture, add `x2` and `y2` to each `touchDown`, `touchMove`, and `touchUp`. Each event moves both fingers together. Keep the same finger ordering throughout the gesture and lift both fingers with `touchUp`. Supplying only one of `x2` or `y2` rejects the batch before it runs.
+
+Both fingers use the same coordinate space. Without `screenWidth` and `screenHeight`, coordinates use the device's display dimensions in its current orientation. To use coordinates from a resized image, supply that image's width and height on every touch action. The server scales and rotates both fingers for HID input.
+
+This pinch-out example spreads two fingers apart over 320 milliseconds:
+
+```ts
+import type { Ios } from '@limrun/api';
+
+type TwoFingerAction = Ios.PerformAction & { x2?: number; y2?: number };
+const cx = client.deviceInfo.screenWidth / 2;
+const cy = client.deviceInfo.screenHeight / 2;
+const actions: TwoFingerAction[] = [
+  { type: 'touchDown', x: cx - 20, y: cy, x2: cx + 20, y2: cy },
+];
+for (let step = 1; step <= 8; step++) {
+  const spread = 20 + step * 10;
+  actions.push(
+    { type: 'wait', durationMs: 40 },
+    { type: 'touchMove', x: cx - spread, y: cy, x2: cx + spread, y2: cy },
+  );
+}
+actions.push({ type: 'touchUp', x: cx - 100, y: cy, x2: cx + 100, y2: cy });
+await client.performActions(actions);
+```
+
+The example assumes portrait orientation and an existing `client`. The local type adds the optional fields for SDK releases whose TypeScript definitions predate this feature; no SDK runtime update is needed. One or two fingers are supported; omit both `x2` and `y2` for a single-finger gesture.
+
+On the signaling WebSocket, this payload spreads two fingers in an explicit 400 by 800 coordinate space:
+
+```json
+{
+  "type": "performActions",
+  "id": "pinch-zoom-in",
+  "actions": [
+    { "type": "touchDown", "x": 180, "y": 400, "x2": 220, "y2": 400, "screenWidth": 400, "screenHeight": 800 },
+    { "type": "wait", "durationMs": 80 },
+    { "type": "touchMove", "x": 160, "y": 400, "x2": 240, "y2": 400, "screenWidth": 400, "screenHeight": 800 },
+    { "type": "wait", "durationMs": 80 },
+    { "type": "touchMove", "x": 140, "y": 400, "x2": 260, "y2": 400, "screenWidth": 400, "screenHeight": 800 },
+    { "type": "wait", "durationMs": 80 },
+    { "type": "touchMove", "x": 120, "y": 400, "x2": 280, "y2": 400, "screenWidth": 400, "screenHeight": 800 },
+    { "type": "wait", "durationMs": 80 },
+    { "type": "touchMove", "x": 100, "y": 400, "x2": 300, "y2": 400, "screenWidth": 400, "screenHeight": 800 },
+    { "type": "touchUp", "x": 100, "y": 400, "x2": 300, "y2": 400, "screenWidth": 400, "screenHeight": 800 }
+  ]
+}
+```
+
+`x` and `y` identify the first finger; `x2` and `y2` identify the second. The `id` correlates the response with this request. Pass only the `actions` array to `client.performActions`, or save that array as JSON and use `lim ios perform --file actions.json`. To zoom out, start with the fingers apart and move them toward each other before releasing both.
+
 ## Install, launch, and terminate apps
 
 Install from a URL or local file, launch by bundle ID, terminate when you're done. `listApps` enumerates what's already on the device, system apps included.
@@ -503,7 +554,7 @@ lim ios record stop --presigned-url "<url>"
 
 ## Simulate the camera with a video
 
-Play a video file as the simulator's camera — useful for QR-code scanning, document capture, video-call UIs, or any `AVCaptureSession`-driven flow that needs deterministic frames. The file is uploaded to the instance and replaces the live browser camera until cleared; apps see it through their regular capture pipeline.
+Play a video file as the simulator's camera. Use this for QR-code scanning, document capture, video-call UIs, or any `AVCaptureSession`-driven flow that needs deterministic frames. The file is uploaded to the instance and replaces the live browser camera until cleared; apps see it through their regular capture pipeline.
 
 ```ts
 await client.setCameraVideo('./fixtures/qr-scan.mp4');                 // loops by default
@@ -545,7 +596,7 @@ but not `staging.example` itself. `localhost` and IP literals are not domains;
 declare those as `host:port` selectors.
 
 A tunnel carries TCP only and accepts up to ten exact `host:port` selectors and
-up to 64 domain selectors. Ports 1–65535 are accepted except port 53. CIDRs and
+up to 64 domain selectors. Ports 1 to 65535 are accepted except port 53. CIDRs and
 UDP are not supported. Apps that resolve DNS themselves over HTTPS (DoH) bypass
 domain interception; declare the resolved IP instead.
 
