@@ -17,6 +17,25 @@ The flow:
 3. **Run `xcodebuild`** on the remote Mac. Logs stream back.
 4. **Install or ship.** Successful builds auto-install on an attached simulator, or you upload the IPA to share.
 
+## Build time and idle time
+
+Where phase billing is enabled, a metered Xcode sandbox charges active work
+and idle time at different rates. The standard rate is 2 credits per minute
+for active work and 0.5 credits per minute while idle. Negotiated account
+rates can differ. Charges round up to whole credits per instance.
+
+Active work includes builds, user commands, source sync, and other operations
+that change the workspace. Xcode cache restore and successful cache publication
+also count as active work. Time waiting between builds is idle and still costs
+credits. Delete the instance when finished or set an inactivity timeout that
+fits your workflow.
+
+Until phase billing is enabled, or if an instance has no usable phase report,
+Xcode retains its wall-clock rate of 1 credit per minute. Simulators
+and emulators have separate lifecycles and retain their runtime pricing.
+The build inactivity default is ten minutes; Xcode uses the organization's
+configured default when one is set.
+
 ### SDK coverage by language
 
 | Surface | TypeScript | Python | Go | CLI |
