@@ -269,6 +269,15 @@ Supported `type`s: `tap`, `tapElement`, `incrementElement`, `decrementElement`, 
 
 Hardware button names for `buttonDown` and `buttonUp`: `home`, `lock`, `side`, `applePay`, `softwareKeyboard`.
 
+For two-finger gestures, supply `x2` and `y2` together on every `touchDown`, `touchMove`, and `touchUp`. Both fingers share the optional `screenWidth` and `screenHeight` coordinate space. For example, a two-finger tap:
+
+```bash
+lim ios perform \
+  --action type=touchDown,x=100,y=300,x2=200,y2=300 \
+  --action type=wait,durationMs=100 \
+  --action type=touchUp,x=100,y=300,x2=200,y2=300
+```
+
 ## Apps and logs
 
 ```bash
@@ -318,7 +327,7 @@ end to end; wildcards are label-bound (`*.staging.example` does not cover
 interception.
 
 A tunnel accepts up to ten exact TCP selectors and up to 64 domain selectors.
-Ports 1–65535 are supported except 53; CIDRs and UDP are not supported. The
+Ports 1 to 65535 are supported except 53; CIDRs and UDP are not supported. The
 selector set is immutable, so
 stop and restart the tunnel with the complete selector list when destinations
 change.
