@@ -953,3 +953,30 @@ No `runs-on: macos-latest`. No Apple-licensed CI runner. The build happens on Li
     Auth, errors, the instance state machine, every resource × CRUD.
   </Card>
 </Columns>
+
+## Build cache logs
+
+Open the Xcode instance's **Build logs** page in the console to see cache
+restoration and publication in a separate **Cache activity** section. Your builds
+stay in **Build activity**. Each cache entry shows its
+outcome, duration, and readable progress messages, with copy and download controls. Publication
+runs when the instance terminates; its duration counts the publication work,
+not the time the instance spent waiting to terminate.
+
+Completed cache logs remain available after the build finishes or the instance
+terminates, subject to the same retention policy as build logs. Live cache status
+and elapsed time appear above the history only while a cache operation is running.
+Completed durations stay in **Cache activity**. Older operations without
+persisted logs cannot be recovered.
+
+The existing `GET /v1/xcode_instances/{id}/build_logs` endpoint includes cache
+records with IDs starting with `cache-restore-` or `cache-publish-`. Their
+`status` is the terminal cache phase in uppercase; `startedAt`, `finishedAt`,
+and `buildDurationMs` describe the cache operation. The log upload itself is
+excluded from the duration.
+
+The CLI and console show the same cache transcript, including the transferred
+archive size and operation duration. The size describes the compressed archive,
+not the expanded workspace. `GET /v1/xcode_instances/{id}/cache` exposes the
+transcript as `restore.log` and `save.log`; when following its event stream,
+print only newly appended lines. Older server versions may omit these fields.
