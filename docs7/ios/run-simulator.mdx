@@ -906,7 +906,7 @@ Add `--xcode` to also create an Xcode build sandbox and attach the simulator to 
 | `inactivityTimeout` | duration string | `1m`, `10m`, `3h`. Default comes from your org settings. Passing `0` is equivalent to omitting it. |
 | `hardTimeout` | duration string | Forced termination. Default `0` = no hard cap. |
 | `forceBundleId` | string | After this app first enters the foreground, bring it back whenever it is closed or backgrounded. |
-| `clues` | array | Scheduling hints. `{ kind: 'ClientIP', clientIp }` picks a region close to the end user. |
+| `clues` | array | Scheduling hints. Use `ClientIP` for the end user's IP, or the REST API's `ClientLocation` with `{ latitude, longitude }` for coordinates. `ClientLocation` takes precedence. See [client location clues](/reference/sdk#client-location-clues). |
 | `initialAssets` | array | Apps or keychain state to apply at boot. See [Asset Storage](/platform/asset-storage). |
 | `sandbox.xcode.enabled` | boolean | Legacy: create an embedded Xcode sandbox with the simulator. Kept for old clients; create the sandbox separately and attach instead. See [Build with remote Xcode](/ios/build-with-xcode). |
 
