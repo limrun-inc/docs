@@ -394,7 +394,7 @@ Publishing runs in the console, in your browser, with your own Google account. L
 
 Prerequisites:
 
-- The app listing exists in [Play Console](https://play.google.com/console). Google's API cannot create listings.
+- The app listing exists in [Play Console](https://play.google.com/console). The normal `androidpublisher` OAuth scope cannot create listings.
 - Your Google account has release permission for the app in Play Console.
 - The AAB is in Asset Storage, signed with the app's upload key (a `--sign --upload` build).
 - The AAB's `versionCode` has never been uploaded to this app before. Pass `--auto-version-code` on the build (with `--upload-to-playstore`) and the server resolves the next free code from Google Play and stamps it before building: into `expo.android.versionCode` for Expo projects, or the single literal `versionCode` in the conventional `app/` module build script for native projects (computed or flavor-split versionCodes are rejected at request time). Without it, bump `versionCode` in `app/build.gradle(.kts)` (Expo: `expo.android.versionCode` in `app.json`) before the build.
