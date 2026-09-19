@@ -573,8 +573,12 @@ A more elaborate version of the same pattern lives in [`typescript-sdk/examples/
 
 ## iPhone Duo frame
 
-When connected to an iPhone Duo instance, the component shows both native displays
-in a folding frame. Position starts locked, so screen gestures control iOS. Unlock
+When connected to an iPhone Duo instance, the component defaults to a lightweight
+2D view with fold/unfold, rotation and hardware controls. Select **3D** to load the
+folding frame on demand. Switching back to **2D** releases the 3D renderer while
+keeping the simulator connected. Only 3D requires WebGL.
+
+In 3D, position starts locked, so screen gestures control iOS. Unlock
 position to rotate the view. The device's Sleep/Wake and volume buttons support
 clicking and holding. Hover near an edge to reveal its icons, then click either
 the icon or the physical button. The icons follow the device when it rotates.
