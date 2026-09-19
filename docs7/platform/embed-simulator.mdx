@@ -571,6 +571,18 @@ export function Simulator({ tenant, user }: { tenant: string; user: string }) {
 
 A more elaborate version of the same pattern lives in [`typescript-sdk/examples/fullstack`](https://github.com/limrun-inc/typescript-sdk/tree/main/examples/fullstack), with a UI for switching platforms and iOS models.
 
+## iPhone Duo frame
+
+When connected to an iPhone Duo instance, the component shows both native displays
+in a folding frame. Position starts locked, so screen gestures control iOS. Unlock
+position to rotate the view. The device's Sleep/Wake and volume buttons support
+clicking and holding; hovering raises the physical button slightly.
+
+For a custom body appearance, pass `duoModelUrl` with a prepared GLB that you are
+licensed to serve. Limrun does not bundle a third-party model. The file must follow
+the [Duo appearance contract](https://github.com/limrun-inc/typescript-sdk/blob/main/packages/ui/README.md#optional-duo-appearance).
+The live simulator screens and fold controls remain active with a custom appearance.
+
 ## Next steps
 
 <Columns cols={2}>
