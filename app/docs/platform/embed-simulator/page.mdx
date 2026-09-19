@@ -574,12 +574,14 @@ A more elaborate version of the same pattern lives in [`typescript-sdk/examples/
 ## iPhone Duo frame
 
 When connected to an iPhone Duo instance, the component defaults to a lightweight
-2D view with fold/unfold, rotation and hardware controls. Select **3D** to load the
+2D view with a silver Duo frame, hinge spine and physical buttons. Both views share
+the fold, hinge-angle and rotation toolbar. Select **3D** to load the
 folding frame on demand. Switching back to **2D** releases the 3D renderer while
 keeping the simulator connected. Only 3D requires WebGL.
 
-In 3D, position starts locked, so screen gestures control iOS. Unlock
-position to rotate the view. The device's Sleep/Wake and volume buttons support
+The 2D frame shows the active display flat. The 3D frame shows the physical hinge
+pose, and position starts locked so screen gestures control iOS. Unlock position
+to rotate the 3D view. In both modes, the device's Sleep/Wake and volume buttons support
 clicking and holding. Hover near an edge to reveal its icons, then click either
 the icon or the physical button. The icons follow the device when it rotates.
 Camera Control is not yet supported.
