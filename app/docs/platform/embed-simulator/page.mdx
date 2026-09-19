@@ -576,7 +576,9 @@ A more elaborate version of the same pattern lives in [`typescript-sdk/examples/
 When connected to an iPhone Duo instance, the component shows both native displays
 in a folding frame. Position starts locked, so screen gestures control iOS. Unlock
 position to rotate the view. The device's Sleep/Wake and volume buttons support
-clicking and holding; hovering raises the physical button slightly.
+clicking and holding. Hover near an edge to reveal its icons, then click either
+the icon or the physical button. The icons follow the device when it rotates.
+Camera Control is not yet supported.
 
 For a custom body appearance, pass `duoModelUrl` with a prepared GLB that you are
 licensed to serve. Limrun does not bundle a third-party model. The file must follow
