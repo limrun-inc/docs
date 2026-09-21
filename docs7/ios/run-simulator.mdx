@@ -121,22 +121,26 @@ Create a Duo instance in a region that offers it:
 lim ios create --model iphone-duo
 lim ios fold --json --id <instance-ID>
 lim ios fold 90 --orientation landscape-left --id <instance-ID>
-lim ios fold 90 --id <instance-ID>
+lim ios fold 0 --id <instance-ID>
 lim ios fold 180 --id <instance-ID>
-lim ios screenshot ./inner.png --display inner --id <instance-ID>
+lim ios screenshot ./inner.jpg --display inner --id <instance-ID>
 lim ios tap 300 200 --display inner --id <instance-ID>
 ```
 
 The hinge accepts fractional angles from **0° (closed)** to **180° (flat)**.
 Omit the angle to read fold state. `--orientation` accepts `portrait`, `pud`
 (portrait upside down), `landscape-left`, or `landscape-right`; it can change
-independently of the hinge angle.
+independently of the hinge angle. For example, `lim ios fold --orientation portrait --id <instance-ID>`
+changes orientation without moving the hinge. Use `lim ios fold 0` to close and
+`lim ios fold 180` to unfold; there is no separate `lim ios unfold` command.
 This changes the native simulator hinge, so apps receive Apple's hinge and
 layout updates. The browser stream starts in 2D and offers a lazy-loaded 3D
 frame. Both modes provide hinge and rotation controls, with touch input on the
 cover and inner display. Click or hold
-the frame's Sleep/Wake and volume buttons to control iOS. **Position locked**
-prevents camera rotation while keeping the screen and hardware buttons active.
+the frame's Sleep/Wake and volume buttons to control iOS. In 3D, position starts
+unlocked. **Lock position** prevents camera rotation while keeping the screen
+and hardware buttons active. See [Embed a simulator](/platform/embed-simulator#iphone-duo-frame)
+for the UI component and frameless options.
 
 With the TypeScript device client:
 
@@ -151,13 +155,14 @@ await client.tapDisplay('inner', inner.width / 2, inner.height / 2);
 `setDuoOrientation` accepts `portrait`, `landscape-left`, `landscape-right`,
 and `pud` (upside down). Display screenshots are upright and report dimensions
 in points; `tapDisplay` uses those coordinates. Use `outer` for the cover or
-`inner` for the unfolding display. A display that iOS has turned off returns a
-black image.
+`inner` for the unfolded display. These calls do not activate a display: fold
+or unfold first. A display that is not ready reports an error. Display screenshots
+contain JPEG data, including when saved by `lim ios screenshot --display`.
 
 Use these display-specific methods for Duo automation. Existing screenshot,
 recording, and accessibility commands do not automatically follow the inner
-display. The 3D viewer supports single-finger touch and drag. Rotating the view
-changes the camera; **Rotate device** changes native orientation. **Laptop view**
+display. Both the 2D and 3D viewers support single-finger touch and drag, but not
+multi-touch. Rotating the view changes the camera; **Rotate device** changes native orientation. **Laptop view**
 sets the hinge and orientation; it does not enable Apple's separate Table Mode.
 
 ## List and transfer app files

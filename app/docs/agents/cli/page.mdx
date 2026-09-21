@@ -88,7 +88,7 @@ The output includes the instance ID and the **Signed Stream URL**. Open the Sign
 | `--install ./build.app` | Local app to upload and install at boot. Repeatable. |
 | `--install-asset <name>` | Pre-installed asset from Asset Storage. Repeatable. |
 | `--force-bundle-id com.example.app` | After this app first enters the foreground, bring it back whenever it is closed or backgrounded. Does not launch it at startup. |
-| `--model iphone\|ipad\|watch` | Device model. Defaults to `iphone`. |
+| `--model iphone\|iphone-duo\|ipad\|watch` | Device model. Defaults to `iphone`. |
 | `--rm` | Delete the instance when the CLI process exits. Handy for one-shot runs. |
 
 ## Build the app
@@ -206,6 +206,12 @@ For a visual check, take a screenshot:
 ```bash
 lim ios screenshot ./out.png
 ```
+
+For an iPhone Duo, use `lim ios fold` to read or change the hinge angle, and
+`--display inner` or `--display outer` with `screenshot` and `tap` to target a
+display. The existing element tree and default screenshot do not automatically
+follow the inner display. See [Fold an iPhone Duo](/docs/ios/run-simulator#fold-an-iphone-duo)
+for commands and coordinate details.
 
 ### Tap, type, scroll
 

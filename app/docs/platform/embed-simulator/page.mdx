@@ -85,7 +85,7 @@ app.post('/sessions/start', async (req, res) => {
       },
     },
     spec: {
-      model: 'iphone',                 // 'iphone' | 'ipad' | 'watch'
+      model: 'iphone',                 // 'iphone' | 'iphone-duo' | 'ipad' | 'watch'
       inactivityTimeout: '15m',
       ...(clientIp && { clues: [{ kind: 'ClientIP', clientIp }] }),
     },
@@ -304,7 +304,9 @@ export function Simulator() {
 | `token` | string | required | Per-instance bearer. Pass `instance.status.token`. The component appends it to the connection URL as `?token=…`. |
 | `sessionId` | string | random | A unique signaling-session identifier. Prevents collisions when multiple browser tabs resolve to the same reusable instance. Use a fresh value per tab (e.g. `tab-${Date.now()}`). |
 | `openUrl` | string | none | A URL or deep link to open on the device once the control channel opens (e.g. `https://example.com`, `myapp://orders/42`, `exp://…` for Expo Go). |
-| `showFrame` | boolean | `true` | Draw the device bezel around the video. See [iPad and Apple Watch](#ipad-and-apple-watch); only iPhone and Pixel models ship native bezel art. |
+| `showFrame` | boolean | `true` | Draw the device frame. For Duo, `false` hides the frame, hardware buttons, viewer toolbar and 2D/3D toggle. See [iPad and Apple Watch](#ipad-and-apple-watch) for models without built-in frames. |
+| `deviceModel` | `'iphone-duo'` | auto-detected | Enable the Duo viewer explicitly. Otherwise the component discovers Duo support from the connection. This does not select the model when creating an instance. |
+| `duoModelUrl` | string | built-in model | Optional URL of a prepared custom Duo GLB. See [iPhone Duo frame](#iphone-duo-frame). |
 | `autoReconnect` | boolean | `false` | If a working session's connection drops, reconnect automatically instead of showing the Retry button. |
 | `className` | string | none | Extra class names applied on top of the component's defaults. |
 | `onCameraDemandChange` | callback | none | Reports when an app opens or closes its camera and includes the browser's actual capture settings after permission or a track change. |
@@ -323,7 +325,11 @@ The component translates browser events into device input on its own. No wiring 
 | `Cmd + V` / `Ctrl + V` | Reads browser clipboard, pastes into the focused field on the device |
 | `Cmd + M` / `Ctrl + M` | Sends the Menu key |
 
-Keyboard events only forward while the embedded `<video>` element is focused. The component focuses the video on tap.
+These gestures apply to the standard viewer. Duo supports single-finger taps and
+drags in both modes, but not multi-touch or mouse-wheel scrolling. In Duo's 3D
+view, Alt-drag rotates the view rather than pinching the screen.
+
+Keyboard events forward while the embedded screen is focused. Tap the screen to focus it.
 
 ### Camera simulation
 
@@ -355,7 +361,7 @@ Camera capture requires HTTPS or `http://localhost`, as required by
 `getUserMedia`.
 
 ### iOS extended touch area
-iOS treats the home-indicator strip as part of the gesture surface. To make swipe-up-from-home, app-switcher, and pull-from-bottom gestures work the same way they do on a real device, `<RemoteControl />` exposes a 60-pixel extended touch area below the visible screen. A drag started inside that strip and moved up enters the iOS gesture system the way it would on hardware.
+iOS treats the home-indicator strip as part of the gesture surface. To make swipe-up-from-home, app-switcher, and pull-from-bottom gestures work the same way they do on a real device, `<RemoteControl />` exposes a 60-pixel extended touch area below the visible screen. A drag started inside that strip and moved up enters the iOS gesture system the way it would on hardware. This extended area applies to the standard viewer; on Duo, start the gesture on the visible display.
 
 ### Reconnect behavior
 
@@ -573,6 +579,29 @@ A more elaborate version of the same pattern lives in [`typescript-sdk/examples/
 
 ## iPhone Duo frame
 
+Create an iPhone Duo on your backend by setting `spec.model` to `iphone-duo` in
+`lim.iosInstances.create`. The model must be available to your organization.
+Return `instance.status.endpointWebSocketUrl` and `instance.status.token` to the
+frontend, as in the provisioning example above.
+
+Render the Duo with the same component:
+
+```tsx
+import { RemoteControl } from '@limrun/ui';
+
+<RemoteControl
+  url={webrtcUrl}
+  token={token}
+  deviceModel="iphone-duo"
+  showFrame
+/>;
+```
+
+`deviceModel` can be omitted when the connection reports native Duo support.
+Our 2D frame and procedural 3D model ship with `@limrun/ui`; you do not need to
+host a model file. The CLI and device API control the simulator, while the UI
+package renders its frame.
+
 When connected to an iPhone Duo instance, the component defaults to a lightweight
 2D view with a silver Duo frame, hinge spine and physical buttons. Both views share
 the fold, hinge-angle and rotation toolbar. Select **3D** to load the
@@ -581,19 +610,27 @@ keeping the simulator connected.
 
 The 2D frame shows the active display flat, with a brief hinge animation when you fold
 or unfold it. The animation loads on demand and respects reduced motion; without
-WebGL, the view stays flat. The last screen image remains visible while the next
-display prepares its layout. The 3D frame shows the physical hinge
-pose, and position starts unlocked. Drag the frame or background, or Alt-drag the
+WebGL, the view stays flat. When a screen image is available, the animation holds
+it briefly while waiting for a frame from the incoming display. The 3D frame shows
+the physical hinge pose, and position starts unlocked. Drag the frame or background, or Alt-drag the
 screen, to rotate the 3D view. Ordinary screen gestures control iOS. Use Lock position
 to prevent rotation. In both modes, the device's Sleep/Wake and volume buttons support
 clicking and holding. Hover near an edge to reveal its icons, then click either
 the icon or the physical button. The icons follow the device when it rotates.
 Camera Control is not yet supported.
 
-For a custom body appearance, pass `duoModelUrl` with a prepared GLB that you are
+Set `showFrame={false}` to show only the active display, without the frame,
+hardware buttons, viewer toolbar, or 2D/3D toggle. Touch, drag, and keyboard input
+remain active. The video follows native display and orientation changes without
+loading a 3D renderer. Use the [device client or CLI](/docs/ios/run-simulator#fold-an-iphone-duo)
+to control the hinge and orientation outside the viewer.
+
+For a custom 3D body appearance, pass `duoModelUrl` with a prepared GLB that you are
 licensed to serve. Limrun does not bundle a third-party model. The file must follow
 the [Duo appearance contract](https://github.com/limrun-inc/typescript-sdk/blob/main/packages/ui/README.md#optional-duo-appearance).
 The live simulator screens and fold controls remain active with a custom appearance.
+This prop replaces the full 3D body only; the 2D frame and its fold animation keep
+the built-in appearance.
 
 ## Next steps
 
