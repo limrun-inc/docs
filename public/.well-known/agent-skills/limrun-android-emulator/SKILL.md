@@ -1,6 +1,6 @@
 ---
 name: limrun-android-emulator
-description: "Drive an app running on a Limrun cloud Android emulator: install an APK, launch and terminate apps with crash reports, tap, type, read the UI element tree, screenshot, record video, inject microphone audio, shape network bandwidth, and use adb over the CLI's tunnel for logcat, files, and shell. Use after a build (from limrun-gradle or any builder) when the user wants to see, test, or interact with their app on an emulator, or says 'show me a screenshot', 'tap', 'run it on the emulator', 'check logcat', or 'record a video'. To build the APK or AAB first, use limrun-gradle."
+description: "Drive an app running on a Limrun cloud Android emulator: install an APK, launch and terminate apps with crash reports, tap, type, read the UI element tree, screenshot, record video, inject microphone audio, shape network bandwidth, read app logs, run shell commands, transfer files, tunnel the app's network destinations through your machine with HTTP inspection and HAR capture, and use adb over the CLI's tunnel for full logcat and interactive tools. Use after a build (from limrun-gradle or any builder) when the user wants to see, test, or interact with their app on an emulator, or says 'show me a screenshot', 'tap', 'run it on the emulator', 'check logcat', 'record a video', 'inspect network traffic', or 'reach my local server from the emulator'. To build the APK or AAB first, use limrun-gradle."
 user-invocable: true
 effort: high
 ---
@@ -71,8 +71,8 @@ your machine. `install-app` returns as soon as the app is sent; the install
 finishes in the background within seconds. Newly installed apps land in the
 app drawer, not the home screen, so don't look for their icon; just launch
 the app with `lim android launch-app <package> --detach` (without `--detach`
-it blocks watching the app until it exits), or confirm over adb with
-`pm list packages | grep <name>`.
+it blocks watching the app until it exits), or confirm with
+`lim android adb-shell -- sh -c "pm list packages | grep <name>"`.
 
 Every time you need to install a new version of the APK, sync it instead of
 reinstalling:
@@ -117,14 +117,39 @@ lim android terminate-app com.example.app                        # stop it, e.g.
 Without `--detach`, `launch-app` blocks watching the app: when it crashes,
 ANRs, or is stopped, the command prints the exit reason, crash details with
 the stack trace, and a recent app log tail, then returns. That report is the
-way to see why an app died without adb; logs while the app is running still
-need adb (below). There is no `list-apps`; discover package names over adb
-with `pm list packages`, or take the application ID from the build.
+way to see why an app died without adb; for logs while the app is running,
+use `lim android app-log` (below). There is no `list-apps`; discover package
+names with `lim android adb-shell -- pm list packages`, or take the
+application ID from the build.
 
-## Logs, files, and shell over adb
+## App logs
 
-Logcat, file transfer, and arbitrary shell go through plain `adb` over the
-CLI's tunnel. Start the tunnel in a background shell and keep it alive:
+One app's logs need no tunnel:
+
+```bash
+lim android app-log com.example.app --tail 100   # recent lines (app must be running)
+lim android app-log com.example.app --follow     # stream live lines until Ctrl+C; don't stream into context
+```
+
+## Shell and files
+
+One-shot shell commands and file transfer need no tunnel either:
+
+```bash
+lim android adb-shell -- pm list packages -3                     # like adb shell; args go after --
+lim android adb-shell -- sh -c "dumpsys battery | grep level"    # pipes need an explicit shell
+lim android push-file ./fixture.json /sdcard/Download/fixture.json
+lim android pull-file /sdcard/Download/out.json ./out.json
+```
+
+They run with the same permissions the adb shell user has, and `adb-shell`
+exits with the command's exit code.
+
+## Full logcat and interactive adb over the tunnel
+
+Full-device logcat and anything interactive (Android Studio, scrcpy,
+streaming) go through plain `adb` over the CLI's tunnel. Start the tunnel in
+a background shell and keep it alive:
 
 ```bash
 lim android connect        # prints "Tunnel started on 127.0.0.1:<port>."
@@ -136,11 +161,7 @@ every adb call (`adb devices` also lists it):
 
 ```bash
 SERIAL=127.0.0.1:<port>
-adb -s $SERIAL logcat -d | tail -100                             # dump recent logs, don't stream into context
-adb -s $SERIAL logcat -d --pid=$(adb -s $SERIAL shell pidof -s com.example.app) | tail -50   # only the app's logs (app must be running)
-adb -s $SERIAL shell pm list packages | grep example             # package name discovery
-adb -s $SERIAL push ./fixture.json /sdcard/Download/
-adb -s $SERIAL pull /sdcard/Download/out.json ./
+adb -s $SERIAL logcat -d | tail -100    # dump recent full-device logs, don't stream into context
 ```
 
 The tunnel lives and dies with the process that started it: when that shell
@@ -284,6 +305,53 @@ Test slow-network behavior by capping the instance's Wi-Fi bandwidth:
 lim android set-wifi-bandwidth --down-kbps 1000 --up-kbps 500
 lim android set-wifi-bandwidth --down-kbps 0 --up-kbps 0       # 0 clears the limit
 ```
+
+## Tunnel the app's traffic through your machine
+
+When the app must reach a service only your machine can reach (a local dev
+server, a VPN-only staging API), or you need to see its HTTP traffic, start a
+destination tunnel. Only the destinations you select are rerouted through
+the machine running `lim`; everything else leaves the instance directly.
+
+```bash
+lim android tunnel --selector localhost:8080 --detach --id <android-instance-id>
+```
+
+- An exact selector (`localhost:port` or `IP:port`, port >= 1024) becomes a
+  listener on the emulator, also reachable as `10.0.2.2:<port>`; the app's
+  connections to it land on your machine and are dialed there.
+- Domain selectors (`api.example.com`, `"*.corp.example"`) are intercepted
+  on the emulator and dialed from your machine, so your DNS and VPN apply.
+  Apps that resolve DNS themselves over HTTPS bypass domain interception.
+- Start the tunnel **before** launching the app: connections opened earlier
+  keep their original route. One tunnel per instance; a second start fails.
+
+As an agent, always pass `--detach`: it returns once the tunnel is READY and
+keeps it alive in a background process. Manage it with:
+
+```bash
+lim android tunnel status --id <android-instance-id>   # state, per-selector binds, last dial failure
+lim android tunnel stop --id <android-instance-id>
+```
+
+### Inspect HTTP traffic, capture HAR, persist a network log
+
+Inspection is on by default: every HTTP and HTTPS request through the tunnel
+is decoded, printed as one summary line per request (in the tunnel log file
+when detached), and shown live in the console's network panel.
+
+```bash
+lim android tunnel --selector "*.api.example" --har ./traffic.har --detach   # write HAR 1.2 with bodies
+lim android tunnel --selector "*.api.example" --persist --detach             # network log survives the instance
+```
+
+`--persist` uploads a body-inclusive network log as a session artifact when
+the tunnel stops or the instance terminates; it appears on the instance's
+session page in the console with a HAR download (default lifetime 3 days,
+`--ttl <seconds>` up to 30 days). HTTPS is decoded with an emulator-trusted
+CA, so **apps with certificate pinning fail through inspected domain
+selectors**: leave the pinned host out of the selectors or pass
+`--no-inspect` to relay bytes opaquely (no summaries, HAR, or persistence).
 
 ## Preview URL for humans
 

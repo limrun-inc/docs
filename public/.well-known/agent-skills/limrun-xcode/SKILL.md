@@ -1,6 +1,6 @@
 ---
 name: limrun-xcode
-description: "Build an iOS / Apple app on remote Xcode with `lim xcode build` instead of local xcodebuild, or run its XCTest suites with `lim xcode test`, from any environment (Linux, Windows, macOS, VM, container). Use for non-Bazel projects (an `.xcodeproj` / `.xcworkspace`, an XcodeGen `project.yml` with a gitignored project, React Native / Expo native build) when the user wants to build, compile, test, reload, produce a preview build, or ship a signed device IPA. To run, tap, screenshot, or otherwise interact with the result on a simulator, use limrun-ios-simulator. For Bazel workspaces, use limrun-xcode-bazel."
+description: "Build an iOS / Apple app on remote Xcode with `lim xcode build` instead of local xcodebuild, or run its XCTest suites with `lim xcode test`, from any environment (Linux, Windows, macOS, VM, container). Use for non-Bazel projects (an `.xcodeproj` / `.xcworkspace`, an XcodeGen `project.yml` with a gitignored project, React Native / Expo native build) when the user wants to build, compile, test, inspect build logs, reload, produce a preview build, or ship a signed device IPA. To run, tap, screenshot, or otherwise interact with the result on a simulator, use limrun-ios-simulator. For Bazel workspaces, use limrun-xcode-bazel."
 user-invocable: true
 effort: high
 ---
@@ -57,6 +57,49 @@ for native Xcode builds, `Release` for React Native / Expo builds.
 lim xcode build . --configuration Debug
 ```
 
+### Detached builds and logs
+
+Use `--detach` to return once the build is accepted; a webhook is optional.
+`logs` reads the latest build without an exec ID, including persisted logs after
+instance deletion; add `--follow` to wait for completion.
+
+```bash
+lim xcode build . --detach
+lim xcode logs
+lim xcode logs --follow
+```
+
+### Pick the Xcode version
+
+A sandbox builds with its node's default Xcode. To build with another installed
+major (Xcode 27 beta is available beside the default), set a preference once
+for the workspace; every later build, test, RBE session and new sandbox follows
+it, and the flag overrides it for one command:
+
+```bash
+lim xcode version list      # versions the sandbox can build with; * marks the one in use
+lim xcode use xcode@27      # prefer 27 for this workspace; switches the remembered sandbox now
+lim xcode build .           # builds with 27
+lim xcode version           # "27.0 (27A5252f)" shows the sandbox's current Xcode
+lim xcode build . --xcode-version 26   # one-off override, not remembered
+lim xcode version unset     # forget the preference; the sandbox goes back to the node default
+```
+
+Combine Xcode and mise selections with `lim xcode use xcode@27 node@24`.
+
+For scripting, `lim xcode version list --quiet` prints one selectable major per
+line and `--json` returns `{ installed, bound, preferred }` (`installed[].betaSeed`
+carries the beta seed). The table marks the Xcode in use with `*`.
+`lim xcode version set` does not record a major the node lacks (the error lists
+the available ones) but keeps it when the sandbox is merely busy.
+
+When the sandbox is on another major than the workspace prefers, the next
+build says so and switches it first. Switching invalidates the build cache made
+with the other version (the next build starts cold) and is refused while a build,
+sync or `lim xcode rbe` stack is running. A major the node does not have fails with the available list;
+only majors are selectable. App Store uploads from a beta Xcode are rejected by
+Apple, so keep `--upload-to-appstore` on the default.
+
 `--dev-server-url` is only supported with `--configuration Debug` for React
 Native / Expo builds. It's a post-install launch URL: limbuild validates it is a
 parseable absolute URL, then opens it unchanged after installing on the attached
@@ -71,6 +114,23 @@ separate build/install issues from URL routing:
 
 ```bash
 lim ios open-url --id <ios-instance-id> '<absolute-url>'
+```
+
+## Developer tool versions
+
+After syncing, `lim xcode use` selects tools in the sandbox and installs missing versions.
+Run `lim xcode tools install` for synced project tool selections ([details](https://docs.limrun.com/docs/ios/build-with-xcode)). Use major versions, or major.minor for Ruby, Flutter, and pre-1.0 tools such as Mint.
+
+```bash
+lim xcode tools
+# Node includes npm/npx, Ruby includes gem, Flutter includes Dart, CocoaPods includes cocoapods-patch.
+lim xcode use node@24 pnpm@10 yarn@4 bun@1 ruby@3.3 bundler@4 cocoapods@1 \
+  cmake@3 java@jetbrains-21 corretto@21 flutter@3.44 mint@0.18 \
+  xcodegen@2 xcbeautify@3 zsign@1
+lim xcode tools install
+lim xcode use --cwd apps/mobile node@24
+lim xcode tools install --cwd apps/mobile
+lim xcode run -- mise use --pin node@24.5.0
 ```
 
 ## Generated Xcode projects (XcodeGen)
@@ -136,7 +196,9 @@ lim xcode test ./MyProject --scheme MyApp
 It auto-acquires a simulator-backed target like `lim xcode build --ios` and
 reuses the instances on repeat runs, so iterating is fast. The scheme must
 have a test action configured (shared schemes from Xcode have one when the
-project has test targets).
+project has test targets). `--xcode-version 27` builds the tests with that
+Xcode; the simulator keeps the fleet default runtime, so the run warns and
+proceeds (runtime-dependent failures are possible).
 
 Select a subset with xcodebuild's identifier format
 `Target[/Class[/method]]`; repeat the flag for multiple entries. The two flags
@@ -296,6 +358,11 @@ lim xcode build . --sdk iphoneos --configuration Release \
 flags, plus `--asc-key-id` and `--asc-key`. Combine it with `--upload
 <asset-name>` when the user also wants the IPA in Asset Storage.
 
+Device IPAs carry the app's symbols (`Symbols/` next to `Payload/`), so App
+Store Connect symbolicates crash reports without a separate dSYM upload. This
+needs the build to produce dSYMs: `--configuration Release` does by default;
+Debug does not, and the IPA then simply ships without symbols.
+
 Collect from the user (all three live in App Store Connect under Users and
 Access, Integrations tab, App Store Connect API):
 
@@ -378,10 +445,11 @@ https://console.limrun.com/preview?asset=${ASSET_NAME}&platform=ios
   project files or run `lim ios list-apps` after a successful build.
 - **Auth errors** on an authenticated command mean the session expired or
   `LIM_API_KEY` is wrong; ask the user to run `lim login` or provide a key.
-- **Build settings are allowlisted.** Only `APP_CONFIG_*` keys and
-  `SWIFT_ACTIVE_COMPILATION_CONDITIONS` pass `--build-setting`; anything else
-  is rejected. Bump `CURRENT_PROJECT_VERSION` and friends in the Xcode project
-  file instead.
+- **Build settings override Limrun's defaults.** `--build-setting KEY=VALUE`
+  accepts any environment-style key and replaces the managed value with the
+  same key. Device builds already use standard architectures (an embedded
+  watch app keeps `arm64_32`) and disable coverage instrumentation, so App
+  Store uploads need no extra settings.
 - **Artifact not found after a successful build.** The server resolves the
   built .app on its own, including when the scheme name differs from the
   product name (scheme "MyApp Dev" building MyApp-dev.app). If an upload
