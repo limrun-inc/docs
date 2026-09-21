@@ -1,6 +1,6 @@
 ---
 name: limrun-ios-simulator
-description: "Drive an app running on a Limrun cloud iOS simulator: launch, tap, type, read the accessibility element tree, screenshot, record video, connect the app to local services, play a video file as the camera, and run timed action chains. Use after a build (from any builder) when the user wants to see, test, or interact with their app on a simulator, or says 'show me a screenshot', 'tap', 'run the UI test', 'record a video', 'connect localhost', 'mock the camera', or 'launch on simulator'. To build the app first, use limrun-xcode-bazel (Bazel workspaces) or limrun-xcode (xcodebuild projects)."
+description: "Drive an app running on a Limrun cloud iOS simulator: launch, tap, type, read the accessibility element tree, screenshot, record video, connect the app to local services, play a video file as the camera, and run timed action chains. Use after a build (from any builder) when the user wants to see, test, or interact with their app on a simulator, or says 'show me a screenshot', 'tap', 'run the UI test', 'record a video', 'connect localhost', 'reach my local server from the simulator', 'mock the camera', or 'launch on simulator'. To build the app first, use limrun-xcode-bazel (Bazel workspaces) or limrun-xcode (xcodebuild projects)."
 user-invocable: true
 effort: high
 ---
@@ -78,6 +78,54 @@ lim ios sync <path to .ipa file or .app folder>
 You can run the same command every time you need to install a new version of the
 bundle. It will patch with the difference and reload it in the simulator.
 
+## Fold an iPhone Duo
+
+Create a Duo instance in a region that offers it:
+
+```bash
+lim ios create --model iphone-duo
+lim ios fold --json --id <instance-ID>
+lim ios fold 90 --orientation landscape-left --id <instance-ID>
+lim ios fold 90 --id <instance-ID>
+lim ios fold 180 --id <instance-ID>
+lim ios screenshot ./inner.png --display inner --id <instance-ID>
+lim ios tap 300 200 --display inner --id <instance-ID>
+```
+
+The hinge accepts fractional angles from **0° (closed)** to **180° (flat)**.
+Omit the angle to read fold state. `--orientation` accepts `portrait`, `pud`
+(portrait upside down), `landscape-left`, or `landscape-right`; it can change
+independently of the hinge angle.
+This changes the native simulator hinge, so apps receive Apple's hinge and
+layout updates. The browser stream starts in 2D and offers a lazy-loaded 3D
+frame. Both modes provide hinge and rotation controls, with touch input on the
+cover and inner display. The frame's
+Sleep/Wake and volume buttons accept clicks and holds even when position is locked.
+For automation, pair `buttonDown` and `buttonUp` actions with `button` set to
+`side`, `volumeUp`, or `volumeDown` in `client.performActions`.
+
+With an already connected TypeScript device client:
+
+```ts
+const fold = await client.getFoldState(); // null on an ordinary simulator
+await client.setHingeAngle(110);
+await client.setDuoOrientation('landscape-left');
+const inner = await client.screenshotDisplay('inner');
+await client.tapDisplay('inner', inner.width / 2, inner.height / 2);
+```
+
+`setDuoOrientation` accepts `portrait`, `landscape-left`, `landscape-right`,
+and `pud` (upside down). Display screenshots are upright and report dimensions
+in points; `tapDisplay` uses those coordinates. Use `outer` for the cover or
+`inner` for the unfolding display. A display that iOS has turned off returns a
+black image.
+
+Use these display-specific methods for Duo automation. Existing screenshot,
+recording, and accessibility commands do not automatically follow the inner
+display. The 3D viewer supports single-finger touch and drag. Rotating the view
+changes the camera; **Rotate device** changes native orientation. **Laptop view**
+sets the hinge and orientation; it does not enable Apple's separate Table Mode.
+
 ## Targeting the right instance
 
 Most `lim ios` commands default to the last created instance and resolve the
@@ -102,27 +150,34 @@ resolves on its own. When controlling multiple instances, always pass `--id`.
 
 ## Reaching services on the local machine
 
-Destination tunnels let an iPhone simulator app keep calling exact localhost
-or literal-IP TCP destinations while the CLI connects those destinations from
-the machine running `lim`:
+Destination tunnels let an iPhone simulator app keep calling its normal
+destinations while the CLI dials them from the machine running `lim`. Select
+exact `localhost:port` or literal `IP:port` destinations, or domains that only
+your machine or VPN can reach:
 
 ```bash
 lim ios tunnel \
   --id <ios-instance-id> \
-  --route localhost:3000 \
-  --route localhost:8081 \
+  --selector localhost:3000 \
+  --selector localhost:8081 \
+  --selector "*.staging.example" \
   --detach
 ```
 
 Use the app's normal URLs, such as `http://localhost:3000`. Declaring
 `localhost:3000` also captures loopback forms such as `127.0.0.1:3000` and
-`[::1]:3000`, plus `[::ffff:127.0.0.1]:3000`. This release supports TCP and up
-to ten exact routes. Port 53, hostnames other than `localhost`, CIDRs, and UDP
-are not supported.
+`[::1]:3000`, plus `[::ffff:127.0.0.1]:3000`. Domain selectors (exact
+`api.corp.example` or label-bound wildcard `"*.staging.example"`) are
+intercepted on the simulator and dialed from your machine whether or not the
+name resolves on public DNS, so your DNS and VPN apply and TLS stays end to
+end. Apps that resolve DNS themselves over HTTPS bypass domain interception.
+A tunnel carries TCP only: up to ten exact selectors and 64 domain selectors,
+ports 1-65535 except 53; CIDRs and UDP are not supported. Start the tunnel
+before launching the app: connections opened earlier keep their original route.
 
-One instance accepts one active destination tunnel, and its route set is
+One instance accepts one active destination tunnel, and its selector set is
 immutable. To add or remove a destination, stop the tunnel and start it again
-with the complete route list:
+with the complete selector list:
 
 ```bash
 lim ios tunnel status --id <ios-instance-id> --json
