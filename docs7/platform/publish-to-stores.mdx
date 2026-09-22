@@ -214,7 +214,11 @@ The complete implementation is in [`startPublish`](https://github.com/limrun-inc
 
 ## 4. Add Google Play connection
 
-Google requires the Play Console app listing to exist before an API client can publish to it. Ask the user to create the listing with the exact Android package name and grant their Google account release permission.
+Google requires the Play Console app listing to exist before publishing. With ordinary `androidpublisher` access, ask the user to create the listing with the exact Android package name and grant their Google account release permission.
+
+The source example also includes an experimental **Create app** button using `createPlayConsoleApp` and `enrollPlayAppSigning` from `@limrun/play-auth`. It requires Google to approve your OAuth client for `https://www.googleapis.com/auth/play_console` or `https://www.googleapis.com/auth/playdeveloperapp`. Set `GOOGLE_PLAY_CONSOLE_SCOPE` in the example's `frontend/src/config.ts` to the scope Google approved, then sign in again. Leave it empty for ordinary publishing. Requesting either scope without approval returns `invalid_scope`; adding it to the request does not grant access.
+
+This OAuth creation flow has not been verified end to end with an approved client. The form requires the developer account ID and both policy declarations. It creates a free Android app and requests Play App Signing enrollment. If enrollment fails, retain the returned app ID and retry enrollment only. If creation reports an unknown outcome, check the developer account before repeating it. See the [package's experimental app creation guide](https://github.com/limrun-inc/typescript-sdk/tree/main/packages/play-auth#experimental-app-creation) for the API and recovery behavior.
 
 <Steps>
   <Step title="Configure Google browser sign-in">
