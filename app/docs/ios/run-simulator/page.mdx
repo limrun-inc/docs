@@ -724,44 +724,6 @@ lim ios open-url \
   "exp://${TUNNEL_URL#http://}"
 ```
 
-### Legacy fixed-port reverse tunnel
-
-`lim ios reverse` remains available for legacy workflows that already choose a simulator-facing port in the reserved range. New workflows should use the destination tunnel above.
-
-Note the direction: this tunnel is **simulator → your service** (outbound from the device).
-
-<Note>
-  Reaching a server running *inside* the simulator from the outside (WebDriverAgent, for example) is the opposite direction and a separate feature: the reverse proxy via `targetHttpPortUrlPrefix`. See [Appium](/docs/testing/appium) for how that's used and the [status URL surface](/docs/reference/sdk#status-url-surface) in the SDK reference.
-</Note>
-
-```ts
-const tunnel = await client.startReverseTunnel({
-  remotePort: 57090,           // must be in 57090..57099
-  localPort: 57090,            // defaults to remotePort
-  localHost: '127.0.0.1',      // defaults to 127.0.0.1
-});
-// The app reaches your service at tunnel.remoteAddress, e.g.
-// `${tunnel.remoteAddress.address}:${tunnel.remoteAddress.port}`.
-// That address is an internal listener IP near the simulator, not 127.0.0.1.
-// tunnel.close() to tear it down.
-```
-
-Or from the CLI, which prints that same address (the SDK's `tunnel.remoteAddress`) on start:
-
-```bash
-lim ios reverse 57090:57090            # expose local :57090 as simulator :57090
-lim ios reverse 57091 --local-host 0.0.0.0
-```
-
-The remote port must be in **57090-57099**. That range is reserved for tunneled services. A few constraints apply:
-
-- **Client-first services only.** The app inside the simulator initiates the connection. Server-first protocols, where the server speaks first, aren't supported.
-- **No auto-reconnect.** The tunnel is fail-closed: if the underlying WebSocket drops, the listener and its active connections tear down. Restart the tunnel to recover.
-- **Idle tunnels don't keep the instance alive.** Opening a tunnel counts as activity once; after that, only traffic that actually flows through it does. An open but quiet tunnel lets the instance's [inactivity timeout](#configure-the-instance) fire as usual, so agents that leave tunnels behind stop accruing instance time.
-- **Vanished clients lose their port.** If the tunnel client stops responding without closing (a suspended VM, a frozen process), the server closes the session and frees the remote port within about two minutes. A port held by a *live* tunnel stays reserved, and a second tunnel on it fails with `already in use`.
-- **TypeScript SDK and CLI only.** Not available in the Go or Python SDKs. See the [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix).
-- **Android equivalent.** This primitive is iOS-only. On Android, use `adb reverse` over the [ADB tunnel](/docs/testing/appium#open-the-adb-tunnel).
-
 ## Drop into macOS dev tools
 
 When the high-level API doesn't cover what you need, the instance exposes a small set of macOS dev tools as escape hatches.
