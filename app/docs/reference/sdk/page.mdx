@@ -247,7 +247,21 @@ Useful label keys for most workflows are `tenant`, `user`, `session`, `pr`, `rep
 
 ### Client location clues
 
-When creating an Android, iOS, Xcode, or Gradle instance through the REST API, supply the end user's coordinates as a `ClientLocation` clue to prefer a nearby region:
+When creating an Android, iOS, Xcode, or Gradle instance, supply the end user's coordinates as a `ClientLocation` clue to prefer a nearby region:
+
+<CodeGroup labels={["TypeScript", "REST payload"]}>
+```ts
+const instance = await lim.iosInstances.create({
+  spec: {
+    clues: [
+      {
+        kind: 'ClientLocation',
+        clientLocation: { latitude: 37.7749, longitude: -122.4194 },
+      },
+    ],
+  },
+});
+```
 
 ```json
 {
@@ -264,12 +278,13 @@ When creating an Android, iOS, Xcode, or Gradle instance through the REST API, s
   }
 }
 ```
+</CodeGroup>
 
 Both coordinates are required and use decimal degrees. Latitude must be between -90 and 90, and longitude between -180 and 180, inclusive. Zero is valid. Missing or invalid coordinates return HTTP 400.
 
 `ClientLocation` takes precedence over `ClientIP` regardless of their order in `spec.clues`. If coordinates are unavailable, pass `{ "kind": "ClientIP", "clientIp": "203.0.113.42" }` to locate the end user by IP. For requests without either clue, Limrun first uses available visitor coordinates, then the connecting IP.
 
-Location clues express a preference. `spec.jurisdiction` still constrains placement, and a full region can cause creation in another eligible region. A specific `spec.region` overrides location clues. Use the REST payload above if your installed SDK does not yet expose `ClientLocation`.
+Location clues express a preference. `spec.jurisdiction` still constrains placement, and a full region can cause creation in another eligible region. A specific `spec.region` overrides location clues. If your installed SDK does not yet expose `ClientLocation`, use the REST payload above.
 
 ## Resources × CRUD
 
