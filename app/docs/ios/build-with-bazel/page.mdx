@@ -37,7 +37,7 @@ What `lim xcode rbe` did:
 
 - Provisioned an Xcode sandbox (or reused your most recent one) and started the RBE stack on it.
 - Opened a tunnel so the endpoint is reachable at `grpc://127.0.0.1:8980` (change with `--port`).
-- Generated a `.limrun/` directory in your workspace with the `--config=limrun` Bazel configuration matched to the sandbox's Xcode version, and wired a `try-import` into your `.bazelrc`. Pass `--xcode-version 27` to build with another installed major; see [Choose the Xcode version](/docs/ios/build-with-xcode#choose-the-xcode-version).
+- Generated a `.limrun/` directory in your workspace with the `--config=limrun` Bazel configuration matched to the sandbox's Xcode version, and wired a `try-import` into your `.bazelrc`. Pass `--xcode-version 27` to build with another installed Xcode version (`27` is that major's GA release, `27.1` selects the beta); see [Choose the Xcode version](/docs/ios/build-with-xcode#choose-the-xcode-version).
 
 Don't hand-edit `.limrun/`; it is regenerated on the next `lim xcode rbe`. To add your own flags to the Limrun build path, put them in **`user.limrun.bazelrc`** at the workspace root. The generated config imports it last, so your `build:limrun --...` lines win and survive regeneration.
 
