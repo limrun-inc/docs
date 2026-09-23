@@ -71,7 +71,7 @@ const { exitCode } = await build;
 Expo managed-workflow projects have no `android/` directory. The sandbox detects them, installs dependencies, and runs `expo prebuild` before Gradle. Two flags tune that pipeline, and setting either forces it on (an error when no Expo app is detected):
 
 - `--expo-app-dir <path>`: the app directory inside a monorepo.
-- `--abi <abi>`: which Android ABIs to build, repeatable. Without it, Expo-pipeline builds target `x86_64` (what Limrun Android instances run), except release and bundle tasks, which keep the project's own ABI configuration.
+- `--abi <abi>`: which Android ABIs to build, repeatable. Without it, Expo-pipeline builds target `x86_64`, the ABI Limrun Android instances run natively (`arm64-v8a` also works through translation, see [Supported ABIs](/docs/android/run-emulator#supported-abis)), except release and bundle tasks, which keep the project's own ABI configuration.
 
 ```bash
 lim gradle build ./my-monorepo --expo-app-dir apps/mobile
