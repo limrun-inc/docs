@@ -216,6 +216,10 @@ Set `initialAssets` at provisioning time to install one or more APKs while the p
 
 For local files, the CLI's `--install` and the TypeScript/Go SDK's `assets.getOrUpload({ path })` upload to Asset Storage first and hand the daemon a signed URL. Python's SDK doesn't ship that helper. Upload manually with `assets.get_or_create` plus a PUT to the returned upload URL before calling `create`. See [Asset Storage](/docs/platform/asset-storage).
 
+#### Supported ABIs
+
+Instances are x86_64 emulators that also run `arm64-v8a` native code through translation, so an APK built for `x86_64`, `arm64-v8a`, or both installs and runs. `x86_64` runs natively and is the fastest choice; `arm64-v8a` lets you reuse a device build without adding an ABI to your pipeline. Don't mix them within one APK: if some native libraries ship only for `arm64-v8a` while others also ship `x86_64`, Android installs the app as `x86_64` and the arm64-only libraries fail to load with `UnsatisfiedLinkError`. 32-bit `armeabi-v7a`-only APKs are rejected at install with `INSTALL_FAILED_NO_MATCHING_ABIS`, and apps that execute their own bundled ARM command-line binaries (rather than loading native libraries) are not supported under translation.
+
 <CodeGroup labels={["CLI", "TypeScript", "Go", "Python"]}>
 ```bash
 # Local APK uploaded to Asset Storage on the fly, then installed.
