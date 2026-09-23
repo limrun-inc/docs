@@ -417,7 +417,7 @@ The Android operations have the same shape as iOS. Substitute `androidInstances`
 
 ### Xcode instances
 
-The TypeScript SDK exposes a top-level `xcodeInstances` resource with the same CRUD shape as iOS, plus `createClient` for sync, builds and Xcode selection (`xcode.getXcode()`, `xcode.setXcode('27')`; see [Choose the Xcode version](/ios/build-with-xcode#choose-the-xcode-version)). The **Python and Go SDKs do not** ship an Xcode instances resource today; reach the same instances through one of these paths:
+The TypeScript SDK exposes a top-level `xcodeInstances` resource with the same CRUD shape as iOS, plus `createClient` for sync, builds and Xcode selection: `xcode.setXcode('27')` binds the Xcode 27 GA release, `xcode.setXcode('27.1')` pins a beta, and every entry in `xcode.getXcode().installed` carries a `channel` of `'ga'` or `'beta'` (see [Choose the Xcode version](/ios/build-with-xcode#choose-the-xcode-version)). The **Python and Go SDKs do not** ship an Xcode instances resource today; reach the same instances through one of these paths:
 
 - Call `POST /v1/xcode_instances` directly over HTTP.
 - Or shell out to `lim xcode create` / `lim xcode build`.

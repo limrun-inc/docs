@@ -26,9 +26,10 @@ lim xcode test ./MyProject --scheme MyApp
 Like `lim xcode build --ios`, the command reuses your last simulator-backed
 Xcode target or creates and attaches what it needs, so repeat runs skip
 provisioning and warm the build cache. `--xcode-version 27` builds the test
-targets with another installed Xcode major; the simulator keeps the fleet's
-default runtime, so the run warns that runtime-dependent failures are possible
-and proceeds (see [Choose the Xcode version](/ios/build-with-xcode#choose-the-xcode-version)). The scheme must have a test action
+targets with another installed Xcode version (`27` is that major's GA release,
+`27.1` selects the beta); the simulator keeps the fleet's default runtime, so
+the run warns that runtime-dependent failures are possible and proceeds (see
+[Choose the Xcode version](/ios/build-with-xcode#choose-the-xcode-version)). The scheme must have a test action
 configured; shared schemes exported by Xcode have one whenever the project has
 test targets.
 
