@@ -109,7 +109,7 @@ The sandbox itself has one Xcode selected at a time, and the workspace preferenc
 - The switch is refused while a build, command, sync, or `lim xcode rbe` stack is running; stop them first (`lim xcode rbe --stop`). `lim xcode use xcode@<version>` keeps the preference in that case and the next command retries the switch.
 - Asking for a version the node does not have fails with the available list, and `lim xcode use xcode@<version>` does not record a preference for it.
 - A major.minor pin lasts until the fleet retires that version. Then `lim xcode build` fails with the daemon's message plus a hint to run `lim xcode version set 27` or `lim xcode version unset`.
-- When a beta becomes GA, the release replaces the beta under the same major.minor selector, with one cold build. The bare major moves to the new release when the fleet retires the older GA.
+- When a beta becomes GA, the release replaces the beta under the same major.minor selector, with one cold build. The bare major follows the newest released Xcode of its major, so it moves to 27.1 as soon as 27.1 is GA on the node.
 - Simulators keep running the fleet's default runtime. `lim xcode test` with a non-default Xcode warns and proceeds: XCTest bundles built by Xcode 27 run against the simulator's Xcode 26 frameworks, which works for most suites but is not guaranteed.
 - Apple rejects App Store uploads built with a beta Xcode. Keep `--upload-to-appstore` on a bare-major pin (`27`, not `27.1`), which only ever binds a released Xcode. In the SDK, gate the publish on `channel === 'ga'`, not on `betaSeed`: Apple's 27.1 seed ships without a seed number.
 
