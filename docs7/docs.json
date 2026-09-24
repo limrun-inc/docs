@@ -24,7 +24,8 @@
         "pages": [
           "agents/cli",
           "agents/remote-mcp",
-          "agents/mcp"
+          "agents/mcp",
+          "agents/claude-code-web"
         ]
       },
       {
@@ -63,6 +64,13 @@
           "testing/appium",
           "testing/maestro",
           "testing/playwright"
+        ]
+      },
+      {
+        "group": "Tutorials",
+        "icon": "graduation-cap",
+        "pages": [
+          "tutorials/ios-bazel-claude-code-web"
         ]
       },
       {
