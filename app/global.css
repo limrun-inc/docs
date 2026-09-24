@@ -375,9 +375,25 @@ code:not(pre code) {
 .docs-frame img,
 .docs-frame picture {
   display: block !important;
-  width: 100% !important;
   height: auto !important;
   margin: 0 !important;
+}
+
+.docs-frame img:not([width]),
+.docs-frame picture {
+  width: 100% !important;
+}
+
+/* A screenshot with a width attribute renders at that width, so a narrow
+ * crop keeps its real size instead of stretching to the column. The frame
+ * hugs the image. */
+.docs-frame:has(> img[width]) {
+  width: fit-content !important;
+  max-width: 100% !important;
+}
+
+.docs-frame img[width] {
+  max-width: 100% !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

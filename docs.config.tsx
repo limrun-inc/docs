@@ -3,9 +3,11 @@ import { darkbold } from "@farming-labs/theme/darkbold";
 import {
   Blocks,
   Bot,
+  Cloud,
   CreditCard,
   Database,
   FlaskConical,
+  GraduationCap,
   Hammer,
   MonitorPlay,
   Play,
@@ -234,6 +236,8 @@ export default defineDocs({
     play: <Play size={15} />,
     zap: <Zap size={15} />,
     "monitor-play": <MonitorPlay size={15} />,
+    cloud: <Cloud size={15} />,
+    "graduation-cap": <GraduationCap size={15} />,
   },
 
   feedback: {
