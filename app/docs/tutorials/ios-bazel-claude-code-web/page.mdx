@@ -1,0 +1,132 @@
+---
+title: "Build an iOS app with Bazel from Claude Code on the web"
+description: "Copy a Bazel iOS template, have Claude change the app, and review the change on a cloud simulator and in a pull request preview."
+order: 1
+icon: "smartphone"
+---
+# Build an iOS app with Bazel from Claude Code on the web
+
+Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a cloud iOS simulator, and review it in a pull request with a preview link. Every Apple build action runs on Limrun's remote Macs through Bazel remote build execution, so neither you nor the session VM needs a Mac or Xcode.
+
+## Before you start
+
+- A Claude Code on the web environment set up as described in [Claude Code on the web](/docs/agents/claude-code-web). This tutorial calls it `limrun`.
+- The Limrun API key you added to that environment. The template's preview workflow uses it too.
+- A GitHub account. The [GitHub CLI](https://cli.github.com) is optional; it makes the secret step one command.
+
+<Steps>
+  <Step title="Create your copy of the template">
+    Open [limrun-inc/ios-bazel-template](https://github.com/limrun-inc/ios-bazel-template), click **Use this template**, then **Create a new repository**. The template is a small SwiftUI chat app built with `rules_apple` and `rules_swift`. Its assistant replies are canned, so it needs no network or API key of its own.
+
+    <Frame>
+      <img src="/images/claude-code-web/06-use-template.png" alt="The ios-bazel-template repository page with the Use this template menu open, showing Create a new repository" />
+    </Frame>
+  </Step>
+
+  <Step title="Add the API key as a repository secret">
+    Your copy includes an iOS Preview workflow that builds every pull request and comments with a preview link. GitHub copies the workflow but not the secrets, so add the key yourself. The command prompts for the value:
+
+    ```bash
+    gh secret set LIM_API_KEY --repo <owner>/<repo>
+    ```
+
+    Without the GitHub CLI, add it under **Settings**, **Secrets and variables**, **Actions** in your copy.
+  </Step>
+
+  <Step title="Add bazelisk to the setup script">
+    The session VM doesn't ship bazelisk. Edit the `limrun` environment and add `@bazel/bazelisk` to the install line of its setup script:
+
+    ```bash
+    #!/bin/bash
+    npm install --global lim @bazel/bazelisk
+    lim skills install --agents claude --scope global
+    ```
+
+    <Frame>
+      <img src="/images/claude-code-web/04b-setup-script-bazel.png" alt="Setup script field with npm install --global lim @bazel/bazelisk and the lim skills install line" />
+    </Frame>
+  </Step>
+
+  <Step title="Build and run the app">
+    Start a new session on your copy with the `limrun` environment, and send:
+
+    ```text
+    Build this app with Limrun and show it to me on an iOS simulator.
+    ```
+
+    Following the `limrun-xcode-bazel` skill, Claude runs `lim xcode rbe` to start a remote build stack, attaches a simulator, and builds with the command the CLI prints. The first build took about a minute in our run, with the Apple actions executing on the remote Macs:
+
+    <Frame>
+      <img src="/images/claude-code-web/07-build.png" alt="Session output of bazelisk --digest_function=sha256 build --config=limrun //App finishing with 35 remote processes and Build completed successfully" />
+    </Frame>
+
+    The successful build installs the app on the attached simulator. Claude's reply includes a screenshot and a link to the live simulator:
+
+    <Frame>
+      <img src="/images/claude-code-web/08-stream-link.png" alt="Claude's reply with a screenshot of the chat app on the simulator, a Live simulator link, and a summary of the build" />
+    </Frame>
+
+    Open the link to use the app in your browser:
+
+    <Frame>
+      <img src="/images/claude-code-web/09-simulator.png" alt="The live simulator in the browser running the chat app, with live events, app logs, and network request panels" />
+    </Frame>
+  </Step>
+
+  <Step title="Change the app">
+    Keep the simulator open and ask for a visible change:
+
+    ```text
+    Change the title to "Hello from Claude" and make my message bubbles orange, then show me.
+    ```
+
+    Claude edits the Swift source and the asset catalog, then rebuilds. Bazel reuses the cached actions from the first build, so the rebuild took under 10 seconds in our run. The app reinstalls and relaunches on the simulator you have open. Claude also commits the change and pushes it to a new branch:
+
+    <Frame>
+      <img src="/images/claude-code-web/10b-reply.png" alt="Claude's reply with a screenshot of the app titled Hello from Claude with orange bubbles, the pushed branch, and a Create PR button" />
+    </Frame>
+
+    <Frame>
+      <img src="/images/claude-code-web/10-after-change.png" alt="The live simulator showing the app with the Hello from Claude title and orange message bubbles" />
+    </Frame>
+  </Step>
+
+  <Step title="Open a pull request">
+    Click **Create PR** in the session bar. The pull request opens under your GitHub account, which starts the iOS Preview workflow.
+
+    <Frame>
+      <img src="/images/claude-code-web/11b-pr-created.png" alt="Session bar showing pull request number 1 for the Claude branch with a CI status indicator" />
+    </Frame>
+
+    When the workflow finishes, about two minutes in our run, it comments on the pull request with a preview link:
+
+    <Frame>
+      <img src="/images/claude-code-web/11-pr-preview-comment.png" alt="Pull request with the Limrun Preview comment linking to the preview for the commit, and the passing iOS Preview check" />
+    </Frame>
+
+    **Open Preview** runs the build from the pull request on a simulator in the Limrun console. Reviewers need to be members of your Limrun organization to open it.
+
+    <Frame>
+      <img src="/images/claude-code-web/12-preview-page.png" alt="Limrun console preview running the changed app with the Hello from Claude title and orange bubbles" />
+    </Frame>
+  </Step>
+</Steps>
+
+## Clean up
+
+The Xcode sandbox and the simulator delete themselves after your organization's inactivity timeout, so closing the session is enough. To stop them right away, ask Claude to run `lim xcode rbe --stop` before you close the session.
+
+## Use your own Bazel project
+
+The same flow works on your own Bazel workspace once the `limrun` environment has bazelisk. Start from [Build with Bazel](/docs/ios/build-with-bazel) for what `lim xcode rbe` configures, and copy `.github/workflows/ios-preview.yml` from the template to get preview links on your own pull requests; [Automatic PR Previews](/docs/ios/pr-previews) covers its options.
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="Build with Bazel" icon="zap" href="/docs/ios/build-with-bazel">
+    Remote build execution, uploads, and CI for Bazel workspaces.
+  </Card>
+  <Card title="Automatic PR Previews" icon="git-pull-request" href="/docs/ios/pr-previews">
+    Preview links on every pull request, for Bazel and xcodebuild projects.
+  </Card>
+</Columns>
