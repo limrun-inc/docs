@@ -52,7 +52,7 @@ Claude Code on the web runs each session on a Linux VM in the cloud, with no acc
     lim skills install --agents claude --scope global
     ```
 
-    The script runs at the start of every session, before Claude Code launches. The first line installs the `lim` CLI. The second installs every Limrun skill into `~/.claude/skills`, so Claude has them in any repository, including ones that don't commit the skills themselves. Add tools your build needs on the same `npm install` line; the [Bazel tutorial](/docs/tutorials/ios-bazel-claude-code-web) adds `@bazel/bazelisk`.
+    The script runs at the start of every session, before Claude Code launches. The first line installs the `lim` CLI. The second installs every Limrun skill into `~/.claude/skills`, so Claude has them in any repository, including ones that don't commit the skills themselves.
 
     <Frame>
       <img src="/images/claude-code-web/04-setup-script.png" width="520" alt="Setup script field with npm install --global lim and lim skills install --agents claude --scope global" />
