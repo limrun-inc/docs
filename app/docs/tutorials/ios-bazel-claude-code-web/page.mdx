@@ -10,7 +10,7 @@ Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a
 
 ## Before you start
 
-- A Claude Code on the web environment set up as described in [Claude Code on the web](/docs/agents/claude-code-web). This tutorial calls it `limrun`.
+- A Claude Code on the web environment set up as described in [Claude Code on the web](/docs/agents/cloud-agents/claude-code-web). This tutorial calls it `limrun`.
 - The Limrun API key you added to that environment. The template's preview workflow uses it too.
 - A GitHub account. The [GitHub CLI](https://cli.github.com) is optional; it makes the secret step one command.
 
@@ -19,7 +19,7 @@ Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a
     Open [limrun-inc/ios-bazel-template](https://github.com/limrun-inc/ios-bazel-template), click **Use this template**, then **Create a new repository**. The template is a small SwiftUI chat app built with `rules_apple` and `rules_swift`. Its assistant replies are canned, so it needs no network or API key of its own.
 
     <Frame>
-      <img src="/images/claude-code-web/06-use-template.png" alt="The ios-bazel-template repository page with the Use this template menu open, showing Create a new repository" />
+      <img src="/images/claude-code-web/06-use-template.png" width="1230" alt="The ios-bazel-template repository page with the Use this template menu open, showing Create a new repository" />
     </Frame>
   </Step>
 
@@ -43,7 +43,7 @@ Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a
     ```
 
     <Frame>
-      <img src="/images/claude-code-web/04b-setup-script-bazel.png" alt="Setup script field with npm install --global lim @bazel/bazelisk and the lim skills install line" />
+      <img src="/images/claude-code-web/04b-setup-script-bazel.png" width="520" alt="Setup script field with npm install --global lim @bazel/bazelisk and the lim skills install line" />
     </Frame>
   </Step>
 
@@ -57,19 +57,19 @@ Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a
     Following the `limrun-xcode-bazel` skill, Claude runs `lim xcode rbe` to start a remote build stack, attaches a simulator, and builds with the command the CLI prints. The first build took about a minute in our run, with the Apple actions executing on the remote Macs:
 
     <Frame>
-      <img src="/images/claude-code-web/07-build.png" alt="Session output of bazelisk --digest_function=sha256 build --config=limrun //App finishing with 35 remote processes and Build completed successfully" />
+      <img src="/images/claude-code-web/07-build.png" width="770" alt="Session output of bazelisk --digest_function=sha256 build --config=limrun //App finishing with 35 remote processes and Build completed successfully" />
     </Frame>
 
     The successful build installs the app on the attached simulator. Claude's reply includes a screenshot and a link to the live simulator:
 
     <Frame>
-      <img src="/images/claude-code-web/08-stream-link.png" alt="Claude's reply with a screenshot of the chat app on the simulator, a Live simulator link, and a summary of the build" />
+      <img src="/images/claude-code-web/08-stream-link.png" width="777" alt="Claude's reply with a screenshot of the chat app on the simulator, a Live simulator link, and a summary of the build" />
     </Frame>
 
     Open the link to use the app in your browser:
 
     <Frame>
-      <img src="/images/claude-code-web/09-simulator.png" alt="The live simulator in the browser running the chat app, with live events, app logs, and network request panels" />
+      <img src="/images/claude-code-web/09-simulator.png" width="1410" alt="The live simulator in the browser running the chat app, with live events, app logs, and network request panels" />
     </Frame>
   </Step>
 
@@ -83,11 +83,11 @@ Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a
     Claude edits the Swift source and the asset catalog, then rebuilds. Bazel reuses the cached actions from the first build, so the rebuild took under 10 seconds in our run. The app reinstalls and relaunches on the simulator you have open. Claude also commits the change and pushes it to a new branch:
 
     <Frame>
-      <img src="/images/claude-code-web/10b-reply.png" alt="Claude's reply with a screenshot of the app titled Hello from Claude with orange bubbles, the pushed branch, and a Create PR button" />
+      <img src="/images/claude-code-web/10b-reply.png" width="780" alt="Claude's reply with a screenshot of the app titled Hello from Claude with orange bubbles, the pushed branch, and a Create PR button" />
     </Frame>
 
     <Frame>
-      <img src="/images/claude-code-web/10-after-change.png" alt="The live simulator showing the app with the Hello from Claude title and orange message bubbles" />
+      <img src="/images/claude-code-web/10-after-change.png" width="1410" alt="The live simulator showing the app with the Hello from Claude title and orange message bubbles" />
     </Frame>
   </Step>
 
@@ -95,19 +95,19 @@ Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a
     Click **Create PR** in the session bar. The pull request opens under your GitHub account, which starts the iOS Preview workflow.
 
     <Frame>
-      <img src="/images/claude-code-web/11b-pr-created.png" alt="Session bar showing pull request number 1 for the Claude branch with a CI status indicator" />
+      <img src="/images/claude-code-web/11b-pr-created.png" width="780" alt="Session bar showing pull request number 1 for the Claude branch with a CI status indicator" />
     </Frame>
 
     When the workflow finishes, about two minutes in our run, it comments on the pull request with a preview link:
 
     <Frame>
-      <img src="/images/claude-code-web/11-pr-preview-comment.png" alt="Pull request with the Limrun Preview comment linking to the preview for the commit, and the passing iOS Preview check" />
+      <img src="/images/claude-code-web/11-pr-preview-comment.png" width="880" alt="Pull request with the Limrun Preview comment linking to the preview for the commit, and the passing iOS Preview check" />
     </Frame>
 
     **Open Preview** runs the build from the pull request on a simulator in the Limrun console. Reviewers need to be members of your Limrun organization to open it.
 
     <Frame>
-      <img src="/images/claude-code-web/12-preview-page.png" alt="Limrun console preview running the changed app with the Hello from Claude title and orange bubbles" />
+      <img src="/images/claude-code-web/12-preview-page.png" width="1430" alt="Limrun console preview running the changed app with the Hello from Claude title and orange bubbles" />
     </Frame>
   </Step>
 </Steps>
