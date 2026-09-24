@@ -15,7 +15,7 @@ Claude Code on the web runs each session on a Linux VM in the cloud. Set up one 
     Open [claude.ai/code](https://claude.ai/code). In the environment menu below the prompt box, choose **Cloud**, then **Add cloud environment**.
 
     <Frame>
-      <img src="/images/claude-code-web/01-add-environment.png" alt="Claude Code on the web environment menu with Cloud selected and the Add cloud environment entry below the Default environment" />
+      <img src="/images/claude-code-web/01-add-environment.png" width="800" alt="Claude Code on the web environment menu with Cloud selected and the Add cloud environment entry below the Default environment" />
     </Frame>
   </Step>
 
@@ -23,7 +23,7 @@ Claude Code on the web runs each session on a Linux VM in the cloud. Set up one 
     Name the environment `limrun` and set **Network access** to **Full**. To allow only specific domains instead, see [Restrict network access](#restrict-network-access).
 
     <Frame>
-      <img src="/images/claude-code-web/02-network-access.png" alt="Add cloud environment dialog with the name limrun and network access set to Full" />
+      <img src="/images/claude-code-web/02-network-access.png" width="520" alt="Add cloud environment dialog with the name limrun and network access set to Full" />
     </Frame>
   </Step>
 
@@ -35,7 +35,7 @@ Claude Code on the web runs each session on a Linux VM in the cloud. Set up one 
     ```
 
     <Frame>
-      <img src="/images/claude-code-web/03-env-var.png" alt="Environment variables field containing LIM_API_KEY with a placeholder value" />
+      <img src="/images/claude-code-web/03-env-var.png" width="520" alt="Environment variables field containing LIM_API_KEY with a placeholder value" />
     </Frame>
 
     <Warning>
@@ -55,7 +55,7 @@ Claude Code on the web runs each session on a Linux VM in the cloud. Set up one 
     The script runs at the start of every session, before Claude Code launches. The first line installs the `lim` CLI. The second installs every Limrun skill into `~/.claude/skills`, so Claude has them in any repository, including ones that don't commit the skills themselves. Add tools your build needs on the same `npm install` line; the [Bazel tutorial](/tutorials/ios-bazel-claude-code-web) adds `@bazel/bazelisk`.
 
     <Frame>
-      <img src="/images/claude-code-web/04-setup-script.png" alt="Setup script field with npm install --global lim and lim skills install --agents claude --scope global" />
+      <img src="/images/claude-code-web/04-setup-script.png" width="520" alt="Setup script field with npm install --global lim and lim skills install --agents claude --scope global" />
     </Frame>
   </Step>
 
@@ -67,7 +67,7 @@ Claude Code on the web runs each session on a Linux VM in the cloud. Set up one 
     ```
 
     <Frame>
-      <img src="/images/claude-code-web/05-select-repo.png" alt="Session bar with the limrun environment, the ios-bazel-template repository, and the main branch selected" />
+      <img src="/images/claude-code-web/05-select-repo.png" width="800" alt="Session bar with the limrun environment, the ios-bazel-template repository, and the main branch selected" />
     </Frame>
   </Step>
 </Steps>

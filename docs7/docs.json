@@ -25,7 +25,14 @@
           "agents/cli",
           "agents/remote-mcp",
           "agents/mcp",
-          "agents/claude-code-web"
+          {
+            "group": "Cloud agents",
+            "icon": "cloud",
+            "pages": [
+              "agents/cloud-agents",
+              "agents/cloud-agents/claude-code-web"
+            ]
+          }
         ]
       },
       {
