@@ -279,36 +279,36 @@ Use `client.analytics.get()` for usage totals or `client.analytics.getInstances(
 
 | Bound | Meaning |
 |---|---|
-| `after` | Strictly after the timestamp. |
-| `before` | Strictly before the timestamp. |
+| `gte` | At or after the timestamp. |
+| `lte` | At or before the timestamp. |
 
 To retrieve instances that stopped during a window, regardless of when they started, supply only `stoppedAt`:
 
 ```ts
 const stopped = await client.analytics.getInstances({
   stoppedAt: {
-    after: "2026-09-25T00:00:00Z",
-    before: "2026-09-26T00:00:00Z",
+    gte: "2026-09-25T00:00:00Z",
+    lte: "2026-09-26T00:00:00Z",
   },
 });
 ```
 
-To narrow that result to instances that started before the window, add `startedAt`:
+To narrow that result to instances that started at or before the window start, add `startedAt`:
 
 ```ts
 const carriedOver = await client.analytics.getInstances({
-  startedAt: { before: "2026-09-25T00:00:00Z" },
+  startedAt: { lte: "2026-09-25T00:00:00Z" },
   stoppedAt: {
-    after: "2026-09-25T00:00:00Z",
-    before: "2026-09-26T00:00:00Z",
+    gte: "2026-09-25T00:00:00Z",
+    lte: "2026-09-26T00:00:00Z",
   },
   labels: "customer=acme",
 });
 ```
 
-The REST endpoints are `GET /v1/analytics` and `GET /v1/analytics/instances`. Encode nested bounds as query parameters such as `startedAt[before]` and `stoppedAt[after]`. At least one time bound is required; one-sided bounds are supported.
+The REST endpoints are `GET /v1/analytics` and `GET /v1/analytics/instances`. Encode nested bounds as query parameters such as `startedAt[lte]` and `stoppedAt[gte]`. At least one time bound is required; one-sided bounds are supported.
 
-Existing top-level `from` and `to` parameters still mean `startedAt >= from` and `startedAt < to`. They intersect with any new bounds. Responses echo those legacy parameters when supplied. Time buckets remain grouped by instance start time. A bounded start-time range, supplied through `startedAt.after` and `startedAt.before` or legacy parameters, includes empty buckets. Queries without a bounded start-time range return only populated buckets.
+Existing top-level `from` and `to` parameters still mean `startedAt >= from` and `startedAt < to`. They intersect with any new bounds. Responses echo those legacy parameters when supplied. Time buckets remain grouped by instance start time. A bounded start-time range, supplied through `startedAt.gte` and `startedAt.lte` or legacy parameters, includes empty buckets. Queries without a bounded start-time range return only populated buckets.
 
 Historical `stoppedAt` values use the time billing was recorded as an approximation. Billing can be recorded after termination. For periodic imports, rescan overlapping windows and upsert results by `instanceTid`. Keep a reconciliation scan of older windows to catch bills delayed beyond the overlap.
 
