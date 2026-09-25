@@ -41,10 +41,6 @@ Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a
     npm install --global lim @bazel/bazelisk
     lim skills install --agents claude --scope global
     ```
-
-    <Frame>
-      <img src="/images/claude-code-web/04b-setup-script-bazel.png" width="520" alt="Setup script field with npm install --global lim @bazel/bazelisk and the lim skills install line" />
-    </Frame>
   </Step>
 
   <Step title="Build and run the app">
@@ -54,19 +50,7 @@ Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a
     Build this app with Limrun and show it to me on an iOS simulator.
     ```
 
-    Following the `limrun-xcode-bazel` skill, Claude runs `lim xcode rbe` to start a remote build stack, attaches a simulator, and builds with the command the CLI prints. The first build took about a minute in our run, with the Apple actions executing on the remote Macs:
-
-    <Frame>
-      <img src="/images/claude-code-web/07-build.png" width="770" alt="Session output of bazelisk --digest_function=sha256 build --config=limrun //App finishing with 35 remote processes and Build completed successfully" />
-    </Frame>
-
-    The successful build installs the app on the attached simulator. Claude's reply includes a screenshot and a link to the live simulator:
-
-    <Frame>
-      <img src="/images/claude-code-web/08-stream-link.png" width="777" alt="Claude's reply with a screenshot of the chat app on the simulator, a Live simulator link, and a summary of the build" />
-    </Frame>
-
-    Open the link to use the app in your browser:
+    Following the `limrun-xcode-bazel` skill, Claude runs `lim xcode rbe` to start a remote build stack, attaches a simulator, and builds with the command the CLI prints. The first build took about a minute in our run, with the Apple actions executing on the remote Macs. The successful build installs the app on the attached simulator, and Claude replies with a screenshot and a **Live simulator** link. Open the link to use the app in your browser:
 
     <Frame>
       <img src="/images/claude-code-web/09-simulator.png" width="1410" alt="The live simulator in the browser running the chat app, with live events, app logs, and network request panels" />
@@ -80,11 +64,7 @@ Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a
     Change the title to "Hello from Claude" and make my message bubbles orange, then show me.
     ```
 
-    Claude edits the Swift source and the asset catalog, then rebuilds. Bazel reuses the cached actions from the first build, so the rebuild took under 10 seconds in our run. The app reinstalls and relaunches on the simulator you have open. Claude also commits the change and pushes it to a new branch:
-
-    <Frame>
-      <img src="/images/claude-code-web/10b-reply.png" width="780" alt="Claude's reply with a screenshot of the app titled Hello from Claude with orange bubbles, the pushed branch, and a Create PR button" />
-    </Frame>
+    Claude edits the Swift source and the asset catalog, then rebuilds. Bazel reuses the cached actions from the first build, so the rebuild took under 10 seconds in our run. Claude also commits the change and pushes it to a new branch. The app reinstalls and relaunches on the simulator you have open:
 
     <Frame>
       <img src="/images/claude-code-web/10-after-change.png" width="1410" alt="The live simulator showing the app with the Hello from Claude title and orange message bubbles" />
@@ -92,13 +72,7 @@ Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a
   </Step>
 
   <Step title="Open a pull request">
-    Click **Create PR** in the session bar. The pull request opens under your GitHub account, which starts the iOS Preview workflow.
-
-    <Frame>
-      <img src="/images/claude-code-web/11b-pr-created.png" width="780" alt="Session bar showing pull request number 1 for the Claude branch with a CI status indicator" />
-    </Frame>
-
-    When the workflow finishes, about two minutes in our run, it comments on the pull request with a preview link:
+    Click **Create PR** in the session bar. The pull request opens under your GitHub account, which starts the iOS Preview workflow. When the workflow finishes, about two minutes in our run, it comments on the pull request with a preview link:
 
     <Frame>
       <img src="/images/claude-code-web/11-pr-preview-comment.png" width="880" alt="Pull request with the Limrun Preview comment linking to the preview for the commit, and the passing iOS Preview check" />
