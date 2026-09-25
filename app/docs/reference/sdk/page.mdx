@@ -271,6 +271,47 @@ Both coordinates are required and use decimal degrees. Latitude must be between 
 
 Location clues express a preference. `spec.jurisdiction` still constrains placement, and a full region can cause creation in another eligible region. A specific `spec.region` overrides location clues. Use the REST payload above if your installed SDK does not yet expose `ClientLocation`.
 
+## Analytics time filters
+
+Use `client.analytics.get()` for usage totals or `client.analytics.getInstances()` for per-instance billing details. Instances appear after billing is recorded.
+
+`startedAt` and `stoppedAt` accept independent RFC3339 timestamp bounds. All supplied bounds apply together:
+
+| Bound | Meaning |
+|---|---|
+| `after` | Strictly after the timestamp. |
+| `before` | Strictly before the timestamp. |
+
+To retrieve instances that stopped during a window, regardless of when they started, supply only `stoppedAt`:
+
+```ts
+const stopped = await client.analytics.getInstances({
+  stoppedAt: {
+    after: "2026-09-25T00:00:00Z",
+    before: "2026-09-26T00:00:00Z",
+  },
+});
+```
+
+To narrow that result to instances that started before the window, add `startedAt`:
+
+```ts
+const carriedOver = await client.analytics.getInstances({
+  startedAt: { before: "2026-09-25T00:00:00Z" },
+  stoppedAt: {
+    after: "2026-09-25T00:00:00Z",
+    before: "2026-09-26T00:00:00Z",
+  },
+  labels: "customer=acme",
+});
+```
+
+The REST endpoints are `GET /v1/analytics` and `GET /v1/analytics/instances`. Encode nested bounds as query parameters such as `startedAt[before]` and `stoppedAt[after]`. At least one time bound is required; one-sided bounds are supported.
+
+Existing top-level `from` and `to` parameters still mean `startedAt >= from` and `startedAt < to`. They intersect with any new bounds. Responses echo those legacy parameters when supplied. Time buckets remain grouped by instance start time. Without both legacy parameters, the response includes only populated buckets.
+
+Historical `stoppedAt` values use the time billing was recorded as an approximation. Billing can be recorded after termination. For periodic imports, rescan overlapping windows and upsert results by `instanceTid`. Keep a reconciliation scan of older windows to catch bills delayed beyond the overlap.
+
 ## Resources × CRUD
 
 The four resources (`iosInstances`, `androidInstances`, `xcodeInstances`, `assets`) all support the same five operations. Method names follow each language's convention.
