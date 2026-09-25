@@ -340,6 +340,10 @@ change.
 An open idle tunnel does not count as instance activity and does not prevent the
 simulator's inactivity timeout.
 
+Start the tunnel before launching the app or opening the page. Connections the
+app opened before the tunnel was ready can keep bypassing it; relaunch the app
+if it connected first.
+
 ## Record a video
 
 For anything involving motion (animations, gestures, gameplay), record a video instead of taking screenshots. Always attach it to the PR.
