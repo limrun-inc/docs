@@ -386,10 +386,12 @@ code:not(pre code) {
 
 /* A screenshot with a width attribute renders at that width, so a narrow
  * crop keeps its real size instead of stretching to the column. The frame
- * hugs the image. */
+ * hugs the image and sits centered. */
 .docs-frame:has(> img[width]) {
   width: fit-content !important;
   max-width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
 .docs-frame img[width] {
