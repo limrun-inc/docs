@@ -308,7 +308,7 @@ const carriedOver = await client.analytics.getInstances({
 
 The REST endpoints are `GET /v1/analytics` and `GET /v1/analytics/instances`. Encode nested bounds as query parameters such as `startedAt[before]` and `stoppedAt[after]`. At least one time bound is required; one-sided bounds are supported.
 
-Existing top-level `from` and `to` parameters still mean `startedAt >= from` and `startedAt < to`. They intersect with any new bounds. Responses echo those legacy parameters when supplied. Time buckets remain grouped by instance start time. Without both legacy parameters, the response includes only populated buckets.
+Existing top-level `from` and `to` parameters still mean `startedAt >= from` and `startedAt < to`. They intersect with any new bounds. Responses echo those legacy parameters when supplied. Time buckets remain grouped by instance start time. A bounded start-time range, supplied through `startedAt.after` and `startedAt.before` or legacy parameters, includes empty buckets. Queries without a bounded start-time range return only populated buckets.
 
 Historical `stoppedAt` values use the time billing was recorded as an approximation. Billing can be recorded after termination. For periodic imports, rescan overlapping windows and upsert results by `instanceTid`. Keep a reconciliation scan of older windows to catch bills delayed beyond the overlap.
 
