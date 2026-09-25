@@ -652,6 +652,11 @@ up to 64 domain selectors. Ports 1 to 65535 are accepted except port 53. CIDRs a
 UDP are not supported. Apps that resolve DNS themselves over HTTPS (DoH) bypass
 domain interception; declare the resolved IP instead.
 
+A tunnel captures connections the app opens after the tunnel is ready. An app
+that reached a destination before that keeps its open connections and can reuse
+them outside the tunnel, so start the tunnel before you launch the app or open
+the page, or relaunch the app once the tunnel is ready.
+
 The CLI can own the tunnel in a background process:
 
 ```bash
