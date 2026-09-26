@@ -641,7 +641,7 @@ The app keeps using literal `localhost:8000`. The tunnel connects it to `localho
 
 Domain selectors are intercepted transparently on the instance and dialed from
 the machine running the client, whether or not the name resolves on public DNS,
-so your DNS, `/etc/hosts`, and VPN apply. Write an
+so your DNS, `/etc/hosts`, and VPN apply and TLS stays end to end. Write an
 exact name (`api.corp.example`) or a `*.` wildcard (`*.staging.example`);
 wildcards are label-bound, so `*.staging.example` covers `a.staging.example`
 but not `staging.example` itself. `localhost` and IP literals are not domains;
@@ -676,17 +676,6 @@ tunnel. Its selector list is immutable: to add or remove a destination, stop the
 tunnel and start it again with the complete selector list. A WebSocket loss
 closes its connections, so start a new tunnel to recover. An open idle tunnel
 does not count as instance activity and does not prevent the inactivity timeout.
-
-HTTP and HTTPS through the tunnel are inspected by default. Each completed
-request is printed as one summary line (in the tunnel log file when detached)
-and streamed live to the console's network panel. `--har <path>` writes the
-traffic as HAR 1.2 with bodies, and `--persist` uploads a network log as a
-session artifact when the tunnel stops or the instance terminates (default
-lifetime 3 days, `--ttl <seconds>` up to 30 days). HTTPS is decoded with a
-certificate authority the simulator trusts, so apps that pin certificates fail
-through inspected selectors: leave the pinned host out of the selectors, or
-pass `--no-inspect` to keep TLS end to end. From the SDK, pass
-`inspection: { enabled: false }` to `startTunnel` for the same effect.
 
 If the app attempts a selector while its local service is stopped, only that
 connection fails; the tunnel and its other selectors stay active. JSON status
