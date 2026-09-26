@@ -327,8 +327,8 @@ lim ios tunnel stop --id <ios-instance-id>
 Declaring `localhost:8000` makes simulator `localhost:8000`, `127.0.0.1:8000`,
 `[::1]:8000`, and `[::ffff:127.0.0.1]:8000` reach the agent machine's
 `localhost:8000`. Domain selectors are intercepted on the instance and dialed
-from the agent machine whether or not the name resolves on public DNS, with TLS
-end to end; wildcards are label-bound (`*.staging.example` does not cover
+from the agent machine whether or not the name resolves on public DNS;
+wildcards are label-bound (`*.staging.example` does not cover
 `staging.example`). Apps that resolve DNS over HTTPS (DoH) bypass domain
 interception.
 
@@ -339,6 +339,10 @@ stop and restart the tunnel with the complete selector list when destinations
 change.
 An open idle tunnel does not count as instance activity and does not prevent the
 simulator's inactivity timeout.
+
+HTTP and HTTPS through the tunnel are inspected by default: `--har <path>`
+writes HAR 1.2, `--persist` keeps a network log on the session, and
+`--no-inspect` keeps TLS end to end for apps that pin certificates.
 
 Start the tunnel before launching the app or opening the page. Connections the
 app opened before the tunnel was ready can keep bypassing it; relaunch the app
