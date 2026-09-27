@@ -232,7 +232,7 @@ Every successful `wait: true` create returns a `status` block with the URLs the 
 | `mcpUrl` | ✓ | ✓ |   | Per-instance MCP HTTP endpoint. Auth with `status.token` as `Authorization: Bearer`, not your org API key. See [MCP](/agents/mcp). |
 | `adbWebSocketUrl` |   | ✓ |   | ADB tunnel endpoint. Pass as `adbUrl` to `createInstanceClient`. |
 | `targetHttpPortUrlPrefix` | ✓ | ✓ |   | Reverse-proxy prefix for tunneled HTTP ports (used by Appium/WDA). |
-| `sandbox.xcode.url` | ✓ (legacy) |   |   | Embedded Xcode sandbox URL on instances created by old clients with `spec.sandbox.xcode.enabled`. The TypeScript SDK and CLI no longer offer it; create the Xcode instance separately and attach the simulator. |
+| `sandbox.xcode.url` | ✓ (legacy) |   |   | Embedded Xcode sandbox URL on instances created by old clients with `spec.sandbox.xcode.enabled`. The TypeScript SDK and CLI no longer offer it; create the Xcode instance separately and attach the simulator. See [Build with remote Xcode](/ios/build-with-xcode#moving-off-the-embedded-xcode-sandbox). |
 | `sandbox.playwrightAndroid.url` |   | ✓ (conditional) |   | CDP URL when `spec.sandbox.playwrightAndroid.enabled: true`. |
 
 ## Regions and labels

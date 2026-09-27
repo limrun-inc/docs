@@ -75,7 +75,7 @@ The instance status carries everything you need:
 | `endpointWebSocketUrl` | WebSocket endpoint for the [`<RemoteControl />` web component](/platform/embed-simulator) (pass with `?token=`). |
 | `signedStreamUrl` | Console-hosted watch URL with the token in the URL fragment; open in a browser without your API key. |
 | `mcpUrl` | Per-instance MCP HTTP endpoint. Auth with the per-instance `status.token`, not your org API key. See [MCP](/agents/mcp); for one org-level endpoint that also creates instances, see the [remote MCP server](/agents/remote-mcp). |
-| `sandbox.xcode.url` | Legacy: embedded Xcode sandbox API URL on instances created by old clients with `spec.sandbox.xcode.enabled`. The TypeScript SDK and CLI no longer offer it; create the sandbox separately and attach. See [Build with remote Xcode](/ios/build-with-xcode). |
+| `sandbox.xcode.url` | Legacy: embedded Xcode sandbox API URL on instances created by old clients with `spec.sandbox.xcode.enabled`. The TypeScript SDK and CLI no longer offer it; create the sandbox separately and attach. See [Build with remote Xcode](/ios/build-with-xcode#moving-off-the-embedded-xcode-sandbox). |
 | `targetHttpPortUrlPrefix` | Reverse-proxy prefix for tunneled HTTP ports on the device. |
 | `state` | `unknown` → `creating` → `assigned` → `ready` → `terminated`. |
 
@@ -954,7 +954,7 @@ Add `--xcode` to also create an Xcode build sandbox and attach the simulator to 
 | `forceBundleId` | string | After this app first enters the foreground, bring it back whenever it is closed or backgrounded. |
 | `clues` | array | Scheduling hints. Use `ClientIP` for the end user's IP, or the REST API's `ClientLocation` with `{ latitude, longitude }` for coordinates. `ClientLocation` takes precedence. See [client location clues](/reference/sdk#client-location-clues). |
 | `initialAssets` | array | Apps or keychain state to apply at boot. See [Asset Storage](/platform/asset-storage). |
-| `sandbox.xcode.enabled` | boolean | Legacy: create an embedded Xcode sandbox with the simulator. Kept for old clients; the TypeScript SDK and CLI no longer offer it. Create the sandbox separately and attach instead. See [Build with remote Xcode](/ios/build-with-xcode). |
+| `sandbox.xcode.enabled` | boolean | Legacy: create an embedded Xcode sandbox with the simulator. Kept for old clients; the TypeScript SDK and CLI no longer offer it. Create the sandbox separately and attach instead. See [Build with remote Xcode](/ios/build-with-xcode#moving-off-the-embedded-xcode-sandbox). |
 
 `metadata.labels` is free-form `key=value` and powers `reuseIfExists`, listing, and cleanup queries.
 
