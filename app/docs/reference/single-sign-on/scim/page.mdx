@@ -1,0 +1,51 @@
+---
+title: "SCIM provisioning"
+order: 2
+icon: "users"
+description: "Sync organization users and groups and map identity provider groups to Limrun roles."
+---
+
+# SCIM provisioning
+
+SCIM manages who can access your organization. [OIDC SSO](/docs/reference/single-sign-on) handles sign-in. Configure SSO and verify your email domains before connecting provisioning.
+
+## Connect your directory
+
+1. Open **Settings > Single Sign-On > Directory provisioning (SCIM)** as an organization admin.
+2. Generate a credential. Copy the **SCIM base URL** and the bearer credential into your identity provider's SCIM 2.0 configuration. The credential is shown once and grants provisioning access to this organization only.
+3. Enable user creation, profile updates, deactivation, and group provisioning. Set SCIM `userName` to the same work email sent in the OIDC `email` claim. It must belong to a verified domain of this organization.
+4. Assign users and push groups from the identity provider. Refresh the directory in Limrun to see them.
+5. Map each group to **Admin**, **Member**, **Viewer**, or **No access**.
+6. Select **Enforced**, then **Preview changes**. Review the access list before selecting **Apply reviewed policy**.
+
+The connection starts in **Staging**. Users and groups synchronize in this mode, but existing memberships remain unchanged. Save and review mappings before enabling enforcement. A directory change after your preview requires a fresh preview.
+
+For Okta, use a SCIM 2.0 application integration with HTTP bearer authentication. Enable user provisioning and Group Push; setting up an OIDC SSO application alone does not enable SCIM. For Microsoft Entra ID, use a custom SCIM enterprise application's automatic provisioning and enable user and group mappings. Use the generated SCIM credential as its secret token. Test the connection and verify a user and group sync before enforcement. Limrun supports standard provisioning requests; it does not install an IdP application or configure directory assignments for you.
+
+## How access is calculated
+
+An enforced organization admits a user only when their SCIM record is active and at least one of their groups maps to a Limrun role. A new user can be provisioned before they have a Limrun account. Their first successful SSO sign-in creates their account with the mapped role.
+
+When several mapped groups contain a user, the highest role wins: **Admin > Member > Viewer**. Unmapped groups grant no access. Group mappings follow the group's stable SCIM ID, so a group rename preserves its mapping. A deleted and recreated group has a new ID and needs a new mapping.
+
+Deactivating or deleting a user removes their organization membership. Deactivation takes precedence over any groups that still contain them. Removing a user from a mapped group recalculates access from their remaining groups. Reactivation restores access only if they still have an eligible mapped group.
+
+SCIM can remove or demote the last admin, including the person who enables enforcement. Keep an appropriate admin group mapped before applying the policy. If the last admin loses access, assign an active user to that mapped admin group in the identity provider to restore administration.
+
+Enforcement disables domain auto-join, invitations, and manual membership changes. Having an email in the organization's domain is not enough to join. SSO remains required for verified domains. Users denied admission see “Your organization manages access through SCIM” and should ask their administrator for an access-group assignment.
+
+Removal affects this organization's user access and user-approved MCP grants. It preserves the user's other organizations, shared organization API keys, and already-running instances.
+
+## Manage the connection
+
+The provisioning screen shows synchronized users, their group-derived roles, and provisioning history. Errors appear in the history with the affected request and status.
+
+**Rotate credential** immediately replaces the old credential. Update the identity provider with the new value. **Revoke credential** stops provisioning requests without changing the enforcement policy or current memberships. Switching to **Staging** keeps current memberships and permits manual changes again. Switch to staging before removing SSO or changing verified domains.
+
+## Protocol support
+
+The base URL serves `/Users`, `/Groups`, `/ServiceProviderConfig`, `/ResourceTypes`, and `/Schemas`. User and group resources support create, read, replace, atomic PATCH, and delete. Lists support `startIndex` and `count`, up to 1,000 results per request. A zero count returns only the total.
+
+Supported equality filters are `userName eq "alice@example.com"` for users, `displayName eq "Engineering"` for groups, and `externalId` or `id` for either resource. User names and group display names match without regard to case. The service also supports selecting or excluding top-level attributes. Unsupported filters return a SCIM `invalidFilter` error.
+
+Groups contain direct user members. Nested groups, bulk requests, sorting, password provisioning, enterprise extensions, and ETags are not supported. Flatten nested directory membership before provisioning. The service advertises its capabilities and supported core profile attributes through SCIM discovery endpoints.

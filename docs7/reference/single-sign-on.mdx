@@ -54,7 +54,7 @@ reach out to us for manual verification.
 
 5. After the DNS record is published, click **Verify DNS** in Limrun.
 
-New domains have auto-join enabled by default. Auto-join takes effect after verification. If you manage domains through the API, set `autoJoinEnabled: false` to opt out. Successful SSO sign-in adds the user to the connection's organization regardless of this setting.
+New domains have auto-join enabled by default. Auto-join takes effect after verification. If you manage domains through the API, set `autoJoinEnabled: false` to opt out. With SCIM enforcement disabled, successful SSO sign-in adds the user to the connection's organization regardless of this setting. Enforced SCIM requires an active provisioned user and a mapped group instead.
 
 ### Create the OIDC application
 
@@ -162,7 +162,7 @@ If the email domain is verified and the provider sign-in succeeds, Limrun signs 
 
 ## Notes
 
-- Limrun supports OIDC SSO. SAML and SCIM are not configured from this guide.
+- Limrun supports OIDC SSO. For user and group provisioning, see [SCIM provisioning](/reference/single-sign-on/scim). SAML is not supported.
 - A Limrun organization has one OIDC connection.
-- If a user signs in through SSO and does not already have a Limrun account, Limrun creates the user and adds them to the organization for that OIDC connection.
+- With SCIM enforcement disabled, a first SSO sign-in creates an account and joins the organization. With SCIM enforced, the user must be active in the directory and belong to a group mapped to a Limrun role.
 - If a user already exists with the same verified email address, a successful OIDC sign-in links that account to the OIDC identity for the organization.
