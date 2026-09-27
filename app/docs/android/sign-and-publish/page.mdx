@@ -1,0 +1,142 @@
+---
+title: "Sign and publish"
+description: "Produce a Play-ready signed AAB without a keystore on your machine, then publish it to a Google Play track."
+order: 3
+icon: "key-round"
+---
+# Sign and publish to Google Play
+
+Sign a release Android App Bundle on a remote Gradle sandbox and publish it to Google Play. Limrun can generate and keep your app's upload key for your organization, so no keystore file has to live on laptops or in CI secrets. This page builds on [Build with Gradle](/docs/android/build-with-gradle).
+
+## Sign with the organization's upload key
+
+Google Play accepts uploads only when they are signed with the app's registered upload key, the same key every time. Add `--sign` and Limrun signs the build with the key it escrows for your organization:
+
+```bash
+lim gradle build . --sign --upload myapp.aab
+```
+
+On the first `--sign` build of an app, Limrun generates an upload keystore and stores it as the organization's `androidSigningKey` secret, named by the Android application ID. Every later `--sign` build of that app, from any machine, resolves the same key. The build prints which case you are in:
+
+```text
+Signing with the organization's upload key for com.example.app (newly generated).
+Signing with the organization's upload key for com.example.app (existing).
+```
+
+`--sign` makes `bundleRelease` the default task. An explicit `--task` list must contain a bundle task, or the build is rejected before an instance is created.
+
+The application ID is detected from `app.json` (Expo) or the first uncommented `applicationId` in `app/build.gradle(.kts)`. When detection fails, or your build flavors use different IDs, name the key explicitly:
+
+```bash
+lim gradle build . --sign --application-id com.example.app
+```
+
+The keystore and its passwords reach the build sandbox for the duration of the build only and never appear in the streamed output. Each sandbox serves a single organization and is destroyed with the instance. A successful signed build has already passed the server's signature check on the produced AAB; an unsigned or broken artifact fails the build instead of shipping.
+
+## Bring your own upload key
+
+If Google Play already knows your upload key, pass your keystore instead of `--sign`:
+
+```bash
+lim gradle build . \
+  --keystore ./signing/upload.jks \
+  --keystore-password "$KEYSTORE_PASSWORD" \
+  --key-alias upload \
+  --key-password "$KEY_PASSWORD" \
+  --upload myapp.aab
+```
+
+The passwords can come from the `LIM_KEYSTORE_PASSWORD` and `LIM_KEY_PASSWORD` environment variables instead of the command line.
+
+Add `--save-key` to escrow the provided key, so later builds can drop the keystore flags and use plain `--sign`. Escrow never overwrites: if a different key is already stored for the app, `--save-key` fails before any instance is created. To move a key to another organization, run a build there with your keystore and `--save-key`.
+
+The TypeScript SDK has no escrow shortcut. Pass the signing material on the build call:
+
+```ts
+import fs from 'node:fs';
+
+const build = gradle.gradlebuild({
+  tasks: ['bundleRelease'],
+  signing: {
+    keystoreBase64: fs.readFileSync('./signing/upload.jks').toString('base64'),
+    keystorePassword: process.env['KEYSTORE_PASSWORD']!,
+    keyAlias: 'upload',
+    keyPassword: process.env['KEY_PASSWORD']!,
+  },
+  upload: { assetName: 'myapp.aab' },
+});
+```
+
+## Publish to Google Play
+
+You can publish in the same command that builds, or publish an AAB that is already in Asset Storage from the Limrun console. Both need these in place first:
+
+- The app listing exists in [Play Console](https://play.google.com/console). Google's API cannot create listings.
+- The Google identity you publish with has release permission for the app in Play Console.
+- The AAB is signed with the app's upload key. Google Play registers the upload key from the app's first upload and requires the same key on every upload after that, which is what the escrowed `--sign` key guarantees.
+- The AAB's `versionCode` has never been uploaded to this app before.
+
+### Publish from the build
+
+Add `--upload-to-playstore` to a signed build. Authenticate with either a service-account JSON key whose email is invited in Play Console, or a short-lived Google OAuth access token with the `androidpublisher` scope:
+
+```bash
+# With a service account
+lim gradle build . --sign --upload-to-playstore \
+  --playstore-service-account service-account.json
+
+# With an access token, read from the environment so it stays out of shell history
+LIM_PLAYSTORE_ACCESS_TOKEN=<google-access-token> \
+  lim gradle build . --sign --upload-to-playstore --auto-version-code
+```
+
+| Flag | What it does |
+|---|---|
+| `--upload-to-playstore` | Publish the signed AAB to a Google Play track after a successful build. Requires signing plus a service account or an access token. |
+| `--playstore-service-account <path>` | Service-account JSON key whose email is invited in Play Console. |
+| `--playstore-access-token <token>` | Short-lived Google OAuth token with the `androidpublisher` scope. Prefer the `LIM_PLAYSTORE_ACCESS_TOKEN` environment variable. |
+| `--playstore-track <track>` | `internal` (the default), `alpha`, `beta`, `production`, or a custom track ID. Publishing replaces the track's existing releases. |
+| `--playstore-release-status draft\|completed` | `completed` makes the release live on the track; `draft` commits it without rollout. Required explicitly for the `production` track. |
+| `--playstore-package <package>` | Package name to publish under. Omit it to read the name from the built AAB. |
+| `--auto-version-code` | Resolve the next free `versionCode` from Google Play and stamp it before building. Requires `--upload-to-playstore`. |
+
+`--auto-version-code` sets the `versionCode` to one more than the highest already on Google Play, so repeat publishes never collide. It writes `expo.android.versionCode` for Expo projects, which needs a static `app.json`, or the single literal `versionCode` in the conventional `app/` module build script for native projects. Computed or flavor-split version codes are rejected when the build is requested. Without the flag, bump `versionCode` in `app/build.gradle(.kts)` (Expo: `expo.android.versionCode` in `app.json`) before each build.
+
+To publish from your own product on behalf of your users, with their Google sign-in in the browser, see [Publish to the stores](/docs/platform/publish-to-stores).
+
+### Publish from the console
+
+The console publishes with your own Google account, in your browser. Limrun never stores that Google credential: the browser mints a short-lived access token, and the publish uses it for that one upload.
+
+1. Build and upload a signed AAB: `lim gradle build . --sign --upload myapp.aab`.
+2. Open [console.limrun.com](https://console.limrun.com) and select your organization.
+3. On the **Secrets** page, click **Connect Play Console** and sign in with the Google account that has release access. The session lives in this browser only; nothing is stored.
+4. Go to the **Registry** page. Assets ending in `.aab` have a **Publish to Play Store** action.
+5. Click it, enter the **Package name** (the app's application ID), and publish. The upload targets the internal testing track, and the dialog reports Google's verdict.
+
+If a publish reports that the version code already exists, the build may already be live from an earlier attempt. Check Play Console before you bump the `versionCode` and publish again.
+
+## Troubleshooting
+
+| Build output | Cause | Fix |
+|---|---|---|
+| `The organization already has a different upload key escrowed for ...` | `--save-key` found an existing, different key for this application ID. | Builds with `--sign` use the stored key. Drop `--save-key` to sign with your keystore for this build only, or delete the stored secret first if your keystore is the real upload key. |
+| `Cannot determine the Android application ID for signing` | Neither `app.json` nor `app/build.gradle(.kts)` yielded an application ID. | Pass `--application-id <id>`. |
+| `--sign produces a Play-ready signed AAB; include a bundle task` | The explicit `--task` list has no bundle task. | Add `bundleRelease` to `--task`, or omit `--task`. |
+| `signing ... contains an unsupported character` | The password or alias contains characters outside ISO-8859-1, which Gradle's properties file cannot carry. | Re-create the key with a Latin-1 password. |
+| `the built AAB carries no signature` | Gradle produced a bundle without applying the injected signing configuration. | Retry the build; contact support if it persists. |
+| Publish reports the version code already exists | That `versionCode` was uploaded before, possibly by an earlier attempt. | Check Play Console, then bump `versionCode` or build with `--auto-version-code`. |
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="GitHub Actions recipes" icon="workflow" href="/docs/ci/github-actions">
+    Build a signed AAB on every push with only `LIM_API_KEY` in the pipeline.
+  </Card>
+  <Card title="Publish to the stores" icon="rocket" href="/docs/platform/publish-to-stores">
+    Add Google Play and App Store publishing to your own platform.
+  </Card>
+  <Card title="Build logs and webhooks" icon="webhook" href="/docs/ci/build-logs-and-webhooks">
+    Detach from release builds and receive the result on a webhook.
+  </Card>
+</Columns>

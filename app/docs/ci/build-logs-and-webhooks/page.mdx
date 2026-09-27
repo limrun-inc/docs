@@ -1,0 +1,304 @@
+---
+title: "Build logs and webhooks"
+description: "Start a remote Xcode or Gradle build without waiting on it, read its logs later, and get the result delivered to your endpoint."
+order: 3
+icon: "webhook"
+---
+# Build logs, webhooks, and detached builds
+
+A CI job, coding agent, or backend often should not hold a build stream open for minutes. Detach from the build once it is accepted, read its logs whenever you need them, and let a webhook deliver the terminal result. Xcode builds (`lim xcode build`) and Gradle builds (`lim gradle build`) share the same model; every command on this page has an `xcode` and a `gradle` form.
+
+## Detach from a build
+
+Add `--detach` to return as soon as the build is accepted instead of streaming logs until it finishes:
+
+<Tabs>
+<Tab title="Xcode">
+
+```bash
+lim xcode build . --detach
+```
+
+</Tab>
+<Tab title="Gradle">
+
+```bash
+lim gradle build . --detach
+```
+
+</Tab>
+</Tabs>
+
+Once the build is accepted, the CLI prints the instance ID, a console URL for the build, and the exact command that retrieves its logs. With `--json`, the output carries `instanceId`, `execId`, the console URL (`consoleUrl`), and `logsCommand`, plus `webhookUrl` when a webhook is configured. A webhook is optional; add one (see [Receive a webhook](#receive-a-webhook)) to get the terminal result without polling.
+
+The TypeScript SDK detaches the same way after the build request is accepted, and returns the exec ID:
+
+```ts
+const execId = await build.detach();
+```
+
+`build` is the handle returned by `xcode.xcodebuild(...)` or `gradle.gradlebuild(...)`; see [Build with Xcode](/docs/ios/build-with-xcode) and [Build with Gradle](/docs/android/build-with-gradle).
+
+### Build on a short-lived sandbox
+
+A detached build normally runs on the sandbox the CLI remembers for your workspace, which stays up until its inactivity timeout. For a one-off build, such as a release job or a publish request from your backend, add `--inactivity-timeout` so the sandbox deletes itself as soon as the work is done:
+
+```bash
+lim xcode build . --detach --inactivity-timeout 3s
+lim gradle build . --detach --inactivity-timeout 3s
+```
+
+The flag makes the build create a fresh instance with that lifecycle instead of reusing the remembered one, so it cannot be combined with `--id`. The timeout is measured from the last activity the server reports, and active builds and uploads count as activity, so even `3s` never interrupts the build. For Xcode builds, the inactivity controller checks about every 15 seconds, so a `3s` timeout usually tears the instance down 3 to 18 seconds after its last activity rather than at exactly three seconds.
+
+## Read build logs
+
+`logs` reads the latest build on the remembered instance. No exec ID is needed:
+
+<Tabs>
+<Tab title="Xcode">
+
+```bash
+lim xcode logs
+lim xcode logs --follow
+```
+
+</Tab>
+<Tab title="Gradle">
+
+```bash
+lim gradle logs
+lim gradle logs --follow
+```
+
+</Tab>
+</Tabs>
+
+Without flags, `logs` prints a point-in-time snapshot of the latest build, including one that is still running. A snapshot with status `RUNNING` does not mean the build succeeded, so check the reported status before you declare success. `--follow` replays the output and keeps streaming until the build reaches a terminal state. Stopping `--follow` stops only the observation; the remote build keeps running.
+
+The CLI reads the active build from the sandbox first. When there is none, or the sandbox or instance answers 404, it downloads the newest persisted log instead. Persisted logs stay readable after the instance is deleted, and reading logs never creates a replacement instance. Other errors are reported as errors; the CLI never substitutes an older log.
+
+Pass `--id <instance-id>` to read another instance. For Xcode, that can be an Xcode sandbox ID or the ID of an iOS simulator attached to one. To keep inspecting one detached build after newer builds start, run the `logsCommand` it printed, or pass the exec ID yourself:
+
+```bash
+lim xcode logs build-1776140344112378000 --id <xcode-instance-id>
+lim gradle logs build-1776140344112378000 --id <gradle-instance-id>
+```
+
+Exec IDs are optional everywhere. Do not ask a user for one just to read the latest build.
+
+### Read logs from the TypeScript SDK
+
+`observeBuildLogs` replays or follows a build while its sandbox still retains the stream:
+
+```ts
+const result = await xcode.observeBuildLogs('latest', {
+  follow: true,
+  onEvent: (event) => {
+    if (event.type === 'stdout' || event.type === 'stderr') {
+      process.stdout.write(event.data + '\n');
+    }
+  },
+});
+```
+
+The same method exists on the Gradle client (`gradle.observeBuildLogs`). `'latest'` reads only the sandbox's retained stream, which can include a completed build; unlike the CLI, it does not fall back to persisted logs. Omit `follow` for a snapshot, or replace `'latest'` with the exec ID returned by `detach()` to observe one specific build.
+
+To read persisted logs, list the completed builds of an instance and download the selected record's `downloadUrl`:
+
+```ts
+const xcodeBuilds = await lim.xcodeInstances.listBuildLogs(xcodeInstance.metadata.id);
+const gradleBuilds = await lim.gradleInstances.listBuildLogs(gradleInstance.metadata.id);
+```
+
+Both lists stay available after the instance is deleted. For a build that ran through an iOS simulator attached to an Xcode sandbox, pass the Xcode sandbox ID, not the simulator ID.
+
+## Receive a webhook
+
+Pass a webhook URL when something needs the terminal result without watching the live stream. Limrun POSTs to it once the build reaches `SUCCEEDED`, `FAILED`, or `CANCELLED`, whether the caller keeps streaming or detaches:
+
+<Tabs>
+<Tab title="Xcode">
+
+```bash
+lim xcode build . \
+  --webhook-url https://ci.example.com/hooks/limrun \
+  --webhook-header Authorization="Bearer $HOOK_SECRET"
+```
+
+From the TypeScript SDK:
+
+```ts
+const build = xcode.xcodebuild(
+  { workspace: 'MyApp.xcworkspace', scheme: 'MyApp' },
+  {
+    webhook: {
+      url: 'https://ci.example.com/hooks/limrun',
+      headers: { Authorization: 'Bearer <your-webhook-secret>' },
+    },
+  },
+);
+```
+
+</Tab>
+<Tab title="Gradle">
+
+```bash
+lim gradle build . \
+  --webhook-url https://ci.example.com/hooks/limrun \
+  --webhook-header Authorization="Bearer $HOOK_SECRET"
+```
+
+From the TypeScript SDK:
+
+```ts
+const build = gradle.gradlebuild({
+  tasks: [':app:assembleRelease'],
+  webhook: {
+    url: 'https://ci.example.com/hooks/limrun',
+    headers: { Authorization: 'Bearer <your-webhook-secret>' },
+  },
+});
+```
+
+</Tab>
+</Tabs>
+
+The webhook flags on both commands:
+
+| Flag | What it does |
+|---|---|
+| `--webhook-url <url>` | HTTPS endpoint that receives the terminal result. Defaults to `LIM_WEBHOOK_URL`. |
+| `--webhook-header NAME=VALUE` | Header set verbatim on the request, such as an `Authorization` secret. Repeatable, at most 16. Defaults to `LIM_WEBHOOK_HEADERS` (comma-separated; write a literal comma as `\,`). |
+| `--webhook-label KEY=VALUE` | Label echoed verbatim in the payload's `labels` field so your endpoint can correlate the callback with its own context, such as `pipeline=release` or `commit=$GIT_SHA`. Repeatable, at most 32; key and value at most 64 printable ASCII characters each. Defaults to `LIM_WEBHOOK_LABELS` (comma-separated; write a literal comma as `\,`). |
+
+Header and label flags require `--webhook-url`. In CI, the environment variables keep the command line short:
+
+```bash
+LIM_WEBHOOK_URL=https://ci.example.com/hooks/limrun \
+LIM_WEBHOOK_HEADERS="Authorization=Bearer $HOOK_SECRET" \
+  lim xcode build . --detach
+```
+
+Combined with `--detach`, a webhook turns a build into a fire-and-forget job:
+
+```bash
+lim xcode build . --detach \
+  --webhook-url https://ci.example.com/hooks/limrun \
+  --webhook-label pipeline=release \
+  --webhook-label commit="$GIT_SHA"
+```
+
+### Payload
+
+The payload carries the build result and debugging links:
+
+<Tabs>
+<Tab title="Xcode">
+
+```json
+{
+  "execId": "build-1700000000000000000",
+  "command": "xcodebuild",
+  "status": "SUCCEEDED",
+  "exitCode": 0,
+  "startedAt": "2026-07-29T12:00:00Z",
+  "finishedAt": "2026-07-29T12:03:25Z",
+  "buildDurationMs": 205000,
+  "instanceId": "sandbox_usw1_...",
+  "consoleUrl": "https://console.limrun.com/builds/sandbox_usw1_...",
+  "logsUrl": "https://...",
+  "assetId": "asset_01h455vb4pex5vsknk084sn02q",
+  "bundleIdentifier": "com.example.myapp",
+  "shortVersion": "1.2.3",
+  "buildVersion": "42",
+  "displayName": "MyApp",
+  "deeplink": "myapp",
+  "iconUrl": "https://..."
+}
+```
+
+</Tab>
+<Tab title="Gradle">
+
+```json
+{
+  "execId": "build-1700000000000000000",
+  "command": "gradlebuild",
+  "status": "SUCCEEDED",
+  "exitCode": 0,
+  "startedAt": "2026-07-29T12:00:00Z",
+  "finishedAt": "2026-07-29T12:02:10Z",
+  "buildDurationMs": 130000,
+  "instanceId": "gradle_usw1_...",
+  "consoleUrl": "https://console.limrun.com/builds/gradle_usw1_...",
+  "logsUrl": "https://...",
+  "applicationId": "com.example.myapp",
+  "versionName": "1.2.3",
+  "versionCode": 42
+}
+```
+
+</Tab>
+</Tabs>
+
+`logsUrl` is a time-limited link to the persisted plain-text build log. When `status` is `FAILED`, read that log for diagnostics. There is no `error` field: neither `xcodebuild` nor Gradle exposes one deterministic diagnostic, so the log is the answer. The instance, console, log, timing, and exit-code fields are omitted when they are unavailable, and `labels` appears when the build set `--webhook-label`.
+
+### App identity in the payload
+
+The payload also describes the app the build produced, so a receiver can tell builds apart without downloading the artifact. In a monorepo that ships several apps, key your bookkeeping on the bundle identifier or application ID.
+
+<Tabs>
+<Tab title="Xcode">
+
+The fields come from the built bundle's `Info.plist`:
+
+| Field | Carries |
+|---|---|
+| `bundleIdentifier` | `CFBundleIdentifier`, for example `com.example.myapp`. |
+| `shortVersion` | `CFBundleShortVersionString`, for example `1.2.3`. |
+| `buildVersion` | `CFBundleVersion`, for example `42`. |
+| `displayName` | `CFBundleDisplayName`, falling back to `CFBundleName`. |
+| `deeplink` | The app's primary URL scheme from `CFBundleURLTypes`, for example `myapp` for `myapp://` links. |
+| `assetId` | The Asset Storage asset the artifact was uploaded to. Use it to install exactly the build a webhook reported. |
+| `iconUrl` | A time-limited link to the app icon PNG stored next to the asset. |
+
+These fields are set on successful builds that produced one app bundle. A [`lim xcode test`](/docs/testing/xctest) run builds for testing and produces an `xctestrun` tree rather than a single app, so it carries none. `assetId` and `iconUrl` also need `--upload`, which creates the asset; `--signed-upload-url` (which defaults to `LIM_SIGNED_UPLOAD_URL` unless `--upload` names a destination) puts the artifact in your own bucket and mints no asset.
+
+</Tab>
+<Tab title="Gradle">
+
+`applicationId`, `versionName`, and `versionCode` come from the built APK's or AAB's manifest, not from your Gradle scripts. They reflect the merged manifest: product flavors, build-type suffixes, and manifest placeholders resolve the way the shipped artifact has them.
+
+These fields are set on successful builds that produced an artifact, which means the request also asked for an upload (`--upload` or `--signed-upload-url`) or a Play Store publish. A build that packaged nothing has no artifact to describe. `versionCode` is omitted when the manifest declares none.
+
+</Tab>
+</Tabs>
+
+Reading the app identity is best-effort on both platforms: when Limrun cannot read the bundle or manifest, it leaves the fields out rather than failing a build that compiled, signed, and uploaded fine.
+
+### Delivery rules
+
+- The URL must use HTTPS on a public DNS host. IP literals and private or cluster-internal targets are rejected when the build request is submitted.
+- At most 16 headers are accepted. `Host`, `Content-Length`, `Transfer-Encoding`, and `Connection` cannot be overridden.
+- Any 2xx response counts as delivered. Other responses and connection failures are retried up to two more times.
+- Delivery is best-effort. Exhausting the retries does not change the build result.
+- Cancelled builds send a callback too. A new build on the same sandbox cancels the active one.
+
+For a complete receiver that authenticates callbacks with a per-build token, see [Publish to the stores](/docs/platform/publish-to-stores).
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="GitHub Actions recipes" icon="workflow" href="/docs/ci/github-actions">
+    Complete workflows for signed IPAs, Bazel builds, and signed AABs on Linux runners.
+  </Card>
+  <Card title="PR previews" icon="git-pull-request" href="/docs/ci/pr-previews">
+    Post a live preview link on every pull request.
+  </Card>
+  <Card title="Build with Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
+    Every `lim xcode build` flag, sync rules, and artifact uploads.
+  </Card>
+  <Card title="Build with Gradle" icon="hammer" href="/docs/android/build-with-gradle">
+    Remote Gradle builds, Expo prebuild, and artifact uploads.
+  </Card>
+</Columns>

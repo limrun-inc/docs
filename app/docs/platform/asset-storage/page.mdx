@@ -1,21 +1,16 @@
 ---
 title: "Asset Storage"
-description: "Limrun's managed binary store. Pre-install your customers' apps at instance boot and hot-deploy new builds into running embedded sessions"
+description: "The asset model, upload paths, expiry, boot and live installs, the curated app catalog, and multi-tenant naming."
 order: 2
 icon: "database"
 ---
 # Asset Storage
 
-Asset Storage is the binary store that backs every Limrun instance. It lets you:
+Asset Storage is Limrun's managed store for app binaries. Upload a build once, then install it on any instance: at boot, so the device starts with the app ready, or into a running session when a new build lands. Build commands upload to it, preview links read from it, and platforms use it to hold their users' apps.
 
-1. **Pre-install an app build** (Android, iOS, iPadOS or watchOS) at boot so the embedded simulator starts with the app ready.
-2. **Hot-deploy a fresh build** into a *running* embedded session on rebuilds.
+## What an asset is
 
-For how to connect platform users to those instances, see [Embed the simulator](/docs/platform/embed-simulator).
-
-## What are Assets?
-
-An asset is a single installable binary, such as an iOS simulator build (`.app`, `.app.zip`, or `.app.tar.gz`) or an Android APK (`.apk`).
+An asset is one stored file. Installable files are iOS simulator builds (`.app`, `.app.zip`, or `.app.tar.gz`) and Android APKs (`.apk`). Build uploads can also store signed device artifacts, such as an IPA from [Sign and distribute](/docs/ios/sign-and-distribute) or an AAB from [Sign and publish](/docs/android/sign-and-publish), and `lim ios keychain save` stores encrypted keychain archives. Its record has this shape:
 
 ```ts
 interface Asset {
@@ -33,77 +28,35 @@ interface Asset {
 
 | Field | Meaning |
 |---|---|
-| `id` | Stable auto-generated identifier. |
-| `name` | Customizable identifier. Names need to be unique globally in your org. To organise for multi-tenancy, [use prefixes](#asset-organisation-for-multi-tenancy). |
-| `kind` | `App` (default) for installable binaries, `Keychain` for keychain archives used by Xcode build sandboxes. |
-| `displayName` | Optional human-readable label surfaced in the console; falls back to `name`. |
-| `md5` | Set once the bytes have been uploaded. Unique hash used by `getOrUpload` to skip re-uploads for duplicates and by `installApp` to enable server-side caching. |
-| `platform` | Limits which platform can install the asset. Useful when the same logical name (e.g. `acme/my-app-v1.2.3`) covers both an iOS sim build and an Android APK. Responses also include `os`, a deprecated alias that mirrors this field. |
-| `expiresAt` | When set, the time after which the asset (bytes and record) is deleted automatically. See [Asset expiry](#asset-expiry-ttl). |
-| `signedDownloadUrl` / `signedUploadUrl` | Time-limited URLs. Only returned when you ask for them on `list`/`get`, or always on `getOrCreate`. |
-
-
-### Configuration entries on `initialAssets`
-
-Stored assets are always files: `kind: 'App'` installables or `kind: 'Keychain'` archives. But `spec.initialAssets` accepts another flavour of entry, `kind: 'Configuration'`, which carries an instance-level setting instead of pointing at Asset Storage. That value exists only on the [`initialAsset` shape](#pre-install-on-boot); an `Asset` record is never `Configuration`.
-
-The only configuration today is `ChromeFlag`, used to enable Chrome's command-line on non-rooted Android emulators so [Playwright](/docs/testing/playwright) can attach. **SDK-only**: the `lim` CLI doesn't expose a `--chrome-flag` flag, so this entry has to come from the SDK directly.
-
-<CodeGroup labels={["TypeScript","Go","Python"]}>
-```ts
-spec: {
-  initialAssets: [
-    {
-      kind: 'Configuration',
-      configuration: {
-        kind: 'ChromeFlag',
-        chromeFlag: 'enable-command-line-on-non-rooted-devices@1',
-      },
-    },
-  ],
-}
-```
-
-```go
-limrun.AndroidInstanceNewParamsSpecInitialAsset{
-    Kind: "Configuration",
-    Configuration: limrun.AndroidInstanceNewParamsSpecInitialAssetConfiguration{
-        Kind:       "ChromeFlag",
-        ChromeFlag: "enable-command-line-on-non-rooted-devices@1",
-    },
-}
-```
-
-```python
-{
-    "kind": "Configuration",
-    "configuration": {
-        "kind": "ChromeFlag",
-        "chrome_flag": "enable-command-line-on-non-rooted-devices@1",
-    },
-}
-```
-</CodeGroup>
-
-A `kind: 'Configuration'` entry has no MD5, no signed URLs, and no `assets.list` representation. It exists only on the instance spec. The rest of this page is about `kind: 'App'` entries, which are the ones actually backed by Asset Storage.
+| `id` | Stable, auto-generated identifier. |
+| `name` | Your identifier. Names are unique across your organization; to separate tenants, [use prefixes](#organize-assets-for-multiple-tenants). |
+| `kind` | `App` (default) for installable binaries, `Keychain` for keychain archives, such as those created by [`lim ios keychain save`](/docs/ios/run-simulator#save-and-restore-the-keychain). |
+| `displayName` | Optional human-readable label shown in the console; falls back to `name`. |
+| `md5` | Set once the bytes are uploaded. `getOrUpload` compares it to skip duplicate uploads, and `installApp` uses it for server-side caching. |
+| `platform` | Limits which platform can install the asset. Useful when one logical name, such as `acme/my-app-v1.2.3`, covers both an iOS simulator build and an Android APK. Responses also include `os`, a deprecated alias with the same value. |
+| `expiresAt` | When set, the time after which the asset, bytes and record, is deleted. See [Set an expiry](#set-an-expiry). |
+| `signedDownloadUrl` / `signedUploadUrl` | Time-limited URLs. Returned when you ask for them on `list` or `get`, and always on `getOrCreate`. |
 
 ## Upload an asset
 
-Two paths:
-- Use `getOrUpload` for CI pipelines and hot-reloading of apps to instances.
-- Use `getOrCreate` when you need a `signedUploadUrl` for an untrusted client browser to do the upload.
+Pick the upload path by who holds the file:
 
-### getOrUpload
+- `getOrUpload` (CLI `lim asset push`) when your code or CI has the file locally. It skips the upload when the bytes are already stored.
+- `getOrCreate` when something else does the upload, such as a worker on another host, a streaming source, or an end user's browser.
 
-`getOrUpload` computes the local file's MD5 hash, checks Asset Storage for an existing entry with the same name + same MD5, and skips re-upload if it matches.
+### Upload a local file
 
-This helper ships in **TypeScript and Go SDKs**. Python users have to do the two steps manually with `getOrCreate` (shown in the next subsection).
+`getOrUpload` computes the local file's MD5, checks Asset Storage for an entry with the same name and MD5, and skips the transfer when they match. It ships in the TypeScript and Go SDKs; from Python, use the [two-step upload](#upload-from-another-process-or-a-browser).
 
-<CodeGroup labels={["CLI","TypeScript","Go"]}>
+With the CLI:
+
 ```bash
 lim asset push ./build/MyApp.app.tar.gz -n my-app-v1.2.3.tar.gz
 ```
 
+From the TypeScript and Go SDKs:
+
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 import Limrun from '@limrun/api';
 
@@ -122,26 +75,25 @@ asset, err := lim.Assets.GetOrUpload(ctx, limrun.AssetGetOrUploadParams{
     Path: "./build/MyApp.app.tar.gz",
     Name: param.NewOpt("my-app-v1.2.3.tar.gz"), // optional
 })
-// asset.ID, asset.Name, asset.SignedDownloadURL, asset.MD5
+// asset.ID, asset.Name, asset.SignedDownloadURL, asset.Md5
 ```
 </CodeGroup>
 
-If the file's MD5 already matches an existing upload, `getOrUpload` returns immediately with the existing asset's URLs and no bytes are transferred.
+When the MD5 matches an existing upload, the call returns the existing asset's URLs and transfers no bytes.
 
-For example, Limrun's [automatic PR preview GitHub Action](https://github.com/limrun-inc/ios-preview-action) uses it like this:
+Limrun's [iOS preview GitHub Action](https://github.com/limrun-inc/ios-preview-action) gives each pull request its own asset slot with a naming convention like this one, so the slot can be deleted when the PR closes:
 
 ```bash
-# Each PR in each repo gets its own asset slot, deletable on PR close.
 # Naming convention: preview/<owner>/<repo>/pr-<number>-<platform>
 lim asset push ./build/MyApp.app.tar.gz \
   -n "preview/${OWNER}/${REPO}/pr-${PR_NUMBER}-ios"
 ```
 
-(The action itself rolls the build and upload into a single `lim xcode build --upload "preview/…"` step (see [Build with remote Xcode](/docs/ios/build-with-xcode)), but the naming convention is the same.)
+The action itself folds the build and upload into one `lim xcode build --upload "preview/…"` step (see [Build with Xcode](/docs/ios/build-with-xcode)), with the same naming convention.
 
-### getOrCreate
+### Upload from another process or a browser
 
-When you need finer control, for example for uploading from a worker, from a different host, from a streaming source, or letting the **end user's browser** PUT directly to the storage URL, use the lower-level `getOrCreate` and PUT to the returned `signedUploadUrl` yourself.
+`getOrCreate` (`GetOrNew` in Go, `get_or_create` in Python) returns the asset record with a `signedUploadUrl`; you PUT the bytes to it yourself:
 
 <CodeGroup labels={["TypeScript","Go","Python"]}>
 ```ts
@@ -163,12 +115,12 @@ if (!asset.md5) {
 ```
 
 ```go
-asset, err := lim.Assets.GetOrCreate(ctx, limrun.AssetGetOrCreateParams{
+asset, err := lim.Assets.GetOrNew(ctx, limrun.AssetGetOrNewParams{
     Name: "my-app-v1.2.3.tar.gz",
 })
-// asset.SignedUploadURL, asset.SignedDownloadURL, asset.MD5 (if exists)
+// asset.SignedUploadURL, asset.SignedDownloadURL, asset.Md5 (if exists)
 
-if asset.MD5 == "" {
+if asset.Md5 == "" {
     data, _ := os.ReadFile("./build/MyApp.app.tar.gz")
     req, _ := http.NewRequest("PUT", asset.SignedUploadURL, bytes.NewReader(data))
     req.Header.Set("Content-Type", "application/octet-stream")
@@ -204,47 +156,38 @@ if asset.md5 != local_md5:
 ```
 </CodeGroup>
 
-For **browser-direct uploads**, generate the `signedUploadUrl` on your backend (where the API key lives) and hand only the URL to the browser. The browser PUTs to it without ever touching your `LIM_API_KEY` or proxying bytes through your servers. Useful when end users on your platform upload their own builds.
+For browser-direct uploads, call `getOrCreate` on your backend, where the API key lives, and hand only the `signedUploadUrl` to the browser. The browser PUTs to it without touching your `LIM_API_KEY` or proxying bytes through your servers, which fits platforms whose end users upload their own builds.
 
-### Asset expiry (TTL)
+### Set an expiry
 
-Every upload path accepts an optional `ttl` as a Go duration string (`--ttl` on `lim asset push`, `ttl` on `getOrUpload`/`getOrCreate`, `--upload-ttl` on `lim xcode build` and `lim gradle build`). When set, the asset is deleted (bytes and record) that long after the upload; the minimum is `1m` and `1d` is invalid Go syntax, use `24h`.
+Every upload path accepts an optional time-to-live as a Go duration string: `--ttl` on `lim asset push`, `ttl` on `getOrUpload` and `getOrCreate` in the TypeScript SDK, `--upload-ttl` on `lim xcode build` and `lim gradle build`, and `--asset-ttl` on `create --install` and `install-app`. The asset, bytes and record, is deleted that long after the upload. The minimum is `1m`; `1d` is not valid Go syntax, so write `24h`.
 
 ```bash
 lim asset push ./build/MyApp.app.tar.gz -n my-app-v1.2.3.tar.gz --ttl 720h
 ```
 
-The default depends on the upload path:
+The default depends on how the asset was uploaded:
 
-- **Direct uploads** (`lim asset push`, `getOrUpload`, `getOrCreate`) never expire unless you pass a `ttl`. Re-uploading under the same name keeps the recorded expiry; pass a `ttl` on the re-upload to change it.
-- **Build-product uploads** (`lim xcode build --upload`, `lim gradle build --upload`, [RBE uploads](/docs/ios/build-with-bazel)) default to **14 days**: each build upload without an explicit `--upload-ttl` pushes the asset's expiry to 14 days from that upload, so actively rebuilt assets stay alive while abandoned build artifacts get swept.
+- **Direct uploads** (`lim asset push`, `getOrUpload`, `getOrCreate`) never expire unless you pass a TTL. Re-uploading under the same name keeps the recorded expiry; pass a TTL on the re-upload to change it.
+- **Build uploads** (`lim xcode build --upload`, `lim gradle build --upload`, and [Bazel uploads](/docs/ios/build-with-bazel#upload-builds-as-assets)) default to **14 days**. Each build upload without an explicit `--upload-ttl` moves the expiry to 14 days from that upload, so actively rebuilt assets stay alive and abandoned ones get swept.
 
 ## Install an asset
 
-Two install paths:
-- Pre-install at instance boot.
-- Push into an already-running instance.
+There are two moments to install: at instance boot, or into an instance that is already running. Both accept an Asset Storage entry (by name or ID) or a publicly reachable HTTPS URL, such as a GitHub release asset or an S3 presigned URL. URLs on your LAN do not work, because the instance downloads the file.
 
-### Pre-install on boot
+### Pre-install at boot
 
-Reference your asset as an entry on the `spec.initialAssets` array during the provisioning call. This will start the simulator with **the app already on the home screen**.
+Add entries to `spec.initialAssets` in the create call, and the device starts with the app on its home screen. With the CLI, `--install <path>` uploads a local file to Asset Storage first, and `--install-asset <name>` references a stored asset; repeat either flag for several apps:
 
-Each entry must resolve to a binary the pod can fetch: either an existing Asset Storage entry (by name or ID), or a publicly reachable HTTPS URL such as a GitHub release asset, an S3 presigned URL, or anything else the cloud can reach. URLs on your LAN won't work.
+```bash
+lim ios create --install ./MyApp.app.tar.gz
+lim android create --install-asset my-app-v1.2.3.apk
+```
 
 <Tabs>
 <Tab title="iOS">
 
-<CodeGroup labels={["CLI","TypeScript","Go","Python"]}>
-```bash
-# Local file: uploaded to Asset Storage on the fly, then installed at boot.
-lim ios create --install ./MyApp.app.tar.gz
-
-# Already in Asset Storage? Reference by name.
-lim ios create --install-asset my-app-v1.2.3.tar.gz
-
-# Repeat the flags for multiple separate apps.
-lim ios create --install-asset a.tar.gz --install-asset b.tar.gz
-```
+From the TypeScript SDK, with every source shown:
 
 ```ts
 const instance = await lim.iosInstances.create({
@@ -263,388 +206,96 @@ const instance = await lim.iosInstances.create({
     ],
   },
 });
-
-/**
- * launchMode controls behaviour after the install completes:
- *  - 'ForegroundIfRunning': bring to foreground if already running, otherwise launch
- *  - 'RelaunchIfRunning':   kill and relaunch if already running
- *  - undefined:             don't launch after installation
- */
 ```
 
-```go
-inst, _ := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
-    Wait: param.NewOpt(true),
-    Spec: limrun.IosInstanceNewParamsSpec{
-        InitialAssets: []limrun.IosInstanceNewParamsSpecInitialAsset{
-            {
-                Kind:       "App",
-                Source:     "AssetName",
-                AssetName:  param.NewOpt("my-app-v1.2.3.tar.gz"),
-                LaunchMode: "ForegroundIfRunning",
-            },
-            {
-                Kind:   "App",
-                Source: "URL",
-                URL:    param.NewOpt("https://example.com/builds/123.tar.gz"),
-            },
-            {
-                Kind:    "App",
-                Source:  "AssetID",
-                AssetID: param.NewOpt("asset_01j..."),
-            },
-        },
-    },
-})
-```
-
-```python
-instance = lim.ios_instances.create(
-    wait=True,
-    spec={
-        "initial_assets": [
-            {
-                "kind": "App",
-                "source": "AssetName",
-                "asset_name": "my-app-v1.2.3.tar.gz",
-                "launch_mode": "ForegroundIfRunning",
-            },
-            {
-                "kind": "App",
-                "source": "URL",
-                "url": "https://example.com/builds/123.tar.gz",
-            },
-            {
-                "kind": "App",
-                "source": "AssetID",
-                "asset_id": "asset_01j...",
-            },
-        ],
-    },
-)
-```
-</CodeGroup>
-
-`IosInstanceCreateParams.Spec.InitialAsset` shape:
+An iOS `initialAssets` entry has these fields:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `kind` | `'App'` | iOS only supports App assets at boot. There is **no `'Configuration'` variant** on iOS. |
+| `kind` | `'App' \| 'Keychain'` | `App` installs an app. `Keychain` restores an encrypted keychain snapshot and requires `encryptionKey`; see [Save and restore the keychain](/docs/ios/run-simulator#save-and-restore-the-keychain). There is no `'Configuration'` variant on iOS. |
 | `source` | `'URL' \| 'AssetName' \| 'AssetID'` | How to resolve the asset. |
 | `url` / `assetName` / `assetId` | string | The matching identifier. |
-| `launchMode` | `'ForegroundIfRunning' \| 'RelaunchIfRunning'` | Launch behavior post-install. Omit to install without launching. |
+| `launchMode` | `'ForegroundIfRunning' \| 'RelaunchIfRunning'` | `ForegroundIfRunning` brings the app to the foreground, launching it if needed; `RelaunchIfRunning` kills and relaunches it. Omit it to install without launching. |
+
+The Python SDK takes the same fields in snake_case (`initial_assets`, `asset_name`, `launch_mode`), and the Go SDK as `IosInstanceNewParamsSpecInitialAsset` values.
 
 </Tab>
 <Tab title="Android">
 
-<CodeGroup labels={["CLI","TypeScript","Go","Python"]}>
-```bash
-# Local APK uploaded to Asset Storage on the fly, then installed.
-lim android create --install ./build.apk
-
-# Multiple unrelated apps; each --install becomes its own install group.
-lim android create --install ./app-a.apk --install ./app-b.apk
-
-# Already in Asset Storage? Reference it by name instead.
-lim android create --install-asset my-app-v1.2.3.apk
-```
+From the TypeScript SDK, one entry per app:
 
 ```ts
-// Single APK
 const instance = await lim.androidInstances.create({
   wait: true,
   spec: {
     initialAssets: [
+      // From Asset Storage by name
       { kind: 'App', source: 'AssetName', assetName: 'my-app-v1.2.3.apk' },
 
       // From a public HTTPS URL
       { kind: 'App', source: 'URL', url: 'https://example.com/builds/123.apk' },
 
-      // By asset ID
-      { kind: 'App', source: 'AssetID', assetId: 'asset_01j...' },
-    ],
-  },
-});
-
-// Multiple separate apps: one initialAsset entry per app.
-const multipleApps = await lim.androidInstances.create({
-  wait: true,
-  spec: {
-    initialAssets: [
-      { kind: 'App', source: 'AssetName', assetName: 'feature-a.apk' },
-      { kind: 'App', source: 'AssetName', assetName: 'feature-b.apk' },
+      // By asset ID (Android takes a list)
+      { kind: 'App', source: 'AssetIDs', assetIds: ['asset_01j...'] },
     ],
   },
 });
 ```
 
-```go
-inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
-    Wait: param.NewOpt(true),
-    Spec: limrun.AndroidInstanceNewParamsSpec{
-        InitialAssets: []limrun.AndroidInstanceNewParamsSpecInitialAsset{
-            {
-                Kind:      "App",
-                Source:    "AssetName",
-                AssetName: param.NewOpt("my-app-v1.2.3.apk"),
-            },
-            {
-                Kind:   "App",
-                Source: "URL",
-                URL:    param.NewOpt("https://example.com/builds/123.apk"),
-            },
-            {
-                Kind:    "App",
-                Source:  "AssetID",
-                AssetID: param.NewOpt("asset_01j..."),
-            },
-        },
-    },
-})
-```
-
-```python
-instance = lim.android_instances.create(
-    wait=True,
-    spec={
-        "initial_assets": [
-            {"kind": "App", "source": "AssetName", "asset_name": "my-app-v1.2.3.apk"},
-            {"kind": "App", "source": "URL", "url": "https://example.com/builds/123.apk"},
-            {"kind": "App", "source": "AssetID", "asset_id": "asset_01j..."},
-        ],
-    },
-)
-```
-</CodeGroup>
-
-<Note>
-Android's `initialAsset` has no `launchMode` field. Boot installs only. To launch an APK after the instance is ready, drive a launch from your control code (e.g. via ADB through [`startAdbTunnel`](/docs/android/run-emulator#adb-tunnel-the-main-door-in)).
-</Note>
-
-If your app ships as a base APK plus density / locale / ABI splits (`base.apk` + `config.*.apk`), the whole set must install as one atomic group. See [Split APKs](#split-apks) for the grouped-install shape, which applies to both pre-install on boot and mid-session install.
-
-`AndroidInstanceCreateParams.Spec.InitialAsset` shape:
+An Android `initialAssets` entry has these fields:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `kind` | `'App' \| 'Configuration'` | App = APK install; Configuration = instance-level config value (Android-only; see [Configuration entries on `initialAssets`](#configuration-entries-on-initialassets)). |
-| `source` | `'URL' \| 'URLs' \| 'AssetName' \| 'AssetNames' \| 'AssetIDs'` | Singular variants install one APK. Plural variants (`URLs`, `AssetNames`, `AssetIDs`) install a **split-APK group** atomically: base APK first, config splits after. |
-| `url` / `assetName` / `assetId` | string | Singular identifier. |
-| `urls` / `assetNames` / `assetIds` | string[] | Split-APK group. The first entry is the base APK; the rest are density/locale/ABI splits. |
+| `kind` | `'App' \| 'Configuration'` | `App` installs an APK; `Configuration` carries an instance-level setting. |
+| `source` | `'URL' \| 'URLs' \| 'AssetName' \| 'AssetNames' \| 'AssetIDs'` | `URL` and `AssetName` install one APK. The plural variants take a list and install it as one split-APK group, base APK first, config splits after. There is no singular asset-ID source on Android. |
+| `url` / `assetName` | string | Singular identifier. |
+| `urls` / `assetNames` / `assetIds` | string[] | Split-APK group. The first entry is the base APK; the rest are density, locale, or ABI splits. |
 | `configuration` | object | Used when `kind: 'Configuration'`. |
+
+Android `initialAssets` has no `launchMode` field: each app installed at boot is launched right after installation, so the instance is ready to use on first connect.
+
+An app that ships as a base APK plus `config.*.apk` splits must install as one atomic group, with a plural `source`; the server installs it with `pm install-multiple`. The CLI cannot group files, so use an SDK. [Pre-install APKs](/docs/android/run-emulator#pre-install-apks) has the split-APK examples in every language.
+
+`kind: 'Configuration'` entries are settings, not stored files: the only one today is `ChromeFlag`, which Playwright needs. A configuration entry has no MD5, no signed URLs, and no `assets.list` representation, and the CLI has no flag for it. See [Set Chrome flags](/docs/android/run-emulator#set-chrome-flags).
 
 </Tab>
 </Tabs>
 
-For the rest of the create-call spec (regions, clues, timeouts, sandboxes), see [Run an iOS simulator](/docs/ios/run-simulator#configure-the-instance) and [Run an Android emulator](/docs/android/run-emulator#configure-the-instance).
+For the rest of the create call, such as regions, clues, timeouts, and sandboxes, see [Instance spec and status](/docs/reference/instances). It also shows a full create response.
 
 ### Install on a running instance
 
-When the user rebuilds while the embedded session is live, push the new asset and tell the running instance to install it. No restart, no reconnect.
+When a user rebuilds during a live session, push the new build and tell the running instance to install it. No restart and no reconnect are needed. The CLI's `install-app` accepts a local path, which it uploads to Asset Storage first with MD5 deduplication, or a URL it passes to the instance:
 
-The URL handed to the daemon has the same reachability rule as `initialAssets`: it must be a publicly reachable HTTPS URL (GitHub release asset, S3 presigned URL) or come from [Asset Storage](#upload-an-asset). The CLI's `install-app` accepts either a local path (uploaded to Asset Storage first, MD5-deduplicated) or a URL.
-
-<Tabs>
-<Tab title="iOS">
-
-<CodeGroup labels={["CLI","TypeScript","Go"]}>
 ```bash
-# Local path: uploaded to Asset Storage first, then installed.
 lim ios install-app ./MyApp.app.tar.gz
-
-# Remote URL: passed straight to the daemon.
-lim ios install-app https://example.com/build.tar.gz
-lim ios install-app https://... --md5 <hex> --launch-mode ForegroundIfRunning
+lim android install-app https://example.com/build.apk --id <instance-id>
 ```
 
+From the TypeScript device clients, iOS uses `installApp` and Android uses `sendAsset`:
+
 ```ts
-// installApp accepts any URL the simulator can reach (signedDownloadUrl works).
-// The md5 argument enables server-side caching: if the same bytes were
-// installed on this region before, the install becomes near-instant.
+// iOS: the md5 enables server-side caching, so a build already installed
+// in this region skips the download.
 await ios.installApp(asset.signedDownloadUrl, {
   md5: asset.md5,
   launchMode: 'ForegroundIfRunning',
 });
-```
 
-```go
-_, err := iosClient.InstallApp(ctx, asset.SignedDownloadURL, &iosws.AppInstallationOptions{
-    MD5:        asset.MD5,
-    LaunchMode: "ForegroundIfRunning",
-})
-```
-</CodeGroup>
-
-<Note>
-Python doesn't ship a WebSocket instance client. Run `lim ios install-app` from a subprocess, or call the WebSocket protocol directly.
-</Note>
-
-`installApp` accepts an `AppInstallationOptions` object:
-
-| Field | Type | Meaning |
-|---|---|---|
-| `md5` | string | MD5 hex digest. Enables server-side install caching for remote URLs. |
-| `timeoutMs` | number | Client-side install timeout. Default `120_000` (120 s). |
-| `launchMode` | `'ForegroundIfRunning' \| 'RelaunchIfRunning'` | Launch behavior after install. Omit to install without launching. |
-
-</Tab>
-<Tab title="Android">
-
-<CodeGroup labels={["CLI","TypeScript"]}>
-```bash
-# Local path: uploaded to Asset Storage first (MD5-deduplicated), then installed.
-lim android install-app ./build.apk
-
-# Remote URL: passed straight to the daemon.
-lim android install-app https://example.com/build.apk --id <ID>
-```
-
-```ts
-// Local file: upload once, then install via the returned signed URL.
-const asset = await lim.assets.getOrUpload({ path: './build.apk' });
-await android.sendAsset(asset.signedDownloadUrl);
-
-// Or install straight from a public URL.
-await android.sendAsset('https://example.com/build.apk');
-
-// Default request timeout is 120 s. Pass a custom timeout for larger APKs.
+// Android: the instance downloads the APK and runs pm install.
+// The default client-side timeout is 120 s; raise it for large APKs.
 await android.sendAsset(asset.signedDownloadUrl, 180_000);
 ```
-</CodeGroup>
 
-<Note>
-`sendAsset` is TypeScript-only today. From Go or Python, drive the install via `lim android install-app` (or push the APK through the ADB tunnel; see [ADB tunnel](/docs/android/run-emulator#adb-tunnel-the-main-door-in)).
-</Note>
+`installApp` accepts `md5`, `timeoutMs` (default `120_000`), and `launchMode`. The Go iOS client has `InstallApp` too; `sendAsset` is TypeScript-only, and the Python SDK has no device client. From those languages, use `lim ios install-app` and `lim android install-app`, or `adb install` over the tunnel. Split-APK groups install only at boot. For opening device clients and the full app lifecycle, see [Manage apps](/docs/ios/run-simulator#manage-apps) and [Pre-install APKs](/docs/android/run-emulator#pre-install-apks).
 
-`sendAsset(url, timeoutMs?)` triggers a server-side download + `pm install`. The default client-side timeout is **120 s**; pass a higher value if your APK is large enough that the install can run past two minutes.
+## Use Expo Go and other catalog apps
 
-</Tab>
-</Tabs>
-
-### Split APKs
-
-If you ship your Android app as **split APKs** (a `base.apk` plus a few `config.*` APKs), the whole set must install as one atomic group or the app won't run. 
-
-Pass them together in one `initialAsset` (boot) or `sendAsset` (mid-session) call by giving the entry an array via the plural source variants (`AssetNames`, `URLs`, `AssetIDs`). The first filename is treated as the base APK; the rest are config splits. The server installs them via `pm install-multiple`.
-
-<CodeGroup labels={["TypeScript","Go","Python"]}>
-```ts
-// Pre-install at boot
-await lim.androidInstances.create({
-  wait: true,
-  spec: {
-    initialAssets: [
-      // From Asset Storage by name
-      { kind: 'App', source: 'AssetNames',
-        assetNames: ['base.apk', 'config.xxhdpi.apk', 'config.en.apk'] },
-
-      // Or from public HTTPS URLs the daemon can reach
-      { kind: 'App', source: 'URLs',
-        urls: [
-          'https://example.com/base.apk',
-          'https://example.com/config.xxhdpi.apk',
-          'https://example.com/config.en.apk',
-        ] },
-    ],
-  },
-});
-```
-
-```go
-inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
-    Wait: param.NewOpt(true),
-    Spec: limrun.AndroidInstanceNewParamsSpec{
-        InitialAssets: []limrun.AndroidInstanceNewParamsSpecInitialAsset{
-            {
-                Kind:       "App",
-                Source:     "AssetNames",
-                AssetNames: []string{"base.apk", "config.xxhdpi.apk", "config.en.apk"},
-            },
-            {
-                Kind:   "App",
-                Source: "URLs",
-                URLs: []string{
-                    "https://example.com/base.apk",
-                    "https://example.com/config.xxhdpi.apk",
-                    "https://example.com/config.en.apk",
-                },
-            },
-        },
-    },
-})
-```
-
-```python
-lim.android_instances.create(
-    wait=True,
-    spec={
-        "initial_assets": [
-            {"kind": "App", "source": "AssetNames",
-             "asset_names": ["base.apk", "config.xxhdpi.apk", "config.en.apk"]},
-
-            {"kind": "App", "source": "URLs",
-             "urls": [
-                 "https://example.com/base.apk",
-                 "https://example.com/config.xxhdpi.apk",
-                 "https://example.com/config.en.apk",
-             ]},
-        ],
-    },
-)
-```
-</CodeGroup>
-
-**Split APKs are SDK-only.**
-
-Use separate entries in `initialAssets` when you want to install unrelated apps in sequence; everything inside one entry is treated as a single grouped install.
-
-### Example response
-
-A successful `create` returns the full instance resource. The fields you'll typically reach for from the embed and install paths:
-
-```json
-{
-  "metadata": {
-    "id": "android_usw1_01krxvphn8e3rbeq0zewgw209a",
-    "createdAt": "2026-05-19T19:52:42Z",
-    "organizationId": "org_01kr52j...",
-    "labels": { "tenant": "acme", "user": "user_42" }
-  },
-  "spec": {
-    "inactivityTimeout": "10m0s",
-    "region": "us-west2"
-  },
-  "status": {
-    "state": "ready",
-    "apiUrl":                  "https://us-west-1.limrun.net/v1/android_usw1_.../api",
-    "adbWebSocketUrl":         "wss://.../adbWebSocket",
-    "endpointWebSocketUrl":    "wss://.../endpointWebSocket",
-    "signedStreamUrl":         "https://console.limrun.com/signedStream?url=…#token=lim_...",
-    "mcpUrl":                  "https://.../mcp",
-    "targetHttpPortUrlPrefix": "wss://.../targetHttpPort",
-    "token":                   "lim_..."
-  }
-}
-```
-
-`state` cycles through `'unknown' \| 'creating' \| 'assigned' \| 'ready' \| 'terminated'`. `spec.inactivityTimeout` is returned as a Go duration string (`"10m0s"`, not the `"10m"` you pass in).
-
-The iOS shape is identical with these differences:
-
-- **iOS-only (legacy):** `status.sandbox.xcode.url` on instances created by old clients with `spec.sandbox.xcode.enabled`; new clients create the Xcode instance separately and attach the simulator.
-- **Android-only:** `status.adbWebSocketUrl` (WebSocket endpoint for ADB tunnel), `status.sandbox.playwrightAndroid.url` when the Playwright sub-sandbox is enabled.
-
-For the full field reference, see [Status URL surface](/docs/reference/sdk#status-url-surface).
-
-## Working with Expo Go
-
-Limrun maintains a small curated catalog of pre-built apps under the `appstore/` name prefix: Expo Go, which lets React Native users on your platform open a Snack or a local Expo project on a remote device without uploading anything, and the Maestro XCTest runner used by [the Maestro integration](/docs/testing/maestro).
+Limrun maintains a small catalog of prebuilt apps under the `appstore/` name prefix. It holds Expo Go, which lets React Native users open a Snack or a local Expo project on a remote device without uploading anything, and the Maestro XCTest runner used by [the Maestro integration](/docs/testing/maestro).
 
 <Frame>
   <img src="/images/console/04-apps-picker.png" alt="Console Playground Apps picker showing Upload and App Store entries for Expo Go 55 and Expo Go 54" />
 </Frame>
-
-App Store asset reference:
 
 | Asset name | OS | What it is |
 |---|---|---|
@@ -654,7 +305,7 @@ App Store asset reference:
 | `appstore/Expo-Go-55-latest.apk` | Android | Expo Go 55, latest (APK) |
 | `appstore/maestro-ios-runner-2.5.1.tar.gz` | iOS | Maestro XCTest runner for [Maestro flows](/docs/testing/maestro) |
 
-Install at boot the same way as one of your own assets. The `appstore/` prefix is just part of the name:
+Install a catalog app at boot the same way as your own assets. The `appstore/` prefix is part of the name:
 
 ```ts
 spec: {
@@ -667,24 +318,25 @@ spec: {
 }
 ```
 
-Pair the boot install with the [`<RemoteControl openUrl="exp://…" />`](/docs/platform/embed-simulator#component-props) prop to land the device on the user's Expo project automatically on first paint:
+Pair the boot install with the [`openUrl` prop](/docs/platform/embed-simulator#component-props) of `<RemoteControl />` to land the device on the user's Expo project on first paint:
 
 ```tsx
 <RemoteControl
-  url={session.webrtcUrl}
+  url={session.endpointWebSocketUrl}
   token={session.token}
   openUrl="exp://exp.host/@user/my-snack"
 />
 ```
 
-That's the full integration: backend creates the instance with the Expo Go asset, frontend renders `<RemoteControl />` with the project URL. No Expo Go upload, no build pipeline, no app-store dance.
+That is the whole integration: the backend creates the instance with the Expo Go asset, and the frontend renders `<RemoteControl />` with the project URL. No Expo Go upload and no build pipeline.
 
-List the available App Store entries to discover what else is curated:
+List the catalog to see what else is available:
 
-<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim asset list --include-app-store
 ```
+
+From the TypeScript SDK:
 
 ```ts
 const apps = await lim.assets.list({
@@ -692,19 +344,16 @@ const apps = await lim.assets.list({
   namePrefixFilter: 'appstore/',
 });
 ```
-</CodeGroup>
 
 <Note>
-The `appstore/` prefix is part of the stored name on the client side, but the API strips it before querying the App Store catalog server-side. That means `nameFilter: 'appstore/Expo-Go-54.0.6.tar.gz'` works as expected when combined with `includeAppStore: true`, but a partial prefix like `nameFilter: 'appstor'` will never match anything in the App Store, since the comparison happens after the prefix is removed.
+The API strips the `appstore/` prefix before it queries the catalog. `nameFilter: 'appstore/Expo-Go-54.0.6.tar.gz'` with `includeAppStore: true` works as expected, but a partial prefix such as `nameFilter: 'appstor'` never matches a catalog entry, because the comparison happens after the prefix is removed.
 </Note>
 
-## Asset organisation for multi-tenancy
+## Organize assets for multiple tenants
 
-Asset names are **global to your org**, not per-tenant. The store has no built-in tenant scoping, no labels, no folders. The single primitive you have is the name itself, plus `namePrefixFilter` to query it.
+Asset names are global to your organization. The store has no tenant scoping, no labels, and no folders; the one primitive is the name itself, queried with `namePrefixFilter` in the TypeScript SDK or `--name-prefix` on the CLI.
 
-### Use prefixes to divide namespaces
-
-The convention is to put the tenant (or workspace, customer, project, GitHub org/repo, PR number, anything stable) at the front of the name as a prefix:
+Put the tenant, or any stable scope such as a workspace, customer, project, repository, or PR number, at the front of the name:
 
 ```text
 acme/my-app-v1.2.3.tar.gz
@@ -713,9 +362,9 @@ acme/my-app-pr-742.apk
 globex/expo-snack-build.tar.gz
 ```
 
-The slash isn't required, but it reads well and survives any prefix scan. Pick a separator and stick to it across your platform.
+The slash is not required, but it reads well and survives any prefix scan. Pick one separator and use it across your platform.
 
-Two patterns fall out of this naturally:
+Two common operations follow from the prefix:
 
 ```ts
 // List one tenant's assets (for an admin UI or a usage dashboard)
@@ -731,7 +380,7 @@ for (const a of stale) {
 }
 ```
 
-The `platform` field on each `Asset` lets you further split a tenant's namespace by platform when the same logical name covers both an iOS sim build and an Android APK:
+The `platform` field splits a tenant's namespace further when one logical name covers both an iOS simulator build and an Android APK:
 
 ```ts
 const list = await lim.assets.list({ namePrefixFilter: 'acme/' });
@@ -740,13 +389,14 @@ const androidOnly = list.filter((a) => a.platform === 'android');
 const universal   = list.filter((a) => !a.platform);
 ```
 
-Integrations written before the field was named `platform` may still read `os`; it is returned as a deprecated alias with the same value.
+Integrations written before the field was named `platform` may still read `os`, which is returned as a deprecated alias with the same value.
 
-### Filtering options
+## List, get, and delete assets
 
-`assets.list`, `assets.get`, and `assets.delete` are the operations you'll wire into your admin UI, your reaper, and your offboarding flow.
+`assets.list`, `assets.get`, and `assets.delete` are the calls you wire into an admin UI, a cleanup job, or an offboarding flow.
 
-<CodeGroup labels={["CLI","TypeScript","Go","Python"]}>
+With the CLI:
+
 ```bash
 lim asset list
 lim asset list --name my-app-v1.2.3.tar.gz --download-url
@@ -754,6 +404,9 @@ lim asset list <id> --download-url
 lim asset delete <id>
 ```
 
+From the SDKs:
+
+<CodeGroup labels={["TypeScript","Go","Python"]}>
 ```ts
 const assets = await lim.assets.list({
   limit: 50,
@@ -800,31 +453,37 @@ client.assets.delete(asset_id)
 ```
 </CodeGroup>
 
-Full set of filters on `assets.list`:
+`assets.list` accepts these filters:
 
 | Filter | Behavior |
 |---|---|
-| `nameFilter` | Case-sensitive exact match on `name`. Cannot combine with `namePrefixFilter`. |
-| `namePrefixFilter` | Case-sensitive prefix match. LIKE wildcards (`%`, `_`) are treated as literal characters. Empty string is rejected with `400`, so omit the param entirely if you don't want filtering. Cannot combine with `nameFilter`. |
-| `includeDownloadUrl` / `includeUploadUrl` | Set to `true` to have signed URLs included on each returned asset. Default is `false` (smaller response). |
-| `includeAppStore` | Include curated assets from the Limrun App Store, returned with the `appstore/` name prefix. |
+| `nameFilter` | Case-sensitive exact match on `name`. Cannot be combined with `namePrefixFilter`. |
+| `namePrefixFilter` | TypeScript SDK, CLI (`--name-prefix`), and REST only. Case-sensitive prefix match. LIKE wildcards (`%`, `_`) are treated as literal characters. An empty string is rejected with `400`, so omit the parameter when you do not want filtering. Cannot be combined with `nameFilter`. |
+| `includeDownloadUrl` / `includeUploadUrl` | Set to `true` to include signed URLs on each returned asset. Default `false`, for a smaller response. |
+| `includeAppStore` | Include catalog assets, returned with the `appstore/` name prefix. |
 | `limit` | Maximum number of items returned. Default `50`. |
 
-The CLI maps these to `--name`, `--download-url`, `--upload-url`, and `--include-app-store` (no `--name-prefix`, use SDK for this).
+The CLI maps these to `--name`, `--name-prefix`, `--download-url`, `--upload-url`, and `--include-app-store`, and adds `--kind App|Keychain` to filter by kind. For example, list one tenant's assets:
+
+```bash
+lim asset list --name-prefix acme/
+```
+
+To download an asset's file, use `lim asset pull <id_or_name>`.
 
 ## Next steps
 
 <Columns cols={2}>
-  <Card title="Embed the simulator" icon="monitor-play" href="/docs/platform/embed-simulator">
-    Render `<RemoteControl />` with `initialAssets` so the embedded device opens straight into the customer's app.
+  <Card title="Embed a device" icon="monitor-play" href="/docs/platform/embed-simulator">
+    Render `<RemoteControl />` on an instance that boots straight into the customer's app.
   </Card>
-  <Card title="Build with remote Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
-    `lim xcode build --upload` is the canonical way to land an iOS simulator build into Asset Storage.
+  <Card title="Build with Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
+    `lim xcode build --upload` lands an iOS simulator build in Asset Storage.
   </Card>
-  <Card title="Automatic PR Previews" icon="git-pull-request" href="/docs/ios/pr-previews">
-    Wire the upload step into a GitHub workflow that posts a preview link on every PR.
+  <Card title="PR previews" icon="git-pull-request" href="/docs/ci/pr-previews">
+    Upload a build on every pull request and post a preview link.
   </Card>
-  <Card title="SDK Reference" icon="book-open" href="/docs/reference/sdk">
-    `assets.list` / `getOrCreate` / `getOrUpload` parameters across TypeScript, Python, and Go.
+  <Card title="SDKs and REST API" icon="book-open" href="/docs/reference/sdk">
+    Asset calls and parameters across TypeScript, Python, and Go.
   </Card>
 </Columns>

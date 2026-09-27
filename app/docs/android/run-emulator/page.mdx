@@ -1,120 +1,86 @@
 ---
-title: "Run an Android Emulator"
-description: "Spin up a cloud Android emulator. Install APKs, connect with ADB or control it with LIM SDK."
+title: "Run an emulator"
+description: "Create a cloud Android emulator, install your APK, and drive it from the lim CLI, the TypeScript SDK, or any tool that speaks adb."
 order: 1
-icon: smartphone
+icon: "tablet-smartphone"
 ---
+# Run an Android emulator
 
-# Run an Android Emulator
+There are two ways in. The `lim` CLI and the TypeScript SDK give you typed device control: selectors, screenshots, recordings. An ADB tunnel makes the emulator look like a USB device, so Android Studio, Appium, scrcpy, and your own scripts attach to it unchanged.
 
-Limrun spins up real Android emulators in the cloud. Drive them from the LIM SDK, or open an Android Debug Bridge (`adb`) tunnel and use anything that speaks `adb`: Android Studio, Appium, scrcpy, your own shell scripts.
+<Frame>
+  <img src="/images/console/limrun-android-playground.png" alt="Limrun console Playground tab running a cloud Android emulator with the Lawnchair launcher visible on the streamed device" />
+</Frame>
 
-This page covers:
-1. Starting an Android instance.
-2. Connecting to it with the LIM SDK or `adb`.
-3. Reading the screen and driving the device.
+## Before you start
 
+You need the `lim` CLI or an SDK and an API key in `LIM_API_KEY`; the [Quickstart](/docs/quickstart) sets up the CLI and [SDKs and REST API](/docs/reference/sdk#install) lists the SDK packages.
 
-<img src="/images/console/limrun-android-playground.png" alt="Limrun console Playground tab running a cloud Android emulator with the Lawnchair launcher visible on the streamed device" />
+To use the ADB tunnel, install `adb`. It ships with the Android SDK Platform-Tools, which the Android Studio command-line tools install. The CLI's shell, log, and file commands work without it.
 
-## Prerequisites
+The three SDKs cover different parts of the Android surface. TypeScript has the full device-control client; from Python and Go, create instances with the SDK and drive the device over the ADB tunnel. The [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix) lists every capability per language.
 
-- **Install the `lim` CLI or one of the SDKs**
+## Create an emulator
 
-  <CodeGroup labels={["CLI", "TypeScript", "Go", "Python"]}>
-  ```bash
-  # npm
-  npm install --global lim
+The CLI boots an instance and opens an ADB tunnel to it by default:
 
-  # pnpm
-  pnpm add --global lim
-
-  # bun
-  bun add --global lim
-  ```
-
-  ```bash
-  # npm
-  npm install @limrun/api
-
-  # pnpm
-  pnpm add @limrun/api
-
-  # bun
-  bun add @limrun/api
-  ```
-
-  ```bash
-  go get -u github.com/limrun-inc/go-sdk@latest
-  ```
-
-  ```bash
-  pip install limrun_api
-  ```
-  </CodeGroup>
-
-- **Get a Limrun API key** from the [Limrun console](https://console.limrun.com) and export it. The CLI and every SDK read this variable.
-
-  ```bash
-  export LIM_API_KEY="lim_..."
-  ```
-
-- **(Optional) Install `adb`, if you plan to tunnel.** The Android Studio "Command-line tools" install ships it. On macOS, `brew install android-platform-tools`.
-
-## SDK capability matrix
-
-The three SDKs cover different slices of the Android surface. TypeScript ships the full device-control client; from Python and Go, drive the device over the `adb` tunnel.
-
-| Capability | TypeScript | Python | Go |
-|---|---|---|---|
-| Instance CRUD | ✓ | ✓ | ✓ |
-| Asset CRUD | ✓ | ✓ | ✓ |
-| `assets.getOrUpload` (local file uploader) | ✓ | upload manually | ✓ |
-| Provision Playwright-Android sub-sandbox | ✓ | ✓ | ✓ |
-| Device-control client | ✓ | not exposed | not exposed |
-| Screenshot, element tree | ✓ | use `adb` over the tunnel | use `adb` over the tunnel |
-| Tap, type, scroll, open URL | ✓ | use `adb` over the tunnel | use `adb` over the tunnel |
-| Video recording (`startRecording` / `stopRecording`) | ✓ | use `adb screenrecord` | use `adb screenrecord` |
-| APK install | ✓ | use `adb install` | use `adb install` |
-| Connection lifecycle | ✓ | not exposed | not exposed |
-
-## Provision an instance
-
-With the CLI or SDK set up and authenticated, provisioning is a simple command:
-
-<CodeGroup labels={["CLI", "TypeScript", "Go", "Python"]}>
 ```bash
-# Boot an instance and open an ADB tunnel (defaults: --connect=true).
+# Boot an instance and open an ADB tunnel.
 lim android create
 
-# Auto-delete the pod when this CLI process exits, keep it in the US, and label it.
+# Delete the instance when this CLI process exits, keep it in the US, and label it.
 lim android create --rm --jurisdiction us --label app=demo --label session=docs
+
+# Pick the OS version and device model.
+lim android create --os-version 15 --model tablet
 
 # Pre-install a local APK (uploaded to Asset Storage first, MD5-deduplicated).
 lim android create --install ./build.apk
 
-# Reference an asset that's already in storage by name.
+# Pre-install an APK that is already in Asset Storage.
 lim android create --install-asset chrome-stable
 ```
 
+The output includes the instance ID and a console URL that opens the live device stream in your browser.
+
+From the SDK, `wait: true` returns once the instance is `ready`, and `reuseIfExists: true` returns an existing instance with the same labels instead of creating a new one (see [Labels and reuse](/docs/concepts#labels-and-reuse)):
+
+<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 import { Limrun } from '@limrun/api';
 
 const lim = new Limrun();   // reads LIM_API_KEY from the environment
 
 const instance = await lim.androidInstances.create({
-  wait: true,            // resolve only after status.state === 'ready'
-  reuseIfExists: true,   // return the existing match instead of creating a new pod
+  wait: true,
+  reuseIfExists: true,
   metadata: { labels: { app: 'demo', session: 'docs' } },
   spec: {
     jurisdiction: 'us',          // optional; hard constraint on where the instance runs
     inactivityTimeout: '10m',    // 1m, 10m, 3h, ...
     hardTimeout: '0',            // '0' = no hard cap
-    clues: [{ kind: 'OSVersion', osVersion: '15' }],   // '13' | '14' | '15'
+    clues: [{ kind: 'OSVersion', osVersion: '15' }],
   },
 });
 
 console.log(instance.metadata.id, instance.status.state);
+```
+
+```python
+from limrun_api import Limrun
+
+lim = Limrun()  # reads LIM_API_KEY
+
+instance = lim.android_instances.create(
+    wait=True,
+    reuse_if_exists=True,
+    metadata={"labels": {"app": "demo", "session": "docs"}},
+    spec={
+        "inactivity_timeout": "10m",
+        "hard_timeout": "0",
+        "clues": [{"kind": "OSVersion", "os_version": "15"}],
+    },
+)
 ```
 
 ```go
@@ -143,102 +109,190 @@ inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
     },
 })
 ```
-
-```python
-from limrun_api import Limrun
-
-lim = Limrun()  # reads LIM_API_KEY
-
-instance = lim.android_instances.create(
-    wait=True,
-    reuse_if_exists=True,
-    metadata={"labels": {"app": "demo", "session": "docs"}},
-    spec={
-        "inactivity_timeout": "10m",
-        "hard_timeout": "0",
-        "clues": [{"kind": "OSVersion", "os_version": "15"}],
-    },
-)
-```
-
 </CodeGroup>
 
-### Create parameters
+To watch the emulator, open the instance's signed stream URL (`status.signedStreamUrl`) in any browser; it carries its own token, so no sign-in or API key is needed. To show the device inside your own web app, see [Embed a device](/docs/platform/embed-simulator). Every field the create call returns is described in [Instance spec and status](/docs/reference/instances).
 
-<Tabs>
-<Tab title="CLI">
+### Create options
 
 Flags for `lim android create`:
 
-| Flag | Use this to |
+| Flag | What it does |
 |---|---|
 | `--jurisdiction us\|eu\|as` | Keep the instance inside one jurisdiction. Hard constraint: creation fails when no region there has capacity. |
 | `--region <name>` | Deprecated. A region preference such as `us-east1`: tried first, overflows to other regions when full. Use `--jurisdiction`. |
-| `--display-name <name>` | Set the human-readable name shown in the console. |
+| `--os-version 14\|15` | Android OS major version. |
+| `--model phone\|tablet` | Android device model. |
+| `--display-name <name>` | Human-readable name shown in listings and the console. |
 | `--label key=value` | Attach a metadata label. Repeat for multiple labels. |
-| `--reuse-if-exists` | Return the existing instance with exactly the same labels instead of creating a new pod. Looked up in the region that handles the create. Defaults to `false`. |
-| `--inactivity-timeout <duration>` | Inactivity timeout (`1m`, `10m`, `3h`). Defaults to the organization setting. |
+| `--reuse-if-exists` | Return the existing instance with exactly the same labels instead of creating a new one. Looked up in the region that handles the create. |
+| `--inactivity-timeout <duration>` | Inactivity timeout (`1m`, `10m`, `3h`). Without the flag, your organization's Android default applies. |
 | `--hard-timeout <duration>` | Forced termination after this wall-clock window. Defaults to no cap. |
-| `--install <path>` | Pre-install a local APK while provisioning. Repeatable. See [Pre-install APKs](#pre-install-apks). |
-| `--install-asset <name>` | Pre-install an APK that's already in Asset Storage. Repeatable. See [Pre-install APKs](#pre-install-apks). |
-| `--rm` | Auto-delete the pod when the CLI process exits. Defaults to `false`. |
-| `--connect / --no-connect` | Open the ADB tunnel after the instance is ready. Defaults to `true`. |
-| `--adb-path <path>` | Point the CLI at a non-default `adb` binary. Defaults to `adb` (looked up on `PATH`). |
+| `--install <path>` | Upload a local APK and install it while provisioning. Repeatable. See [Pre-install APKs](#pre-install-apks). |
+| `--asset-ttl <duration>` | Expiry for files uploaded by `--install`, as a Go duration (`24h`, minimum `1m`). Does not affect `--install-asset`. Defaults to no expiry. |
+| `--install-asset <name>` | Install an APK that is already in Asset Storage. Repeatable. |
+| `--install-url <url>` | Install an APK from a signed download URL. Repeatable. |
+| `--rm` | Delete the instance when the CLI process exits. |
+| `--connect / --no-connect` | Open the ADB tunnel after the instance is ready. Defaults to on. |
+| `--daemon / --daemon=false` | Run the ADB tunnel in the background, or keep it in the foreground. On by default. With `--rm`, the tunnel stays in the foreground so the instance can be deleted when the CLI exits. |
+| `--adb-path <path>` | Use a non-default `adb` binary. Defaults to `adb` on `PATH`. |
+| `--open / --no-open` | Open the signed stream URL in your browser once the instance is ready. On by default. |
+| `--record`, `--events`, `--app-logs <package>` | Start a persisted session recording, event log (taps, scrolls, commands), or app log capture as soon as the instance is ready. List them with `lim android recordings`, `lim android events`, and `lim android app-logs`. |
+| `--persist-ttl <duration>` | How long those captures are kept. Defaults to `72h`. |
 
-`spec.clues` and `spec.sandbox.playwrightAndroid` are SDK-only.
+Split APK groups, Chrome flags, the `ClientIP` and `ClientLocation` clues, and the Playwright sandbox (`spec.sandbox.playwrightAndroid`) are SDK-only. Every SDK field is described in [Android spec](/docs/reference/instances#android-spec). `spec.model` and the `ClientLocation` clue are available in the TypeScript SDK and REST, not in the Python and Go SDKs. An organization inactivity default of `0` means instances are never terminated for inactivity.
 
-</Tab>
-<Tab title="SDK">
+## Choose a connection: SDK client or ADB tunnel
 
-| Field | Type | Meaning |
+There are two ways to drive the device:
+
+- **The device client** (the `lim android` commands and the TypeScript SDK's `createInstanceClient`) opens a typed WebSocket session to the instance. It covers the common moves: tap by selector, screenshot, element tree, record.
+- **The ADB tunnel** exposes the emulator's `adb` socket as a local TCP listener. Anything that speaks `adb` attaches as if it were a USB device.
+
+Use the device client for typed results and built-in selectors; it also runs shell commands, streams logcat, and moves files without a local `adb`. Use the ADB tunnel for tools that need a real `adb` device (Android Studio, debugger attach, scrcpy, Appium), or when you call from Go or Python.
+
+| Capability | Device client (TypeScript SDK) | ADB tunnel |
 |---|---|---|
-| `wait` | boolean | When `true`, the call returns only after `status.state === 'ready'`. Without it, you'll need to poll. Defaults to `false`. |
-| `reuseIfExists` | boolean | When `true`, return the existing instance whose `metadata.labels` match exactly instead of creating a new pod. The lookup runs in the region that handles the create, so a placement change can miss. Defaults to `false`. |
-| `metadata.displayName` | string | Human-readable name surfaced in the web console alongside `metadata.id`. |
-| `metadata.labels` | `Record<string, string>` | Free-form `key=value` map for tagging and grouping. |
-| `spec.jurisdiction` | `'us' \| 'eu' \| 'as'` | Hard constraint: schedule only inside this jurisdiction; creation fails when no region there has capacity. TypeScript SDK and CLI today; the Python and Go SDKs expose only `region`. |
-| `spec.region` | string | Deprecated. A region preference (e.g. `us-east1`), not a hard pin: the request overflows to other regions by proximity when the preferred ones are full. When omitted, the scheduler picks based on `clues` plus availability. |
-| `spec.inactivityTimeout` | duration string | `1m`, `10m`, `3h`, etc. Defaults to `3m`. Passing `'0'` defers to the organization-level default. |
-| `spec.hardTimeout` | duration string | Forced termination after this wall-clock window. `'0'` means no cap; the pod runs until inactivity or explicit delete. Defaults to `0`. |
-| `spec.clues[].kind` | `'ClientIP' \| 'ClientLocation' \| 'OSVersion'` | Scheduling hint: bias by OS version or by user location. |
-| `spec.clues[].clientIp` | string | Required when `kind: 'ClientIP'`. Set this to the IP of the end user whose browser will stream the emulator. The scheduler geolocates this IP and provisions in the nearest region for low-latency streaming. `spec.region` overrides this clue. |
-| `spec.clues[].clientLocation` | object | REST API: `{ latitude, longitude }` in decimal degrees when `kind: 'ClientLocation'`. Both coordinates are required. Takes precedence over `ClientIP`. See [client location clues](/docs/reference/sdk#client-location-clues). |
-| `spec.clues[].osVersion` | string | Required when `kind: 'OSVersion'`. One of `'13'`, `'14'`, `'15'`. |
-| `spec.initialAssets[]` | array of `InitialAsset` | APKs to install while provisioning. See [Pre-install APKs](#pre-install-apks). |
-| `spec.sandbox.playwrightAndroid.enabled` | boolean | Provision a Playwright-Android sub-sandbox alongside the emulator and surface its CDP URL on `status.sandbox.playwrightAndroid.url`. Defaults to `false`. See [Automated testing > Playwright](/docs/testing/playwright). |
+| Screenshot | `client.screenshot()` returns a base64 PNG data URI | `adb shell screencap -p > screen.png` |
+| Read UI hierarchy | `client.getElementTree()` returns `AndroidElementNode[]` plus raw XML | `adb shell uiautomator dump`, then parse `/sdcard/window_dump.xml` |
+| Find element by selector | `client.findElement(selector, limit?)` with a typed `AndroidSelector` | Dump the tree, then parse the XML yourself |
+| Tap by selector | `client.tap({ selector })` (server-side lookup and tap) | Dump the tree, parse bounds, then `adb shell input tap X Y` |
+| Tap by coordinates | `client.tap({ x, y })` | `adb shell input tap X Y` |
+| Type text | `client.setText(target?, 'hello')` | `adb shell input text 'hello'` |
+| Press key with modifiers | `client.pressKey('HOME', ['shift'])` | `adb shell input keyevent KEYCODE_HOME` (no modifier syntax) |
+| Scroll | `client.scrollScreen('down', 6)` or `scrollElement(target, ...)` | `adb shell input swipe X1 Y1 X2 Y2` |
+| Open URL or deep link | `client.openUrl('myapp://...')` | `adb shell am start -a android.intent.action.VIEW -d <url>` |
+| Record video | `client.startRecording` / `stopRecording` with `localPath` or `presignedUrl` sinks | `adb shell screenrecord /sdcard/out.mp4` (3-minute cap per file), then `adb pull` |
+| Install APK from an HTTPS URL | `client.sendAsset(url)` (the instance downloads it) | Download locally, then `adb install ./out.apk` |
+| Install APK from a local file | `assets.getOrUpload({ path })`, then `sendAsset(asset.signedDownloadUrl)` | `adb install ./build.apk` |
+| List, launch, or stop apps | `client.listApps()`, `client.launchApp(pkg, { mode, onExit })`, `client.terminateApp(pkg)` | `adb shell pm list packages` / `adb shell am start -n pkg/.Activity` / `adb shell am force-stop pkg` |
+| Logcat | `client.logcat(args)` streams logcat output | `adb logcat` |
+| File push and pull | `client.pushFile(path, destination?)` / `client.pullFile(path, localPath)` | `adb push local /sdcard/...` / `adb pull /sdcard/...` |
+| Run an arbitrary shell command | `client.adbShell(command, args)` returns stdout, stderr, and exit code | `adb shell <anything>` |
+| Mirror the device UI | Open `signedStreamUrl` in a browser or embed `<RemoteControl />` | `scrcpy -s 127.0.0.1:<tunnel-port>` |
+| Attach Android Studio | Not applicable | Pair Device Manager with `127.0.0.1:<tunnel-port>` |
+| Drive with Appium | Not applicable | Point `appium:udid` at `127.0.0.1:<tunnel-port>` |
+| Connection lifecycle | Typed `getConnectionState` and `onConnectionStateChange` with auto-reconnect | The adb server's built-in retry; `adb reconnect` if it loses the socket |
+| Languages | TypeScript (device control and tunnel); Go: tunnel only; Python: none, use `lim android connect` | Any language that can run `adb` |
 
-</Tab>
-</Tabs>
+### Open a device client from the TypeScript SDK
+
+`createInstanceClient` opens a WebSocket to the instance. Every method on the returned client is one round trip over that socket. It needs two fields from the create response: `status.apiUrl`, the HTTP base the WebSocket URL is derived from, and `status.token`, the instance token.
+
+```ts
+import { createInstanceClient } from '@limrun/api';
+
+const client = await createInstanceClient({
+  apiUrl: instance.status.apiUrl!,
+  token:  instance.status.token,
+  logLevel: 'info',
+});
+```
+
+| Option | What it controls |
+|---|---|
+| `apiUrl` | HTTP base for the instance. The WebSocket endpoint is `apiUrl + /ws`, and recording downloads use the same base. Required. |
+| `token` | Instance token, sent as `Authorization: Bearer <token>` on the WebSocket handshake. Required. |
+| `adbUrl` | The instance's `status.adbWebSocketUrl`. Needed only to open an ADB tunnel with `startAdbTunnel`. |
+| `adbPath` | Path to the local `adb` executable used by tunnel workflows. Defaults to `adb`. |
+| `logLevel` | `'none' \| 'error' \| 'warn' \| 'info' \| 'debug'`. Log lines are prefixed `[Endpoint]`. Defaults to `info`. |
+| `maxReconnectAttempts` | Consecutive reconnect attempts after a transient WebSocket drop before the client gives up. Defaults to `6`. |
+| `reconnectDelay` | Initial backoff between reconnect attempts; each attempt doubles it, up to `maxReconnectDelay`. Defaults to `1000` ms. |
+| `maxReconnectDelay` | Upper bound on the backoff. Defaults to `30000` ms. |
+
+The Go and Python SDKs have no Android device client. From those languages, drive the device through the [ADB tunnel](#open-an-adb-tunnel) or call the REST surface directly.
+
+### Open an ADB tunnel
+
+`lim android connect` opens a long-lived WebSocket between your machine and the emulator's `adb` socket, binds it to a random `127.0.0.1` port, and runs `adb connect 127.0.0.1:<port>` for you. The command keeps running until you stop it with `Ctrl+C`, and the emulator shows up in `adb devices` like any networked device. `lim android create` opens the same tunnel unless you pass `--no-connect`.
+
+```bash
+# Connect to the last-created Android instance.
+lim android connect
+
+# Target a specific instance (recommended for scripts and agents).
+lim android connect --id <instance-id>
+
+# Use a non-default adb binary.
+lim android connect --id <instance-id> --adb-path /path/to/platform-tools/adb
+```
+
+In another terminal, check the connection and run anything `adb` understands:
+
+```bash
+adb devices
+# List of devices attached
+# 127.0.0.1:49923   device
+
+adb -s 127.0.0.1:49923 shell getprop ro.build.version.release
+# 15
+```
+
+Tools that work over the tunnel:
+
+- **Android Studio.** Open **Device Manager**, choose **Pair Device Using Wi-Fi**, and point it at `127.0.0.1:<port>`. The emulator appears in the device picker; run, debug, and Logcat flow through it.
+- **scrcpy.** Run `scrcpy -s 127.0.0.1:<port>` to mirror and control the device.
+- **Appium.** Set `appium:udid` (or `appium:deviceName`) to `127.0.0.1:<port>` on any upstream Appium server. See [Appium](/docs/testing/appium#run-an-android-test).
+
+To open the tunnel from code, use `client.startAdbTunnel()` in TypeScript or `tunnel.NewADB` in Go; [Appium](/docs/testing/appium#open-the-adb-tunnel) shows both.
+
+### Run shell commands and move files without a tunnel
+
+For one-shot shell commands and file transfer, the CLI talks to the instance directly, with no local `adb` install and no tunnel to keep alive. Everything runs with the permissions of the ADB shell user, so protected locations are rejected just as they would be for `adb`.
+
+`adb-shell` runs a command and returns its stdout, stderr, and exit code; the CLI exits with the command's exit code, and `--timeout` (milliseconds, default `30000`) bounds it. Pass the command after `--`. Each argument is sent as a separate, quoted token, so shell features such as pipes need an explicit shell:
+
+```bash
+lim android adb-shell -- pm list packages -3
+lim android adb-shell -- getprop ro.build.version.sdk
+lim android adb-shell --id <instance-id> -- sh -c "dumpsys battery | grep level"
+```
+
+`pull-file` and `push-file` behave like `adb pull` and `adb push`:
+
+```bash
+lim android pull-file /sdcard/Download/photo.jpeg
+lim android pull-file /data/local/tmp/log.txt ./device-log.txt
+
+lim android push-file ./document.pdf /sdcard/Download/document.pdf
+# Without a destination, the instance stores the file under an internal
+# name and the CLI prints the remote path.
+lim android push-file ./video.mp4
+```
+
+## Install apps
+
+Install your APK at boot, push rebuilds as patches, or install on a running instance.
 
 ### Pre-install APKs
 
-Set `initialAssets` at provisioning time to install one or more APKs while the pod boots. Each APK must come from a publicly reachable HTTPS URL (a GitHub release asset, an S3 presigned URL) or Limrun's [Asset Storage](/docs/platform/asset-storage). After a successful installation, the app is launched automatically so the instance is ready to interact with on first connect.
+Set `initialAssets` at create time to install one or more APKs while the instance boots. Each APK must come from a publicly reachable HTTPS URL (a GitHub release asset, an S3 presigned URL) or from [Asset Storage](/docs/platform/asset-storage). After a successful installation the app launches automatically, so the instance is ready to use on first connect.
 
-For local files, the CLI's `--install` and the TypeScript/Go SDK's `assets.getOrUpload({ path })` upload to Asset Storage first and hand the daemon a signed URL. Python's SDK doesn't ship that helper. Upload manually with `assets.get_or_create` plus a PUT to the returned upload URL before calling `create`. See [Asset Storage](/docs/platform/asset-storage).
+For local files, the CLI's `--install` and the TypeScript and Go SDKs' `assets.getOrUpload({ path })` upload to Asset Storage first and hand the instance a signed URL. The Python SDK has no such helper: call `assets.get_or_create`, PUT the file to the returned upload URL, then create the instance. See [Upload an asset](/docs/platform/asset-storage#upload-an-asset).
 
-#### Supported ABIs
+The CLI installs each `--install` or `--install-asset` as its own app:
 
-Instances are x86_64 emulators that also run `arm64-v8a` native code through translation, so an APK built for `x86_64`, `arm64-v8a`, or both installs and runs. `x86_64` runs natively and is the fastest choice; `arm64-v8a` lets you reuse a device build without adding an ABI to your pipeline. Don't mix them within one APK: if some native libraries ship only for `arm64-v8a` while others also ship `x86_64`, Android installs the app as `x86_64` and the arm64-only libraries fail to load with `UnsatisfiedLinkError`. 32-bit `armeabi-v7a`-only APKs are rejected at install with `INSTALL_FAILED_NO_MATCHING_ABIS`, and apps that execute their own bundled ARM command-line binaries (rather than loading native libraries) are not supported under translation.
-
-<CodeGroup labels={["CLI", "TypeScript", "Go", "Python"]}>
 ```bash
 # Local APK uploaded to Asset Storage on the fly, then installed.
 lim android create --install ./build.apk
 
-# Multiple unrelated apps; each --install becomes its own install group.
+# Several unrelated apps; each --install becomes its own install group.
 lim android create --install ./app-a.apk --install ./app-b.apk
 
 # Already in Asset Storage? Reference it by name instead.
 lim android create --install-asset chrome-stable
 ```
 
+From the SDK, each `initialAssets` entry picks a source: an asset name, an asset ID, or a URL:
+
+<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 const instance = await lim.androidInstances.create({
   wait: true,
   reuseIfExists: true,
   spec: {
     initialAssets: [
-      // One asset by name (already uploaded via assets.getOrUpload)
+      // One asset by name (already uploaded with assets.getOrUpload)
       { kind: 'App', source: 'AssetName', assetName: 'my-app-build.apk' },
 
       // Direct URLs, no Asset Storage upload required
@@ -253,6 +307,29 @@ const instance = await lim.androidInstances.create({
     ],
   },
 });
+```
+
+```python
+instance = lim.android_instances.create(
+    wait=True,
+    reuse_if_exists=True,
+    spec={
+        "initial_assets": [
+            # One asset by name (already uploaded)
+            {"kind": "App", "source": "AssetName", "asset_name": "my-app-build.apk"},
+
+            # Direct URLs
+            {"kind": "App", "source": "URL",
+             "url": "https://example.com/builds/123.apk"},
+            {"kind": "App", "source": "URLs",
+             "urls": ["https://example.com/base.apk", "https://example.com/config.apk"]},
+
+            # Reference by asset ID
+            {"kind": "App", "source": "AssetIDs",
+             "asset_ids": ["asset_01j..."]},
+        ],
+    },
+)
 ```
 
 ```go
@@ -289,39 +366,23 @@ inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
     },
 })
 ```
-
-```python
-instance = lim.android_instances.create(
-    wait=True,
-    reuse_if_exists=True,
-    spec={
-        "initial_assets": [
-            # One asset by name (already uploaded via assets.get_or_upload)
-            {"kind": "App", "source": "AssetName", "asset_name": "my-app-build.apk"},
-
-            # Direct URLs
-            {"kind": "App", "source": "URL",
-             "url": "https://example.com/builds/123.apk"},
-            {"kind": "App", "source": "URLs",
-             "urls": ["https://example.com/base.apk", "https://example.com/config.apk"]},
-
-            # Reference by asset ID
-            {"kind": "App", "source": "AssetIDs",
-             "asset_ids": ["asset_01j..."]},
-        ],
-    },
-)
-```
-
 </CodeGroup>
 
-#### Using Split APKs
+The Android `initialAssets` entry has no `launchMode` field; the full entry shape is in [Instance spec and status](/docs/reference/instances). Anything you upload once and reuse goes through [Asset Storage](/docs/platform/asset-storage). To push a build to an instance that is already running, see [Install an APK](#install-on-a-running-instance).
 
-If you ship your app as **split APKs**, ie a `base.apk` plus a few `config.*` APKs (`config.xxhdpi.apk` for screen density, `config.en.apk` for locale, `config.arm64_v8a.apk` for architecture, etc.), the whole set has to install as one atomic group or the app won't run. Pass them together by switching `source` to `AssetNames` or `URLs` and giving the entry an array. The first filename is treated as the base APK; the rest are config APKs.
+#### Supported ABIs
 
-**Split APKs are SDK-only.** Each CLI `--install` / `--install-asset` becomes its own `initialAssets[]` entry, so the set installs as separate apps rather than a grouped install. Use an SDK to keep them in one entry.
+Instances are x86_64 emulators that also run `arm64-v8a` native code through translation, so an APK built for `x86_64`, `arm64-v8a`, or both installs and runs. `x86_64` runs natively and performs best; `arm64-v8a` lets you reuse a device build without adding an ABI to your pipeline.
 
-<CodeGroup labels={["TypeScript", "Go", "Python"]}>
+Keep the ABIs consistent within one APK. If some native libraries ship only for `arm64-v8a` while others also ship `x86_64`, Android installs the app as `x86_64` and the arm64-only libraries fail to load with `UnsatisfiedLinkError`. APKs that contain only 32-bit `armeabi-v7a` code are rejected at install with `INSTALL_FAILED_NO_MATCHING_ABIS`. Apps that execute their own bundled ARM command-line binaries, rather than loading native libraries, are not supported under translation.
+
+#### Split APKs
+
+If you ship your app as split APKs, a `base.apk` plus `config.*` APKs (`config.xxhdpi.apk` for screen density, `config.en.apk` for locale, `config.arm64_v8a.apk` for architecture), the whole set must install as one atomic group or the app won't run. Put the set in one entry with a plural source (`AssetNames`, `URLs`, or `AssetIDs`) and an array. The first file is the base APK; the rest are config splits, and the instance installs them with `pm install-multiple`.
+
+Split APKs are SDK-only. Each CLI `--install` or `--install-asset` becomes its own `initialAssets` entry, so the set would install as separate apps instead of a group.
+
+<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 await lim.androidInstances.create({
   wait: true,
@@ -331,7 +392,7 @@ await lim.androidInstances.create({
       { kind: 'App', source: 'AssetNames',
         assetNames: ['base.apk', 'config.xxhdpi.apk', 'config.en.apk'] },
 
-      // Or from any HTTPS URLs the daemon can reach
+      // Or from any HTTPS URLs the instance can reach
       { kind: 'App', source: 'URLs',
         urls: [
           'https://example.com/base.apk',
@@ -341,6 +402,25 @@ await lim.androidInstances.create({
     ],
   },
 });
+```
+
+```python
+lim.android_instances.create(
+    wait=True,
+    spec={
+        "initial_assets": [
+            {"kind": "App", "source": "AssetNames",
+             "asset_names": ["base.apk", "config.xxhdpi.apk", "config.en.apk"]},
+
+            {"kind": "App", "source": "URLs",
+             "urls": [
+                 "https://example.com/base.apk",
+                 "https://example.com/config.xxhdpi.apk",
+                 "https://example.com/config.en.apk",
+             ]},
+        ],
+    },
+)
 ```
 
 ```go
@@ -366,34 +446,15 @@ inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
     },
 })
 ```
-
-```python
-lim.android_instances.create(
-    wait=True,
-    spec={
-        "initial_assets": [
-            {"kind": "App", "source": "AssetNames",
-             "asset_names": ["base.apk", "config.xxhdpi.apk", "config.en.apk"]},
-
-            {"kind": "App", "source": "URLs",
-             "urls": [
-                 "https://example.com/base.apk",
-                 "https://example.com/config.xxhdpi.apk",
-                 "https://example.com/config.en.apk",
-             ]},
-        ],
-    },
-)
-```
-
 </CodeGroup>
 
-Use separate entries in `initialAssets` when you want to install unrelated apps in sequence; everything inside one entry is treated as a single grouped install.
+Use separate `initialAssets` entries to install unrelated apps in sequence; everything inside one entry is a single grouped install.
 
-#### Set up custom Chrome Flags
-You can use Android's local Chrome's experimental features by turning on a specific flag. This is SDK-only. To do this, add an entry to `initialAssets` array with `kind: 'Configuration'`:
+#### Set Chrome flags
 
-<CodeGroup labels={["TypeScript", "Go", "Python"]}>
+To turn on an experimental Chrome feature, add an entry with `kind: 'Configuration'` to `initialAssets`. The only configuration today is `ChromeFlag`; the flag below lets Chrome accept command-line arguments on a non-rooted device, which [Playwright](/docs/testing/playwright) needs. Chrome flags are SDK-only; the CLI has no flag for them.
+
+<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 {
   kind: 'Configuration',
@@ -401,16 +462,6 @@ You can use Android's local Chrome's experimental features by turning on a speci
     kind: 'ChromeFlag',
     chromeFlag: 'enable-command-line-on-non-rooted-devices@1',
   },
-}
-```
-
-```go
-limrun.AndroidInstanceNewParamsSpecInitialAsset{
-    Kind: "Configuration",
-    Configuration: limrun.AndroidInstanceNewParamsSpecInitialAssetConfiguration{
-        Kind:       "ChromeFlag",
-        ChromeFlag: "enable-command-line-on-non-rooted-devices@1",
-    },
 }
 ```
 
@@ -424,13 +475,22 @@ limrun.AndroidInstanceNewParamsSpecInitialAsset{
 }
 ```
 
+```go
+limrun.AndroidInstanceNewParamsSpecInitialAsset{
+    Kind: "Configuration",
+    Configuration: limrun.AndroidInstanceNewParamsSpecInitialAssetConfiguration{
+        Kind:       "ChromeFlag",
+        ChromeFlag: "enable-command-line-on-non-rooted-devices@1",
+    },
+}
+```
 </CodeGroup>
 
-Anything you want to upload once and reuse goes through [Asset Storage](/docs/platform/asset-storage) first. For builds you want to push to an already-running pod, see [Install an APK](#install-an-apk).
+A `Configuration` entry carries an instance setting, not a file: it has no MD5, no signed URLs, and never appears in `assets.list`.
 
 ### Sync APK rebuilds
 
-`lim android sync` uses differential patching to update an APK on a running emulator. It transfers an xdelta3 patch against the APK already available on the instance, then installs the updated APK. This avoids uploading the full APK after every rebuild.
+`lim android sync` updates the APK on a running emulator with differential patching: it transfers an xdelta3 patch against the APK already on the instance, then installs the updated APK. You don't upload the full APK after every rebuild.
 
 First, upload a base APK to Asset Storage. The asset name defaults to the filename:
 
@@ -450,253 +510,74 @@ After rebuilding the APK locally or in a cloud development environment, sync it 
 lim android sync ./app-debug.apk
 ```
 
-To target a specific instance, pass `--id <ID>`. Add `--watch` to keep watching the APK file and sync each new build automatically.
+Pass `--id <instance-id>` to target a specific instance, and `--watch` to keep watching the APK file and sync each new build. `--no-install` pushes the patch without installing, and `--launch-mode ForegroundIfRunning|RelaunchIfRunning` sets what happens after the install. Without `--id`, the command uses the most recent Android instance and creates one if needed.
 
-### Example response
+### Install on a running instance
 
-A successful `create` returns the full instance resource.
+`lim android install-app` accepts a path or a URL. Paths are uploaded to Asset Storage first (MD5-deduplicated; `--asset-ttl` sets their expiry), and URLs go straight to the instance:
 
-```json
-{
-  "metadata": {
-    "id": "android_usw1_01krxvphn8e3rbeq0zewgw209a",
-    "createdAt": "2026-05-18T19:52:42Z",
-    "organizationId": "org_01kr52j...",
-    "displayName": "android_usw1_01krxvphn8e3rbeq0zewgw209a",
-    "labels": { "app": "demo", "session": "docs" }
-  },
-  "spec": {
-    "inactivityTimeout": "10m0s",
-    "region": "us-west2"
-  },
-  "status": {
-    "state": "ready",
-    "apiUrl":               "https://us-west-1-1234567.limrun.net/v1/android_usw1_01krxv.../api",
-    "adbWebSocketUrl":      "wss://us-west-1-1234567.limrun.net/v1/organizations/org_01kr52j.../android.limrun.com/v1/instances/android_usw1_01krxv.../adbWebSocket",
-    "endpointWebSocketUrl": "wss://us-west-1-1234567.limrun.net/v1/organizations/org_01kr52j.../android.limrun.com/v1/instances/android_usw1_01krxv.../endpointWebSocket",
-    "signedStreamUrl":      "https://console.limrun.com/signedStream?url=wss%3A%2F%2Fus-west-1-1234567.limrun.net%2F...%2FendpointWebSocket#token=lim_...",
-    "mcpUrl":               "https://us-west-1-1234567.limrun.net/v1/android_usw1_01krxv.../mcp",
-    "targetHttpPortUrlPrefix": "wss://us-west-1-1234567.limrun.net/v1/organizations/org_01kr52j.../android.limrun.com/v1/instances/android_usw1_01krxv.../targetHttpPort",
-    "token": "lim_..."
-  }
-}
+```bash
+# Local path: uploaded to Asset Storage first, then installed.
+lim android install-app ./build.apk
+
+# Remote URL: the instance downloads it.
+lim android install-app https://example.com/build.apk --id <instance-id>
 ```
 
-#### Watch the livestream
-- To watch the emulator stream, open `signedStreamUrl` in a browser. No need to login or get an API key.
-- For an embedded experience inside your own app, see [Embed the simulator](/docs/platform/embed-simulator).
-
-#### Field reference
-
-| Field | Use |
-|---|---|
-| `metadata.id` | Stable instance identifier. Pass to `get`, `delete`, `connect`. |
-| `metadata.labels` | Echoed back. Drives `reuseIfExists` matching and label-selector listing. |
-| `spec.region` | Region the scheduler placed the pod in. |
-| `status.state` | `unknown`, `creating`, `assigned`, `ready`, `terminated`. |
-| `status.apiUrl` | HTTP base for the Android control daemon. WebSocket control derives from it (`apiUrl + /ws`). Pass to `createInstanceClient`. |
-| `status.adbWebSocketUrl` | WebSocket endpoint for the ADB tunnel. Pass to `createInstanceClient` as `adbUrl`. |
-| `status.endpointWebSocketUrl` | WebSocket endpoint for the [`<RemoteControl />` web component](/docs/platform/embed-simulator) (append `?token=`). |
-| `status.signedStreamUrl` | Console-hosted watch URL with the token in the URL fragment. Open in a browser without your API key. |
-| `status.mcpUrl` | Per-instance MCP HTTP endpoint. Authenticate with `status.token`, not your org API key. See [MCP](/docs/agents/mcp); for one org-level endpoint that also creates instances, see the [remote MCP server](/docs/agents/remote-mcp). |
-| `status.targetHttpPortUrlPrefix` | WebSocket prefix (`wss://...`) for reaching HTTP services running on the device. Append your target port to forward traffic through. |
-| `status.sandbox.playwrightAndroid.url` | Chrome DevTools Protocol URL when the Playwright sub-sandbox is enabled. |
-| `status.token` | Per-instance bearer for `apiUrl`, `adbWebSocketUrl`, and `endpointWebSocketUrl`. Embedded in `signedStreamUrl`. Returned only to a credential that can control the instance; a read-only API key or a viewer seat gets no `token`. |
-| `status.streamToken` | Streaming-only token: opens `endpointWebSocketUrl` and nothing else, so a browser can hold it while `status.token` stays on your backend. Returned with `token`; get and list return it only while the instance runs. |
-
-## Connect to your instance
-
-Two ways to drive the device:
-
-1. **LIM SDK.** Opens a typed WebSocket session to the Android control daemon. Tight, ergonomic surface for the common moves (tap by selector, screenshot, element tree, record).
-2. **ADB tunnel.** Exposes the emulator's `adb` socket as a local TCP listener. Anything that speaks `adb` attaches as if it were a USB device.
-
-Use the SDK when you want strongly-typed results and built-in selectors. Use the ADB tunnel when you need the long tail of Android tooling (logcat, file push/pull, debugger attach, scrcpy, Appium) or you're calling from Go or Python.
-
-| Capability | LIM SDK | ADB tunnel |
-|---|---|---|
-| Screenshot | `client.screenshot()` returns a base64 PNG data URI | `adb shell screencap -p > screen.png` |
-| Read UI hierarchy | `client.getElementTree()` returns `AndroidElementNode[]` plus raw XML | `adb shell uiautomator dump`, then parse `/sdcard/window_dump.xml` |
-| Find element by selector | `client.findElement(selector, limit?)` with typed `AndroidSelector` | dump the tree, then grep/parse XML manually |
-| Tap by selector | `client.tap({ selector })` (server-side lookup + tap) | dump tree, parse bounds, then `adb shell input tap X Y` |
-| Tap by coordinates | `client.tap({ x, y })` | `adb shell input tap X Y` |
-| Type text | `client.setText(target?, 'hello')` | `adb shell input text 'hello'` |
-| Press key (with modifiers) | `client.pressKey('HOME', ['shift'])` | `adb shell input keyevent KEYCODE_HOME` (no modifier syntax) |
-| Scroll | `client.scrollScreen('down', 6)` / `scrollElement(target, ...)` | `adb shell input swipe X1 Y1 X2 Y2` |
-| Open URL / deeplink | `client.openUrl('myapp://...')` | `adb shell am start -a android.intent.action.VIEW -d <url>` |
-| Record video | `client.startRecording / stopRecording` with `localPath` / `presignedUrl` sinks | `adb shell screenrecord /sdcard/out.mp4` (3-minute cap per file), then `adb pull` |
-| Install APK from HTTPS URL | `client.sendAsset(url)` (daemon downloads on the device side) | download locally, then `adb install ./out.apk` |
-| Install APK from local file | `assets.getOrUpload({ path })` then `sendAsset(asset.signedDownloadUrl)` | `adb install ./build.apk` |
-| Launch / force-stop app | not exposed | `adb shell am start -n pkg/.Activity` / `adb shell am force-stop pkg` |
-| Logcat | not exposed | `adb logcat` |
-| File push / pull | not exposed | `adb push local /sdcard/...` / `adb pull /sdcard/...` |
-| Run arbitrary shell | not exposed | `adb shell <anything>` |
-| Mirror the device UI | use `signedStreamUrl` in a browser or `<RemoteControl />` | `scrcpy -s 127.0.0.1:<tunnel-port>` |
-| Attach Android Studio / IDE | not applicable | pair Device Manager with `127.0.0.1:<tunnel-port>` |
-| Drive with Appium | not applicable | point `appium:udid` at `127.0.0.1:<tunnel-port>` |
-| Connection lifecycle | typed `getConnectionState` / `onConnectionStateChange` with auto-reconnect | adb-server's built-in retry; `adb reconnect` if it loses the socket |
-| Languages | TypeScript (device control + tunnel); Go and Python: tunnel only | any language that can shell out to `adb` |
-
-### Create a client for the LIM SDK
-
-`createInstanceClient` opens a WebSocket to the Android control daemon. Every method on the returned client is one round-trip over that socket.
-
-You'll need two fields from the `create` response:
-- `status.apiUrl`. HTTP base for the daemon; the WebSocket URL is derived from it.
-- `status.token`. Per-instance bearer.
+In the TypeScript SDK, `sendAsset(url)` tells the instance to download an APK and install it. The URL must be publicly reachable (a GitHub release asset, an S3 presigned URL) or come from [Asset Storage](/docs/platform/asset-storage). Upload local files with `assets.getOrUpload({ path })` and pass the returned `signedDownloadUrl`:
 
 ```ts
-import { createInstanceClient } from '@limrun/api';
+// Local file: upload once, then install with the returned signed URL.
+const asset = await lim.assets.getOrUpload({ path: './build.apk' });
+await client.sendAsset(asset.signedDownloadUrl);
 
-const client = await createInstanceClient({
-  apiUrl: instance.status.apiUrl!,
-  token:  instance.status.token,
-  logLevel: 'info',
-});
+// Or install straight from a public URL.
+await client.sendAsset('https://example.com/build.apk');
+
+// The default request timeout is 120 s. Pass a longer one for large APKs.
+await client.sendAsset(asset.signedDownloadUrl, 180_000);
 ```
 
-| Option | What it controls |
-|---|---|
-| `apiUrl` | HTTP base for the Android control daemon. The WebSocket endpoint is derived as `apiUrl + /ws`. Recording downloads use the same base. Required. |
-| `token` | Per-instance bearer sent as `Authorization: Bearer <token>` on the WebSocket handshake. Required. |
-| `logLevel` | One of `'none' \| 'error' \| 'warn' \| 'info' \| 'debug'`. Logs are prefixed `[Endpoint]`. Defaults to `info`. |
-| `maxReconnectAttempts` | Max consecutive reconnect attempts after a transient WebSocket drop before the client gives up. Defaults to `6`. |
-| `reconnectDelay` | Initial backoff between reconnect attempts. Each attempt doubles, capped at `maxReconnectDelay`. Defaults to `1000` ms. |
-| `maxReconnectDelay` | Upper bound on the exponential backoff window. Defaults to `30000` ms. |
-
-The Go and Python SDKs don't currently expose a device-control client; from those languages, drive the device through the [ADB tunnel](#start-an-adb-tunnel) or call the REST surface directly.
-
-### Start an ADB tunnel
-
-`lim android connect` opens a long-lived WebSocket between your machine and the emulator's `adb` socket, binds it to a random `127.0.0.1` port, and runs `adb connect 127.0.0.1:<port>` for you. The tunnel stays up until you `Ctrl+C`. The emulator then shows up under `adb devices` like any networked device.
-
-```bash
-# Connect to the last-created Android instance.
-lim android connect
-
-# Or target a specific instance (recommended for scripts).
-lim android connect --id <ID>
-
-# Point at a non-default adb binary.
-lim android connect --id <ID> --adb-path /opt/homebrew/bin/adb
-```
-
-In another terminal, verify it's wired up and run anything `adb` understands:
-
-```bash
-adb devices
-# List of devices attached
-# 127.0.0.1:49923   device
-
-adb -s 127.0.0.1:49923 shell getprop ro.build.version.release
-# 15
-```
-
-Some tools that can work with `adb`:
-
-- **Android Studio.** Open `Device Manager → Pair Device Using Wi-Fi`, point it at `127.0.0.1:<port>`, and the emulator appears in the device picker. Run, debug, and Logcat flow through it.
-- **scrcpy.** Run `scrcpy -s 127.0.0.1:<port>` to mirror and remote-control the device.
-- **Appium.** Set `appium:udid` (or `appium:deviceName`) to `127.0.0.1:<port>` on any upstream Appium server. See [Automated testing > Appium](/docs/testing/appium).
-
-### Shell and files without a tunnel
-
-For one-shot shell commands and file transfer, the CLI talks to the instance directly — no local `adb` install and no tunnel to keep alive. Everything runs with the same permissions the ADB shell user has, so protected locations are rejected just as they would be for `adb`.
-
-`adb-shell` runs a command and returns its stdout, stderr, and exit code (the CLI exits with the command's exit code). Pass the command after `--`; each argument is sent as a separate, quoted token, so shell features like pipes need an explicit shell:
-
-```bash
-lim android adb-shell -- pm list packages -3
-lim android adb-shell -- getprop ro.build.version.sdk
-lim android adb-shell --id <ID> -- sh -c "dumpsys battery | grep level"
-```
-
-`pull-file` and `push-file` behave like `adb pull` and `adb push`:
-
-```bash
-lim android pull-file /sdcard/Download/photo.jpeg
-lim android pull-file /data/local/tmp/log.txt ./device-log.txt
-
-lim android push-file ./document.pdf /sdcard/Download/document.pdf
-# Without a destination, the instance stores the file under an internal
-# name and the CLI prints the remote path.
-lim android push-file ./video.mp4
-```
+`sendAsset` is TypeScript-only. The Go SDK uploads with `Assets.GetOrUpload`; from Go and Python, install with `lim android install-app` or `adb install` over the tunnel. Python has no upload helper: call `assets.get_or_create` and PUT the file to the upload URL first.
 
 ## Read the screen
 
-Three primitives for inspecting the device using the SDK. All of these require an initiated `client`:
-
-- Take a screenshot
-- Capture screenrecordings
-- Get element tree in a screen
+Inspect the device with screenshots and the element tree. The SDK examples assume a `client` from [`createInstanceClient`](#open-a-device-client-from-the-typescript-sdk).
 
 ### Take a screenshot
 
-`screenshot` captures the current frame as a base64-encoded PNG. The CLI writes the decoded bytes to a path you supply; the SDK returns a data URI that you decode yourself.
+`screenshot` captures the current frame as a PNG. The CLI writes the image to the path you give it:
 
-<CodeGroup labels={["CLI", "TypeScript"]}>
 ```bash
 lim android screenshot screen.png
-lim android screenshot screen.png --id <ID>
+lim android screenshot screen.png --id <instance-id>
 ```
 
+The SDK returns a base64 data URI that you decode yourself:
+
 ```ts
+import { writeFileSync } from 'node:fs';
+
 const shot = await client.screenshot();
 // { dataUri: 'data:image/png;base64,iVBORw0K...' }
 
-import { writeFileSync } from 'node:fs';
 const png = Buffer.from(shot.dataUri.replace(/^data:image\/\w+;base64,/, ''), 'base64');
 writeFileSync('screen.png', png);
 ```
 
-</CodeGroup>
-
-### Record the screen
-
-Recording is server-side and writes to the emulator's filesystem. Start a recording, drive the UI, then stop. The output is H.264 in an mp4 container.
-
-<CodeGroup labels={["CLI", "TypeScript"]}>
-```bash
-lim android record start --quality 5
-
-# ...drive the UI...
-
-# Download to a local file (default: timestamped mp4 in cwd).
-lim android record stop -o demo.mp4
-
-# Or hand the bytes to a presigned upload URL.
-lim android record stop --presigned-url https://example.com/upload
-```
-
-```ts
-await client.startRecording({ quality: 5 });
-
-// ...drive the UI...
-
-const url = await client.stopRecording({ localPath: '/tmp/demo.mp4' });
-// url is also returned so you can re-fetch later
-```
-
-</CodeGroup>
-
-`quality` accepts the integers `5` through `10`. Higher values increase bitrate and file size.
-
-On the SDK, pick the sink that matches where the file should live:
-
-- **Local file.** `stopRecording({ localPath })`. The server returns the file; the SDK streams it to `localPath` before resolving.
-- **Your bucket.** `stopRecording({ presignedUrl })`. The server PUTs directly to your URL; the SDK only waits for that upload.
-- **Just the URL.** `stopRecording({})`. Resolves with the download URL; fetch the bytes later with `Authorization: Bearer ${status.token}`.
-
 ### Get the element tree
 
-<CodeGroup labels={["CLI", "TypeScript"]}>
+The CLI prints the raw UIAutomator XML, or parsed nodes with `--json`:
+
 ```bash
 # Print the raw XML.
 lim android element-tree
 
-# Or get the parsed nodes as JSON (agent-friendly).
+# Or get the parsed nodes as JSON (easier for agents to filter).
 lim android element-tree --json
 ```
+
+From the TypeScript SDK:
 
 ```ts
 const tree = await client.getElementTree();
@@ -704,9 +585,7 @@ const tree = await client.getElementTree();
 // tree.nodes  flattened AndroidElementNode[]
 ```
 
-</CodeGroup>
-
-Sample raw `tree.xml` output:
+A node in the raw `tree.xml` looks like this:
 
 ```xml
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
@@ -732,7 +611,7 @@ Sample raw `tree.xml` output:
 </hierarchy>
 ```
 
-Sample `tree.nodes` output:
+The same node in `tree.nodes` carries parsed bounds with a center point you can tap:
 
 ```json
 {
@@ -756,9 +635,42 @@ Sample `tree.nodes` output:
 }
 ```
 
+## Record the screen
+
+Recording runs on the instance and writes H.264 in an MP4 container. Start a recording, drive the UI, then stop it:
+
+```bash
+lim android record start --quality 5
+
+# ...drive the UI...
+
+# Download to a local file (default: a timestamped MP4 in the current directory).
+lim android record stop -o demo.mp4
+
+# Or hand the bytes to a presigned upload URL.
+lim android record stop --presigned-url https://example.com/upload
+```
+
+From the TypeScript SDK:
+
+```ts
+await client.startRecording({ quality: 5 });
+
+// ...drive the UI...
+
+const url = await client.stopRecording({ localPath: '/tmp/demo.mp4' });
+// The download URL is also returned so you can fetch it again later.
+```
+
+`quality` accepts the integers `5` through `10`; the default is `5`, and higher values increase bitrate and file size. On the SDK, pick the sink that matches where the file should live:
+
+- **Local file.** `stopRecording({ localPath })`. The SDK streams the file to `localPath` before resolving.
+- **Your bucket.** `stopRecording({ presignedUrl })`. The instance PUTs directly to your URL; the SDK only waits for that upload.
+- **Just the URL.** `stopRecording({})`. Resolves with the download URL; fetch the bytes later with `Authorization: Bearer ${status.token}`.
+
 ## Control the device
 
-Input actions need a way to specify what to act on. That shape is `AndroidElementTarget`, which carries either a selector or explicit coordinates.
+Input actions take an `AndroidElementTarget`, which carries either a selector or explicit coordinates:
 
 ```ts
 type AndroidElementTarget = {
@@ -768,108 +680,80 @@ type AndroidElementTarget = {
 };
 ```
 
-Prefer selectors. Layouts shift between OS versions; coordinates don't survive that.
+Prefer selectors. Layouts shift between OS versions, and coordinates don't survive that.
 
-### Install an APK
+### Find elements
 
-`sendAsset(url)` tells the daemon to download an APK and install it. The URL has to be publicly reachable (a GitHub release asset, an S3 presigned URL) or come from Limrun's [Asset Storage](/docs/platform/asset-storage).
+`findElement` queries the tree so you don't have to parse it. Every non-empty selector field must match:
 
-The CLI's `lim android install-app` accepts either a path or a URL: paths are uploaded to Asset Storage first (MD5-deduplicated), URLs are passed straight to the daemon. From TypeScript / Go, upload local files with `assets.getOrUpload({ path })` and pass the returned `signedDownloadUrl` to `sendAsset`. Python users upload manually with `assets.get_or_create` plus a PUT before calling `sendAsset`. See [Asset Storage](/docs/platform/asset-storage).
-
-<CodeGroup labels={["CLI", "TypeScript"]}>
 ```bash
-# Local path: uploaded to Asset Storage first, then installed.
-lim android install-app ./build.apk
-
-# Remote URL: passed straight to the daemon.
-lim android install-app https://example.com/build.apk --id <ID>
-```
-
-```ts
-// Local file: upload once, then install via the returned signed URL.
-const asset = await lim.assets.getOrUpload({ path: './build.apk' });
-await client.sendAsset(asset.signedDownloadUrl);
-
-// Or install straight from a public URL.
-await client.sendAsset('https://example.com/build.apk');
-
-// Default request timeout is 120s. Pass a custom timeout for larger APKs.
-await client.sendAsset(asset.signedDownloadUrl, 180_000);
-```
-
-</CodeGroup>
-
-
-### Select an element
-
-`findElement` queries the tree without you having to parse it. Every non-empty selector field is ANDed together.
-
-<CodeGroup labels={["CLI", "TypeScript"]}>
-```bash
-# Find by text, return up to 5 matches as JSON.
+# Find by text and return up to 5 matches as JSON.
 lim android find-element --text "Sign In" --limit 5 --json
 
-# Find by resource id; defaults to up to 20 matches.
+# Find by resource ID; returns up to 20 matches by default.
 lim android find-element --resource-id com.example:id/submit
 
-# Filter for clickable buttons that are enabled.
+# Only enabled, clickable buttons.
 lim android find-element --class-name android.widget.Button --clickable --enabled
 ```
+
+From the TypeScript SDK:
 
 ```ts
 const r = await client.findElement({ text: 'Chrome' }, 5);
 // { count: 1, elements: [ { ... AndroidElementNode } ] }
 ```
 
-</CodeGroup>
-
-Selector fields (SDK key on the left, equivalent CLI flag on the right):
+The same selector fields work for `find-element`, `tap-element`, `type`, and `scroll`:
 
 | SDK field | CLI flag | Matches |
 |---|---|---|
-| `resourceId` | `--resource-id <value>` | `android:id/...` resource string. Most stable selector. |
+| `resourceId` | `--resource-id <value>` | The `android:id/...` resource string. The most stable selector. |
 | `text` | `--text <value>` | Visible text. Case-sensitive exact match. |
 | `contentDesc` | `--content-desc <value>` | Accessibility content description. |
-| `className` | `--class-name <value>` | Widget class (`android.widget.Button`, `androidx.viewpager.widget.ViewPager`, etc.). |
-| `packageName` | `--package-name <value>` | Owning app package. Useful to scope queries when the launcher is in front. |
+| `className` | `--class-name <value>` | Widget class (`android.widget.Button`, `androidx.viewpager.widget.ViewPager`). |
+| `packageName` | `--package-name <value>` | Owning app package. Scopes queries when the launcher is in front. |
 | `index` | `--index <n>` | Sibling index. |
-| `clickable` | `--clickable / --no-clickable` | Filter to clickable nodes only. |
+| `clickable` | `--clickable / --no-clickable` | Clickable nodes only. |
 | `enabled` | `--enabled / --no-enabled` | Skip disabled controls. |
-| `focused` | `--focused / --no-focused` | Find the currently focused control. |
-| `boundsContains` | `--bounds-contains-x <n> --bounds-contains-y <n>` | Find the deepest node whose bounds contain that pixel. |
+| `focused` | `--focused / --no-focused` | The currently focused control. |
+| `boundsContains` | `--bounds-contains-x <n> --bounds-contains-y <n>` | The deepest node whose bounds contain that pixel. |
 
-### Tap, type, or press
+### Tap, type, and press keys
 
-<CodeGroup labels={["CLI", "TypeScript"]}>
+Tap by selector first and fall back to coordinates. `type` writes into the focused field unless you target an input by selector or coordinates. `press-key` sends hardware and IME keys, with `--modifier` repeatable:
+
 ```bash
-# Tap by selector (preferred). Pass any selector flag from the table above.
+# Tap by selector (preferred). Any selector flag from the table above works.
 lim android tap-element --resource-id com.example.app:id/login
 lim android tap-element --text "Sign In"
 
 # Tap by raw coordinates (fallback).
 lim android tap 374 219
 
-# Type into the focused field, or into a specific input via selector / coords.
+# Type into the focused field, or into a specific input.
 lim android type "hello"
 lim android type "docs sandbox" --class-name android.widget.EditText
 lim android type "hello" --x 120 --y 340
 
-# Hardware and IME keys; --modifier is repeatable.
+# Hardware and IME keys.
 lim android press-key HOME
 lim android press-key BACK
 lim android press-key enter
 lim android press-key a --modifier shift
 ```
 
+From the TypeScript SDK:
+
 ```ts
 // Tap by selector (preferred)
 await client.tap({ selector: { resourceId: 'com.example.app:id/login' } });
 await client.tap({ selector: { text: 'Chrome' } });
 
-// Tap by coords (fallback)
+// Tap by coordinates (fallback)
 await client.tap({ x: 374, y: 219 });
 
-// Type into the currently focused field, or into a specific input
+// Type into the focused field, or into a specific input
 await client.setText(undefined, 'hello');
 await client.setText(
   { selector: { className: 'android.widget.EditText' } },
@@ -883,27 +767,26 @@ await client.pressKey('ENTER');
 await client.pressKey('a', ['shift']);         // modifiers: shift, ctrl/control, alt/option, meta/command/cmd, sym, fn
 ```
 
-</CodeGroup>
-
-`pressKey` accepts plain names (`BACK`, `ENTER`, `A`, `TAB`), digit strings (`'4'`), or fully-qualified `KEYCODE_*` constants. The response echoes the resolved keycode so you can confirm what fired.
+`pressKey` accepts plain names (`BACK`, `ENTER`, `A`, `TAB`), digit strings (`'4'`), or full `KEYCODE_*` constants. The response echoes the resolved keycode so you can confirm what fired.
 
 ### Scroll
 
-`scrollScreen` performs a finger-swipe gesture from the screen center. `scrollElement` (CLI: pass selector flags to `lim android scroll`) scrolls inside a specific scrollable node such as a list, ViewPager, or ScrollView. Both take a direction and an `amount` in Android scroll units.
+`scrollScreen` swipes from the center of the screen. `scrollElement` scrolls inside a specific scrollable node such as a list, ViewPager, or ScrollView; on the CLI, pass selector flags or coordinates to `lim android scroll`. Both take a direction (`up`, `down`, `left`, `right`) and an `amount` in Android scroll units.
 
-<CodeGroup labels={["CLI", "TypeScript"]}>
 ```bash
 # Scroll the screen. --amount defaults to 300 in the CLI.
 lim android scroll down --amount 500
 lim android scroll up
 
-# Scroll inside a specific element by selector or coords.
+# Scroll inside a specific element by selector or coordinates.
 lim android scroll down --resource-id com.example:id/list --amount 500
 lim android scroll up --x 120 --y 500 --amount 250
 ```
 
+From the TypeScript SDK:
+
 ```ts
-// SDK amount defaults to 6.
+// The SDK amount defaults to 6.
 await client.scrollScreen('down', 6);
 await client.scrollScreen('up');
 await client.scrollScreen('left', 4);
@@ -914,42 +797,119 @@ await client.scrollElement(
 );
 ```
 
-</CodeGroup>
-
-Valid directions: `'up' | 'down' | 'left' | 'right'`. The SDK call resolves with the gesture's start and end points so you can sanity-check what landed on the wire:
+The SDK call resolves with the gesture's start and end points, so you can check what was sent:
 
 ```json
 { "direction": "down", "startX": 360, "startY": 808, "endX": 360, "endY": 1108 }
 ```
 
-The SDK defaults `amount` to `6` (small flick); the CLI defaults to `300` (a hefty scroll). The field on the wire is the same; pass the same number to both for identical behavior.
+The SDK defaults `amount` to `6` (a small flick) and the CLI to `300` (a long scroll). The value on the wire is the same, so pass the same number to both for identical behavior.
 
 ### Open URLs
 
-`openUrl` resolves the intent the same way `am start -a android.intent.action.VIEW -d <url>` would. It works for web URLs and registered deeplink schemes.
+`openUrl` resolves the intent the way `am start -a android.intent.action.VIEW -d <url>` would. It works for web URLs and registered deep-link schemes:
 
-<CodeGroup labels={["CLI", "TypeScript"]}>
 ```bash
 lim android open-url https://example.com
-lim android open-url myapp://orders/42 --id <ID>
+lim android open-url myapp://orders/42 --id <instance-id>
 ```
+
+From the TypeScript SDK:
 
 ```ts
-await client.openUrl('https://example.com');           // launches in the default browser
-await client.openUrl('myapp://orders/42');             // routes to your app's deeplink handler
+await client.openUrl('https://example.com');           // opens in the default browser
+await client.openUrl('myapp://orders/42');             // routes to your app's deep-link handler
 ```
 
-</CodeGroup>
+If no installed activity matches the intent, the call fails with `startActivity returned code -91` (Android's `ActivityManager.START_INTENT_NOT_RESOLVED`). That covers unregistered custom schemes (`myapp://...`) and standard schemes whose handler isn't on the base image: on the stock image `mailto:` fails because there is no mail app, while `tel:` and `https://` succeed because the dialer and Chrome are present. Install the missing handler with [Pre-install APKs](#pre-install-apks) at boot, or [install it on the running instance](#install-on-a-running-instance).
 
-If no installed activity matches the intent, the daemon rejects with `startActivity returned code -91` (Android's `ActivityManager.START_INTENT_NOT_RESOLVED`). This catches unregistered custom schemes (`myapp://...`) and standard schemes whose handler isn't on the base image. On the stock image, `mailto:` fails (no mail app), while `tel:` and `https://` succeed (dialer + Chrome are present). Install the missing handler via [Pre-install APKs](#pre-install-apks) at boot, or [Install an APK](#install-an-apk) on a running pod.
+### Launch and stop apps
+
+`launch-app` starts an installed app by package name and watches it until it exits. When the app crashes, stops responding (ANR), or stops, the CLI prints the exit reason, crash details, and a recent log tail. `--detach` returns right after the launch. `--mode ForegroundIfRunning` (the default) brings a running app to the front; `RelaunchIfRunning` restarts it:
+
+```bash
+lim android launch-app com.example.app
+lim android launch-app com.example.app --detach
+lim android launch-app com.example.app --mode RelaunchIfRunning --id <instance-id>
+lim android terminate-app com.example.app
+```
+
+From the TypeScript SDK, `onExit` receives the app's recent logcat lines and exit details, including the crash stack trace when the app crashed. `watchApp` attaches the same callback to an app you didn't launch through the client, for example one opened by a deep link:
+
+```ts
+const apps = await client.listApps();
+// [{ bundleId: 'com.example.app', name, installType: 'user' | 'system', icon? }, ...]
+
+await client.launchApp('com.example.app', {
+  mode: 'RelaunchIfRunning',
+  onExit: (logs, info) => {
+    console.log(info.reason, info.crash);
+    for (const line of logs) console.log(line);
+  },
+});
+
+const watch = await client.watchApp('com.example.app', (logs, info) => console.log(info.reason));
+await watch.stop();
+
+await client.terminateApp('com.example.app');   // force-stop; fires onExit with reason 'terminated'
+```
+
+`listApps` returns the package name as `bundleId` so the shape matches iOS.
+
+### Read logs
+
+`lim android app-log` reads logcat output for one installed app: the last 100 lines by default, `--tail <n>` for another count, or `--follow` to keep streaming:
+
+```bash
+lim android app-log com.example.app --tail 50
+lim android app-log com.example.app --follow
+```
+
+`lim android logcat` runs logcat itself with no local `adb`. Arguments after `--` go to logcat verbatim: `-d` or `-t 50` dumps and exits, `-T 50` follows, and no arguments dumps the buffer and follows. The CLI exits with logcat's exit code:
+
+```bash
+lim android logcat -- -t 50
+lim android logcat -- -T 50 *:E
+lim android logcat --id <instance-id> -- -s MyTag
+```
+
+From the TypeScript SDK, `logcat` returns a process that emits `line` (and batched `lines`) events and an `exit` event with the exit code, or `-1` when stopped:
+
+```ts
+const proc = client.logcat(['-T', '50']);
+proc.on('line', (line) => console.log(line));
+// ...
+proc.stop();
+```
+
+The SDK equivalents of `adb-shell`, `push-file`, and `pull-file` are `adbShell(command, args, { timeoutMs })`, `pushFile(path, destination?)`, and `pullFile(path, localPath)`. `adbShell` quotes each argument, so run pipes through an explicit shell: `client.adbShell('sh', ['-c', 'dumpsys battery | grep level'])`. A non-zero exit code is returned in the result, not thrown.
+
+### Simulate the camera, microphone, and network
+
+Play a local video file as the camera feed. Apps see it through their regular Camera2 or CameraX pipeline, and the file's audio track plays through the microphone in sync. The video loops unless you pass `--no-loop`, which plays it once and freezes on the last frame. The SDK throws on Android 14 and older, which don't support camera injection:
+
+```bash
+lim android camera play ./fixtures/qr-scan.mp4
+lim android camera clear
+```
+
+Play a local WAV or MP3 file as microphone input. The CLI pushes the file with `adb`, so it needs `adb` locally (`--adb-path` to override); `--once` plays it once instead of looping:
+
+```bash
+lim android play-on-microphone ./sample.wav --once
+```
+
+Limit Wi-Fi bandwidth in Kbps. Omit a direction to leave it unchanged, and pass `0` to clear that direction's limit:
+
+```bash
+lim android set-wifi-bandwidth --down-kbps 1000 --up-kbps 500
+```
+
+The TypeScript SDK methods are `setCameraVideo(path, { loop })`, `clearCameraVideo()`, `playOnMicrophone(path, { once })` for a file already on the instance (upload it with `pushFile`), and `setWifiBandwidth({ downKbps, upKbps })`.
 
 ## Manage the connection
 
-The TypeScript client exposes lifecycle hooks for long-running drivers and connection debugging.
-
-### Keep-alive
-
-The client auto-pings the WebSocket every 30 seconds and surfaces state changes through a callback. Use `keepAlive` for an explicit application-level ping (during a long idle stretch, before a known-flaky network transition), and `getConnectionState` / `onConnectionStateChange` to observe.
+The TypeScript client exposes lifecycle hooks for long-running drivers and connection debugging. It pings the WebSocket every 30 seconds and reports state changes through a callback. Call `keepAlive` for an explicit application-level ping (during a long idle stretch, or before a known network transition), and use `getConnectionState` and `onConnectionStateChange` to observe the connection:
 
 ```ts
 client.getConnectionState();
@@ -962,34 +922,34 @@ const unsubscribe = client.onConnectionStateChange((state) => {
 client.keepAlive();    // explicit application-level ping
 ```
 
-The SDK auto-reconnects on transient failures with exponential backoff (defaults: 6 attempts, 1 s base, 30 s cap).
+The client reconnects on transient failures with exponential backoff (defaults: 6 attempts, 1 s base, 30 s cap).
 
-### Disconnect
-
-`disconnect` closes the WebSocket cleanly and disables auto-reconnect. It does not delete the instance; the emulator keeps running until its inactivity or hard timeout fires.
+`disconnect` closes the WebSocket cleanly and turns off auto-reconnect. It does not delete the instance; the emulator keeps running until its inactivity or hard timeout fires:
 
 ```ts
 client.disconnect();
 unsubscribe();         // drop the state callback if you no longer need it
 ```
 
-### Delete
+## Delete the emulator
 
-Each Android instance is single-tenant: only one client should drive it at a time. Scope instances per user, per PR, or per session with labels, then let `reuseIfExists` return the same warm pod on the next call. Tear down explicitly when you're done, or clean up by label selector across a tenant.
+Each Android instance is single-tenant: only one client should drive it at a time. Scope instances per user, per PR, or per session with labels, let `reuseIfExists` return the same warm instance on the next call, and delete instances explicitly when you're done:
 
-<CodeGroup labels={["CLI", "TypeScript", "Go"]}>
 ```bash
-lim android list                       # all ready instances (use --all for every state)
+lim android list                       # ready instances (--all for every state)
 lim android list --label-selector user=alice
-lim android delete <ID>                # tear down a specific instance
-lim android delete                     # tear down the last-created instance
+lim android delete <instance-id>       # delete a specific instance
+lim android delete                     # delete the last-created instance
 ```
 
+From the SDK, delete one instance, or every instance that matches a label:
+
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
-// Single instance
+// One instance
 await lim.androidInstances.delete(instance.metadata.id);
 
-// Or every instance matching a label
+// Every ready instance matching a label
 for await (const inst of lim.androidInstances.list({
   labelSelector: `user=${userId}`,
   state: 'ready',
@@ -999,27 +959,38 @@ for await (const inst of lim.androidInstances.list({
 ```
 
 ```go
-// Single instance
+// One instance
 _ = lim.AndroidInstances.Delete(ctx, inst.Metadata.ID)
 ```
-
 </CodeGroup>
 
-The inactivity timeout fires if nobody talks to the daemon for that long. The hard timeout fires regardless. Set both to your tolerance for orphaned pods.
+The inactivity timeout fires when nobody talks to the instance for that long; the hard timeout fires regardless. Set both to your tolerance for orphaned instances.
 
-## See also
+## Troubleshooting
+
+| Symptom or message | Cause | Fix |
+|---|---|---|
+| `startActivity returned code -91` from `open-url` | No installed activity handles the URL scheme. | Install the handler app, or register the scheme in your app. See [Open URLs](#open-urls). |
+| `INSTALL_FAILED_NO_MATCHING_ABIS` | The APK contains only 32-bit `armeabi-v7a` code. | Build for `x86_64`, `arm64-v8a`, or both. See [Supported ABIs](#supported-abis). |
+| `UnsatisfiedLinkError` at runtime | Some native libraries ship only for `arm64-v8a` while others also ship `x86_64`, so Android installs the app as `x86_64`. | Ship every native library for the same set of ABIs. |
+| A split APK app installs but won't start | The base and config APKs were installed as separate apps. | Put the whole set in one `initialAssets` entry with a plural source. See [Split APKs](#split-apks). |
+| `adb devices` doesn't list the emulator | The tunnel isn't running, or it stopped. | Run `lim android connect --id <instance-id>` and keep it running. |
+| `adb devices` shows the emulator as `offline` | The tunnel's WebSocket closed. | Restart `lim android connect`, or call `adb reconnect`. |
+| The instance is gone when you come back | Its inactivity or hard timeout fired. | Pass a longer `--inactivity-timeout` or `spec.inactivityTimeout`. |
+
+## Next steps
 
 <Columns cols={2}>
-  <Card title="Automated testing with Appium" href="/docs/testing/appium">
-    Wire any upstream Appium server to the ADB tunnel for native or hybrid Android tests.
+  <Card title="Build with Gradle" icon="hammer" href="/docs/android/build-with-gradle">
+    Build the APK remotely and install it on this emulator.
   </Card>
-  <Card title="Automated testing with Playwright" href="/docs/testing/playwright">
-    Drive Chrome on the emulator with Playwright via the `playwrightAndroid` sub-sandbox.
+  <Card title="Appium" icon="flask-conical" href="/docs/testing/appium">
+    Point any upstream Appium server at the ADB tunnel for native or hybrid tests.
   </Card>
-  <Card title="Embed the simulator" href="/docs/platform/embed-simulator">
+  <Card title="Playwright" icon="flask-conical" href="/docs/testing/playwright">
+    Drive Chrome on the emulator through the Playwright Android sandbox.
+  </Card>
+  <Card title="Embed a device" icon="monitor-play" href="/docs/platform/embed-simulator">
     Stream the live emulator into your web app with `<RemoteControl />`.
-  </Card>
-  <Card title="Asset Storage" href="/docs/platform/asset-storage">
-    Upload APKs once, reuse them across instances via `initialAssets`.
   </Card>
 </Columns>

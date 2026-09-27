@@ -36,7 +36,22 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
 ];
 
+// Pages that moved in the docs restructure. Each old URL, and its markdown
+// twin, keeps resolving so external links and agent caches do not break.
+const movedPages: Record<string, string> = {
+  "/docs/agents/cloud-agents": "/docs/agents/claude-code-web",
+  "/docs/agents/cloud-agents/claude-code-web": "/docs/agents/claude-code-web",
+  "/docs/ios/test-with-xctest": "/docs/testing/xctest",
+  "/docs/ios/pr-previews": "/docs/ci/pr-previews",
+};
+
 export default withDocs({
+  async redirects() {
+    return Object.entries(movedPages).flatMap(([source, destination]) => [
+      { source, destination, permanent: true },
+      { source: `${source}.md`, destination: `${destination}.md`, permanent: true },
+    ]);
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

@@ -1,20 +1,20 @@
 ---
 title: "Egress IP addresses"
-description: "Shared regional egress IP addresses for allowlisting outbound traffic from Limrun instances."
-order: 2
-icon: "blocks"
+description: "The source IP addresses to allowlist when your firewall or a third-party service must accept traffic from Limrun instances."
+order: 4
+icon: "globe"
 ---
 # Egress IP addresses
 
-Limrun instances send outbound traffic through shared regional egress IP addresses. If your firewall or third-party service only accepts traffic from known source IPs, allowlist every address for the Limrun region your instance runs in.
+Limrun instances send outbound traffic through shared regional egress IP addresses. Allowlist every address for the region your instance runs in.
 
 These addresses are for outbound traffic from Limrun instances to your systems. They do not describe inbound access to Limrun APIs, browser streaming URLs, or per-organization egress.
 
 ## When to use these addresses
 
-Use this list when a customer-managed system requires source IP allowlisting before it accepts traffic from Limrun. Common examples are internal APIs, package registries, SFTP servers, database proxies, webhook receivers, and third-party services that sit behind firewall or security group rules.
+Use this list when a system you manage requires source IP allowlisting before it accepts traffic from Limrun. Common examples are internal APIs, package registries, SFTP servers, database proxies, webhook receivers, and third-party services behind firewall or security group rules. To reach a service that only your machine or VPN can resolve, a [tunnel](/docs/ios/local-services) is often simpler than an allowlist.
 
-## Security notes
+## Treat allowlisting as a network control
 
 IP allowlisting is an extra network control, not authentication. Keep API keys, mTLS, signed requests, or other application-level authentication in place for any service that accepts traffic from Limrun.
 
@@ -191,4 +191,4 @@ The addresses below are shared by Limrun infrastructure in each region. They are
 
 Last updated: August 10, 2026.
 
-When these addresses change, update your allowlists before depending on the new region or gateway pool. If you need per-organization egress IPs, contact Limrun support.
+When these addresses change, update your allowlists before you depend on the new region or gateway pool. If you need per-organization egress IPs, contact Limrun support.
