@@ -70,11 +70,12 @@ The instance status carries everything you need:
 | Status field | Use |
 |---|---|
 | `apiUrl` | HTTP base for the device daemon. Pass to the control client. |
-| `token` | Per-instance bearer for `apiUrl` and `endpointWebSocketUrl`. Embedded in `signedStreamUrl`. |
+| `token` | Per-instance bearer for `apiUrl` and `endpointWebSocketUrl`. Embedded in `signedStreamUrl`. Returned only to a credential that can control the instance; a read-only API key or a viewer seat gets no `token`. |
+| `streamToken` | Streaming-only token: opens `endpointWebSocketUrl` and nothing else, so a browser can hold it while `status.token` stays on your backend. Returned with `token`; get and list return it only while the instance runs. |
 | `endpointWebSocketUrl` | WebSocket endpoint for the [`<RemoteControl />` web component](/docs/platform/embed-simulator) (pass with `?token=`). |
 | `signedStreamUrl` | Console-hosted watch URL with the token in the URL fragment; open in a browser without your API key. |
 | `mcpUrl` | Per-instance MCP HTTP endpoint. Auth with the per-instance `status.token`, not your org API key. See [MCP](/docs/agents/mcp); for one org-level endpoint that also creates instances, see the [remote MCP server](/docs/agents/remote-mcp). |
-| `sandbox.xcode.url` | Legacy: embedded Xcode sandbox API URL on instances created by old clients with `spec.sandbox.xcode.enabled`. New clients create the sandbox separately and attach; see [Build with remote Xcode](/docs/ios/build-with-xcode). |
+| `sandbox.xcode.url` | Legacy: embedded Xcode sandbox API URL on instances created by old clients with `spec.sandbox.xcode.enabled`. The TypeScript SDK and CLI no longer offer it; create the sandbox separately and attach. See [Build with remote Xcode](/docs/ios/build-with-xcode#moving-off-the-embedded-xcode-sandbox). |
 | `targetHttpPortUrlPrefix` | Reverse-proxy prefix for tunneled HTTP ports on the device. |
 | `state` | `unknown` → `creating` → `assigned` → `ready` → `terminated`. |
 
@@ -859,7 +860,7 @@ After a `delete` (or after the inactivity timeout fires), the row disappears fro
 
 ## Configure the instance
 
-By default, instances are an iPhone in a nearby region with a server-applied inactivity timeout. To pick a different model, keep the instance inside one jurisdiction, pre-install an app, or attach an Xcode build sandbox, pass `spec.*` at create time:
+By default, instances are an iPhone in a nearby region with a server-applied inactivity timeout. To pick a different model, keep the instance inside one jurisdiction, or pre-install an app, pass `spec.*` at create time:
 
 <CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
@@ -879,7 +880,6 @@ const instance = await lim.iosInstances.create({
     initialAssets: [
       { kind: 'App', source: 'AssetName', assetName: 'my-app-build.zip', launchMode: 'ForegroundIfRunning' },
     ],
-    sandbox: { xcode: { enabled: true } },
   },
 });
 ```
@@ -902,7 +902,6 @@ instance = client.ios_instances.create(
                 "launch_mode": "ForegroundIfRunning",
             },
         ],
-        "sandbox": {"xcode": {"enabled": True}},
     },
 )
 ```
@@ -919,11 +918,6 @@ instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
     Spec: limrun.IosInstanceNewParamsSpec{
         InactivityTimeout: param.NewOpt("10m"),
         HardTimeout:       param.NewOpt("0"),
-        Sandbox: limrun.IosInstanceNewParamsSpecSandbox{
-            Xcode: limrun.IosInstanceNewParamsSpecSandboxXcode{
-                Enabled: param.NewOpt(true),
-            },
-        },
     },
 })
 ```
@@ -960,7 +954,7 @@ Add `--xcode` to also create an Xcode build sandbox and attach the simulator to 
 | `forceBundleId` | string | After this app first enters the foreground, bring it back whenever it is closed or backgrounded. |
 | `clues` | array | Scheduling hints. Use `ClientIP` for the end user's IP, or the REST API's `ClientLocation` with `{ latitude, longitude }` for coordinates. `ClientLocation` takes precedence. See [client location clues](/docs/reference/sdk#client-location-clues). |
 | `initialAssets` | array | Apps or keychain state to apply at boot. See [Asset Storage](/docs/platform/asset-storage). |
-| `sandbox.xcode.enabled` | boolean | Legacy: create an embedded Xcode sandbox with the simulator. Kept for old clients; create the sandbox separately and attach instead. See [Build with remote Xcode](/docs/ios/build-with-xcode). |
+| `sandbox.xcode.enabled` | boolean | Legacy: create an embedded Xcode sandbox with the simulator. Kept for old clients; the TypeScript SDK and CLI no longer offer it. Create the sandbox separately and attach instead. See [Build with remote Xcode](/docs/ios/build-with-xcode#moving-off-the-embedded-xcode-sandbox). |
 
 `metadata.labels` is free-form `key=value` and powers `reuseIfExists`, listing, and cleanup queries.
 

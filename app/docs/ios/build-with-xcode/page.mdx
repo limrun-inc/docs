@@ -911,6 +911,30 @@ From Python or Go, attach with a direct HTTP call: `POST {xcode status.apiUrl}/s
 
 Re-attach to a different simulator if you want to test the same build across multiple device models.
 
+### Moving off the embedded Xcode sandbox
+
+Older clients created the Xcode sandbox inside the iOS instance with `spec.sandbox.xcode.enabled` and read its URL from `status.sandbox.xcode.url`. The TypeScript SDK (from 0.54.0) and the `lim` CLI (from 0.35.0) no longer offer that. The API still accepts it, so older SDK and CLI versions keep working.
+
+After upgrading, you see one of these:
+
+- TypeScript: `'sandbox' does not exist in type 'Spec'` on `iosInstances.create`, or `Property 'sandbox' does not exist on type 'Status'` where the code reads `status.sandbox.xcode.url`.
+- CLI: `Expected an Xcode instance (sandbox_...), got ios_...` when an `ios_` ID is passed to a `lim xcode` command. A paired target the previous CLI remembered is ignored, so the next `lim xcode build` creates a new Xcode sandbox.
+
+Create the Xcode sandbox on its own and attach the simulator to it, as shown above:
+
+```ts
+const xcode = await lim.xcodeInstances.create({ wait: true });
+const client = await lim.xcodeInstances.createClient({ instance: xcode });
+const { simulator } = await client.attachNewSimulator(); // or client.attachSimulator(existingIosInstance)
+```
+
+```bash
+lim ios create --xcode                                  # new simulator and Xcode sandbox, attached
+lim xcode create --attach --simulator-id <ios_instance_id>  # new Xcode sandbox for an existing simulator
+```
+
+Pass the Xcode instance's `sandbox_` ID to `lim xcode` commands and the simulator's `ios_` ID to `lim ios` commands. The two instances have separate lifecycles: delete each one, or let each time out on its own.
+
 ## Full example: build a signed IPA on every PR
 
 A complete Linux CI job that builds, signs, uploads, and posts a download link:
