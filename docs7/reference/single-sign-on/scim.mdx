@@ -15,23 +15,23 @@ SCIM manages who can access your organization. [OIDC SSO](/reference/single-sign
 3. Enable user creation, profile updates, deactivation, and group provisioning. Set SCIM `userName` to the same work email sent in the OIDC `email` claim. It must belong to a verified domain of this organization.
 4. Assign users and push groups from the identity provider. Refresh the directory in Limrun to see them.
 5. Map each group to **Admin**, **Member**, **Viewer**, or **No access**.
-6. Select **Enforced**, then **Preview changes**. Review the access list before selecting **Apply reviewed policy**.
+6. Select **Save mappings** to save your choices, or **Activate SCIM** to save and activate them. Activation makes the directory authoritative for organization membership.
 
-The connection starts in **Staging**. Users and groups synchronize in this mode, but existing memberships remain unchanged. Save and review mappings before enabling enforcement. A directory change after your preview requires a fresh preview.
+During setup, users and groups synchronize while existing members retain access. Newly provisioned users cannot sign in until activation. Activation is permanent; subsequent directory changes and saved mappings apply immediately. If the directory changes while you edit mappings, refresh before saving.
 
-For Okta, use a SCIM 2.0 application integration with HTTP bearer authentication. Enable user provisioning and Group Push; setting up an OIDC SSO application alone does not enable SCIM. For Microsoft Entra ID, use a custom SCIM enterprise application's automatic provisioning and enable user and group mappings. Use the generated SCIM credential as its secret token. Test the connection and verify a user and group sync before enforcement. Limrun supports standard provisioning requests; it does not install an IdP application or configure directory assignments for you.
+For Okta, use a SCIM 2.0 application integration with HTTP bearer authentication. Enable user provisioning and Group Push; setting up an OIDC SSO application alone does not enable SCIM. For Microsoft Entra ID, use a custom SCIM enterprise application's automatic provisioning and enable user and group mappings. Use the generated SCIM credential as its secret token. Test the connection and verify a user and group sync before activation. Limrun supports standard provisioning requests; it does not install an IdP application or configure directory assignments for you.
 
 ## How access is calculated
 
-An enforced organization admits a user only when their SCIM record is active and at least one of their groups maps to a Limrun role. A new user can be provisioned before they have a Limrun account. Their first successful SSO sign-in creates their account with the mapped role.
+Once SCIM is activated, a user has access only when their SCIM record is active and at least one of their groups maps to a Limrun role. Provisioning creates their Limrun account immediately, or reuses their existing account by verified work email. Creating the account alone grants no access. Activation and group assignments create the organization membership before their first SSO sign-in.
 
 When several mapped groups contain a user, the highest role wins: **Admin > Member > Viewer**. Unmapped groups grant no access. Group mappings follow the group's stable SCIM ID, so a group rename preserves its mapping. A deleted and recreated group has a new ID and needs a new mapping.
 
 Deactivating or deleting a user removes their organization membership. Deactivation takes precedence over any groups that still contain them. Removing a user from a mapped group recalculates access from their remaining groups. Reactivation restores access only if they still have an eligible mapped group.
 
-SCIM can remove or demote the last admin, including the person who enables enforcement. Keep an appropriate admin group mapped before applying the policy. If the last admin loses access, assign an active user to that mapped admin group in the identity provider to restore administration.
+SCIM can remove or demote the last admin, including the person who activates SCIM. Keep an appropriate admin group mapped before applying the policy. If the last admin loses access, assign an active user to that mapped admin group in the identity provider to restore administration.
 
-Enforcement disables domain auto-join, invitations, and manual membership changes. Having an email in the organization's domain is not enough to join. SSO remains required for verified domains. Users denied admission see “Your organization manages access through SCIM” and should ask their administrator for an access-group assignment.
+Connecting SCIM disables domain auto-join, invitations, and manual membership changes, including during setup. Having an email in the organization's domain is not enough to join. SSO remains required for verified domains. Users denied admission see “Your organization manages access through SCIM” and should ask their administrator for an access-group assignment.
 
 Removal affects this organization's user access and user-approved MCP grants. It preserves the user's other organizations, shared organization API keys, and already-running instances.
 
@@ -39,7 +39,7 @@ Removal affects this organization's user access and user-approved MCP grants. It
 
 The provisioning screen shows synchronized users, their group-derived roles, and provisioning history. Errors appear in the history with the affected request and status.
 
-**Rotate credential** immediately replaces the old credential. Update the identity provider with the new value. **Revoke credential** stops provisioning requests without changing the enforcement policy or current memberships. Switching to **Staging** keeps current memberships and permits manual changes again. Switch to staging before removing SSO or changing verified domains.
+**Rotate credential** immediately replaces the old credential. Update the identity provider with the new value. **Revoke credential** stops provisioning requests without changing the access policy or current memberships. There is no switch back to manual membership management. SCIM requires the configured SSO connection and verified domains; removing SSO or changing those domains is blocked.
 
 ## Protocol support
 
