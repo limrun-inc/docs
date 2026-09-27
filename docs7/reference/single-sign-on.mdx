@@ -8,6 +8,8 @@ icon: "book-open"
 
 Configure Limrun as an OIDC service provider. Limrun uses the user's verified email domain to select the organization's OIDC connection.
 
+Once a domain is verified and its organization has an SSO connection, everyone with that email domain must use **Continue with SSO**. This applies to new signups and existing accounts. Google, GitHub, Microsoft, and email-code sign-in cannot be used for that domain.
+
 For the Okta Integration Network setup, see [Okta SSO](/reference/single-sign-on/okta).
 
 ## Prerequisites
@@ -52,7 +54,7 @@ reach out to us for manual verification.
 
 5. After the DNS record is published, click **Verify DNS** in Limrun.
 
-
+New domains have auto-join enabled by default. Auto-join takes effect after verification. If you manage domains through the API, set `autoJoinEnabled: false` to opt out. Successful SSO sign-in adds the user to the connection's organization regardless of this setting.
 
 ### Create the OIDC application
 
@@ -147,6 +149,8 @@ The sign-in process starts from the Limrun Console.
 If the email domain is verified and the provider sign-in succeeds, Limrun signs the user in and redirects them to the console.
 
 ## Troubleshoot
+
+**Users see "Your organization requires SSO".** Choose **Continue with SSO** and enter the work email address. Users who previously signed in with Google or another method can use the same email through SSO to keep their existing account.
 
 **Users see "SSO not configured".** Confirm the user's email domain is added under **Settings > Domain Verification** and shows **Verified**. Limrun only starts OIDC SSO for verified domains.
 
