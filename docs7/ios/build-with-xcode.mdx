@@ -66,6 +66,10 @@ The **Go SDK doesn't yet have a standalone Xcode resource.** From Go, POST to `/
 
 When you already know you'll test on a simulator right after the build, the CLI can create both instances and attach them in one call: `lim ios create --xcode` (or `lim xcode create --ios`). The two instances are still separate; the flag just saves you the attach step described in [Auto-install on the simulator](#auto-install-on-the-simulator).
 
+## Reuse builds across instances
+
+Create the sandbox with `--cache-key myapp-main` to restore and later save its build workspace. After building, run `lim xcode delete --wait-cache` to publish the cache for the next instance. See [Xcode build cache](/ios/build-cache) for the full workflow, branch fallbacks, and SDK usage.
+
 ## Choose the Xcode version
 
 A sandbox builds with its node's default Xcode (26.4 today) unless you select another installed version. The fleet carries one released (GA) Xcode per major and, while Apple is seeding one, one beta: today 26.4 GA, 27.0 GA, and 27.1 beta. Two selectors cover them:

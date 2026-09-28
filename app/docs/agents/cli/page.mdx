@@ -124,6 +124,10 @@ lim xcode tools
 
 For other tools, `use` saves and syncs project mise preferences. Install missing versions with `lim xcode run -- mise install`. Each run or build resolves the mise environment once and uses it throughout that operation. Project requests override package-manager detection and image defaults. Personal mise configuration on the client is not read or forwarded. Most tools follow the requested major; Ruby, Python, Go, Flutter, Dart and pre-1.0 tools follow `major.minor`. Client patch pins and `mise.lock` do not freeze the image's release. For an exact sandbox override, use `lim xcode run -- mise use --pin node@24.5.0`. Image tools are excluded from workspace caches; user installs can be cached after a successful managed build. See [tool selection](/docs/ios/build-with-xcode#select-developer-tools) for the tool list and precedence.
 
+### Build cache
+
+Pass `--cache-key` when creating an Xcode instance to restore and save its workspace across instances. Add `--cache-restore-keys` for ordered fallbacks. After a successful build, `lim xcode delete --wait-cache` terminates the instance and waits for publication. See [Xcode build cache](/docs/ios/build-cache) for examples and existing-instance behavior.
+
 ### Build flags
 
 | Flag | What it does |
