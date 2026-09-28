@@ -4,7 +4,7 @@ import { RootProvider } from "@farming-labs/theme";
 import docsConfig from "@/docs.config";
 import "@farming-labs/next/api-reference.css";
 import "./global.css";
-import { WebMcpTools } from "@/components/webmcp-tools";
+import { webMcpScript } from "@/components/webmcp-script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,6 +48,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="ai-catalog" href="/.well-known/ai-catalog.json" />
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static WebMCP registration, see webmcp-script.ts */}
+        <script dangerouslySetInnerHTML={{ __html: webMcpScript }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable}`}
@@ -57,7 +59,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <RootProvider theme={{ defaultTheme: "light", disableTransitionOnChange: false }}>
           {children}
-          <WebMcpTools />
         </RootProvider>
       </body>
     </html>
