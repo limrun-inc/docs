@@ -85,22 +85,22 @@ The [console](https://console.limrun.com) has a **Playground** that creates and 
 
 ## Drive the app from your shell
 
-The sample's first screen has a name field and a **Say hello** button. Read the screen, fill the field, and tap the button with `lim ios` commands. Without `--id`, each command targets the instance you created last in this git repository:
+The sample's first screen has a name field and a **Say hello** button. Read the screen, type a name, and check the result with `lim ios` commands. Without `--id`, each command targets the instance you created last in this git repository:
 
 ```bash
 lim ios element-tree
-lim ios set-text "Ada" --ax-unique-id nameField
-lim ios tap-element --ax-unique-id greetButton
+lim ios tap-element --ax-unique-id nameField
+lim ios type "Ada" --enter
 lim ios screenshot ./screen.jpg
 ```
 
-The heading changes to `Hello, Ada!`. The element tree lists every label, accessibility identifier, type, and frame on screen, which is where `nameField` and `greetButton` come from. Read the tree before each action and select elements by identifier; selectors keep working when the layout changes, pixel coordinates do not.
+The heading changes to `Hello, Ada!`. The element tree lists every label, accessibility identifier, type, and frame on screen, which is where `nameField` comes from. Read the tree before each action and select elements by identifier; selectors keep working when the layout changes, pixel coordinates do not.
 
-`set-text` writes the value directly. To send real key presses instead, tap the field first and then type; typing fails when no field has focus:
+`type` sends real key presses at the cursor, so it adds to whatever the field already holds, and it fails when no field has focus. To replace a field's whole value instead, use `set-text`, then tap the button:
 
 ```bash
-lim ios tap-element --ax-unique-id nameField
-lim ios type "Grace" --enter
+lim ios set-text "Grace" --ax-unique-id nameField
+lim ios tap-element --ax-unique-id greetButton
 ```
 
 The app also logs each greeting. Read the log and keep only the sample's own lines:
