@@ -18,6 +18,24 @@ const agentDiscoveryHeaders = [
   },
 ];
 
+// The root is a short summary page that sends browsers on to /docs (see
+// app/page.tsx), so agents fetching the bare domain get content. It names
+// /docs as canonical, and varies on Accept because Markdown requests are
+// rewritten to the Introduction as Markdown.
+const rootHeaders = [
+  {
+    key: "Link",
+    value: `${agentDiscoveryHeaders[0].value}, <https://docs.limrun.com/docs>; rel="canonical"`,
+  },
+  { key: "Vary", value: "Accept" },
+];
+
+// Requests that ask for Markdown in their Accept header. Unlike the
+// framework's /docs rules, the Web Bot Auth Signature-Agent header alone does
+// not switch to Markdown here: signed crawlers send it on every request, and
+// one that asks for text/html must still get the HTML page.
+const wantsMarkdown = [[{ type: "header" as const, key: "accept", value: ".*text/markdown.*" }]];
+
 // The discovery artifacts are public read-only text; the Agent Skills
 // Discovery RFC recommends CORS so browser-based agents can fetch them.
 const corsHeaders = [{ key: "Access-Control-Allow-Origin", value: "*" }];
@@ -48,6 +66,21 @@ const movedPages: Record<string, string> = {
 };
 
 export default withDocs({
+  async rewrites() {
+    return {
+      beforeFiles: [
+        ...wantsMarkdown.map((has) => ({ source: "/", has, destination: "/api/docs?format=markdown" })),
+      ],
+      afterFiles: [],
+      // Only paths no page or route matched reach this: a Markdown 404 for
+      // agents, while browsers keep the HTML not-found page.
+      fallback: wantsMarkdown.map((has) => ({
+        source: "/:path*",
+        has,
+        destination: "/api/not-found?path=:path*",
+      })),
+    };
+  },
   async redirects() {
     return Object.entries(movedPages).flatMap(([source, destination]) => [
       { source, destination, permanent: true },
@@ -57,7 +90,7 @@ export default withDocs({
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
-      { source: "/", headers: agentDiscoveryHeaders },
+      { source: "/", headers: rootHeaders },
       { source: "/docs", headers: agentDiscoveryHeaders },
       { source: "/.well-known/:path*", headers: corsHeaders },
       { source: "/auth.md", headers: corsHeaders },

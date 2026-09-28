@@ -19,6 +19,12 @@ function withCanonicalOrigin(request: Request): Request {
   url.protocol = canonical.protocol;
   url.host = canonical.host;
   url.port = canonical.port;
+  // next.config.ts rewrites a Markdown request for the site root here, but
+  // the handler sees the original URL ("/"), not the rewrite's query. Ask the
+  // framework for the index page as Markdown explicitly.
+  if (url.pathname === "/" && !url.searchParams.has("format")) {
+    url.searchParams.set("format", "markdown");
+  }
   return new Request(url, request);
 }
 

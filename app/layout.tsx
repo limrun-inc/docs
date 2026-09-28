@@ -4,6 +4,7 @@ import { RootProvider } from "@farming-labs/theme";
 import docsConfig from "@/docs.config";
 import "@farming-labs/next/api-reference.css";
 import "./global.css";
+import { webMcpScript } from "@/components/webmcp-script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,6 +46,11 @@ const themeScript = `
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="ai-catalog" href="/.well-known/ai-catalog.json" />
+        {/* Tells is-agentic.com to score this as a documentation site. */}
+        <meta name="is-agentic-site-type" content="docs" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable}`}
         suppressHydrationWarning
@@ -54,6 +60,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <RootProvider theme={{ defaultTheme: "light", disableTransitionOnChange: false }}>
           {children}
         </RootProvider>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static WebMCP registration, see webmcp-script.ts */}
+        <script type="module" dangerouslySetInnerHTML={{ __html: webMcpScript }} />
       </body>
     </html>
   );
