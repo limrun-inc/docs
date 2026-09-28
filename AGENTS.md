@@ -8,13 +8,15 @@ This document tells you, an AI agent, how to consume this documentation site pro
 
 - `/llms.txt` is a compact index of every page with a one-line description.
 - `/llms-full.txt` is the full documentation as one markdown file.
-- Every page is available as markdown at `/docs/{slug}.md`, for example `/docs/quickstart.md`. Requesting a page URL with `Accept: text/markdown` returns the same content.
+- Every page is available as markdown at `/docs/{slug}.md`, for example `/docs/quickstart.md`. Requesting a page URL with `Accept: text/markdown` returns the same content. The site root works the same way, and unknown paths requested as Markdown return a Markdown 404 with links to the index.
 - `/sitemap.xml` and `/sitemap.md` list canonical page URLs.
 - Search: `GET /api/docs?query={query}` returns matching pages as JSON.
 
 ## MCP server
 
 The docs are also exposed over MCP (Streamable HTTP) at `https://docs.limrun.com/mcp`. It provides tools to list, read, and search documentation pages. Discovery metadata is at `/.well-known/mcp/server-card.json`.
+
+In a browser that supports [WebMCP](https://webmachinelearning.github.io/webmcp/), every page registers `search_docs`, `read_docs_page`, and `list_docs_pages` tools. An [ARD](https://agenticresourcediscovery.org/) catalog of the Limrun MCP servers and agent skills is at `/.well-known/ai-catalog.json`.
 
 ## Use Limrun itself
 

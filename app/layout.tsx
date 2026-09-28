@@ -4,6 +4,7 @@ import { RootProvider } from "@farming-labs/theme";
 import docsConfig from "@/docs.config";
 import "@farming-labs/next/api-reference.css";
 import "./global.css";
+import { WebMcpTools } from "@/components/webmcp-tools";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,6 +46,9 @@ const themeScript = `
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="ai-catalog" href="/.well-known/ai-catalog.json" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable}`}
         suppressHydrationWarning
@@ -53,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <RootProvider theme={{ defaultTheme: "light", disableTransitionOnChange: false }}>
           {children}
+          <WebMcpTools />
         </RootProvider>
       </body>
     </html>
