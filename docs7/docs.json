@@ -91,7 +91,9 @@
             "icon": "book-open",
             "pages": [
               "reference/single-sign-on",
-              "reference/single-sign-on/okta"
+              "reference/single-sign-on/okta",
+              "reference/single-sign-on/microsoft-entra",
+              "reference/single-sign-on/scim"
             ]
           }
         ]
