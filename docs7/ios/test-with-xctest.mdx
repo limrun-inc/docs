@@ -61,6 +61,31 @@ repeat the same test targets. XCTest activities are enabled, so tests can use
 contain case outcomes and summaries; they do not include attachment downloads
 or an `.xcresult` bundle.
 
+## StoreKit testing
+
+`lim xcode test` supports both `.storekit` configuration files and
+`SKTestSession` in UI tests. Select a configuration in your shared scheme's
+Run options or in its test plan, then run the scheme as usual. Test-plan
+configuration overrides take precedence over the plan's default selection.
+Include the selected file in the synced workspace.
+
+For programmatic tests, link `StoreKitTest` and include the `.storekit` file
+in the UI test target's resources. Create the session before launching the app:
+
+```swift
+let session = try SKTestSession(configurationFileNamed: "Purchases")
+session.resetToDefaultState()
+session.disableDialogs = true
+session.clearTransactions()
+XCUIApplication().launch()
+```
+
+The session can control purchases and transactions while the app runs.
+App relaunches preserve the session's changes. Each test target temporarily
+uses its selected configuration and restores the simulator's prior configuration
+when it finishes, including after failures. Use `clearTransactions()` in your
+test setup and teardown to isolate transaction state between test methods.
+
 ## Select tests
 
 Use xcodebuild's identifier format `Target[/Class[/method]]`. Repeat the flag
