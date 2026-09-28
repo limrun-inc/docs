@@ -56,8 +56,8 @@ export const webMcpScript = `
     }
   ];
 
-  // The API is still in flux: some implementations take every tool at once
-  // through provideContext, the current draft registers them one at a time.
+  // The API is still in flux: the current draft registers tools one at a
+  // time, and older implementations only take them all through provideContext.
   // The API object can appear after this script runs (an extension or test
   // harness may inject it late), so try now, at DOMContentLoaded, and at load,
   // registering with each object once.
@@ -68,13 +68,13 @@ export const webMcpScript = `
       if (typeof context.provideContext !== "function" && typeof context.registerTool !== "function") return;
       done.push(context);
       try {
-        if (typeof context.provideContext === "function") {
+        if (typeof context.registerTool === "function") {
+          tools.forEach(function (tool) {
+            Promise.resolve(context.registerTool(tool)).catch(function () {});
+          });
+        } else {
           context.provideContext({ tools: tools });
-          return;
         }
-        tools.forEach(function (tool) {
-          Promise.resolve(context.registerTool(tool)).catch(function () {});
-        });
       } catch (e) {}
     });
   }
