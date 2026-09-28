@@ -1,16 +1,16 @@
 ---
-title: "Build an iOS app with Bazel from Claude Code on the web"
+title: "Bazel iOS app with Claude Code"
 description: "Copy a Bazel iOS template, have Claude change the app, and review the change on a cloud simulator and in a pull request preview."
 order: 1
 icon: "smartphone"
 ---
 # Build an iOS app with Bazel from Claude Code on the web
 
-Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a cloud iOS simulator, and review it in a pull request with a preview link. Every Apple build action runs on Limrun's remote Macs through Bazel remote build execution, so neither you nor the session VM needs a Mac or Xcode.
+Every Apple build action runs on Limrun's remote Macs through Bazel remote build execution, so neither you nor the session VM needs a Mac or Xcode.
 
 ## Before you start
 
-- A Claude Code on the web environment set up as described in [Claude Code on the web](/docs/agents/cloud-agents/claude-code-web). This tutorial calls it `limrun`.
+- A Claude Code on the web environment set up as described in [Claude Code on the web](/docs/agents/claude-code-web). This tutorial calls it `limrun`.
 - The Limrun API key you added to that environment. The template's preview workflow uses it too.
 - A GitHub account. The [GitHub CLI](https://cli.github.com) is optional; it makes the secret step one command.
 
@@ -88,11 +88,11 @@ Ask Claude Code on the web to change a Bazel iOS app, watch the change land on a
 
 ## Clean up
 
-The Xcode sandbox and the simulator delete themselves after your organization's inactivity timeout, so closing the session is enough. To stop them right away, ask Claude to run `lim xcode rbe --stop` before you close the session.
+The Xcode sandbox and the simulator delete themselves after your organization's inactivity timeout, so closing the session is enough. To stop them right away, ask Claude to clean up before you close the session: `lim xcode rbe --stop` stops the build stack, and `lim xcode delete` and `lim ios delete` delete the instances.
 
 ## Use your own Bazel project
 
-The same flow works on your own Bazel workspace once the `limrun` environment has bazelisk. Start from [Build with Bazel](/docs/ios/build-with-bazel) for what `lim xcode rbe` configures, and copy `.github/workflows/ios-preview.yml` from the template to get preview links on your own pull requests; [Automatic PR Previews](/docs/ios/pr-previews) covers its options.
+The same flow works on your own Bazel workspace once the `limrun` environment has bazelisk. Start from [Build with Bazel](/docs/ios/build-with-bazel) for what `lim xcode rbe` configures, and copy `.github/workflows/ios-preview.yml` from the template to get preview links on your own pull requests; [PR previews](/docs/ci/pr-previews) covers its options.
 
 ## Next steps
 
@@ -100,7 +100,7 @@ The same flow works on your own Bazel workspace once the `limrun` environment ha
   <Card title="Build with Bazel" icon="zap" href="/docs/ios/build-with-bazel">
     Remote build execution, uploads, and CI for Bazel workspaces.
   </Card>
-  <Card title="Automatic PR Previews" icon="git-pull-request" href="/docs/ios/pr-previews">
+  <Card title="PR previews" icon="git-pull-request" href="/docs/ci/pr-previews">
     Preview links on every pull request, for Bazel and xcodebuild projects.
   </Card>
 </Columns>

@@ -1,35 +1,32 @@
 ---
 title: "Quickstart"
-description: "Get a remote iOS simulator and Xcode build running from your terminal in 3 minutes."
+description: "Install the CLI, build a sample iOS app on a cloud Mac, and drive it on a simulator from your terminal."
 order: 2
 icon: "zap"
 ---
 # Quickstart
 
-Build an iOS app on a remote Xcode sandbox and watch the result stream into your browser, all from your terminal.
+This takes about three minutes. You need Node.js 20 LTS or newer; you do not need a Mac.
 
 <Note>
-  If you're handing this off to a coding agent, read [CLI for coding agents](/docs/agents/cli) instead. That page is the skill an agent should follow end to end.
+  Setting this up for a coding agent instead? Follow [Set up a coding agent](/docs/agents/cli). It installs the Limrun skills, which walk the agent through the same loop.
 </Note>
 
-## Try it in your browser first
+## Try it in the browser first
 
-If you'd rather poke at an instance before installing anything, [console.limrun.com](https://console.limrun.com) has a **Playground** that creates and streams an instance from a dropdown. Pick an OS, pick an app to preinstall, hit **Start**.
+The [console](https://console.limrun.com) has a **Playground** that creates and streams an instance without installing anything. Pick an operating system, optionally an app to preinstall, and click **Start**.
 
 <Frame>
   <img src="/images/console/01-playground-empty.png" alt="Limrun console Playground with Organization, Operating System, Apps, Open URL, and Start controls" />
 </Frame>
 
-The rest of this page covers the CLI flow.
-
-## Set up the build
+## Build and run an app
 
 <Steps>
   <Step title="Install the CLI">
-    Requires Node.js 20 LTS or newer.
+    Install the `lim` package globally with the package manager you use:
 
     ```bash
-    # Pick your package manager
     npm  install --global lim
     pnpm add     --global lim
     bun  add     --global lim
@@ -37,23 +34,23 @@ The rest of this page covers the CLI flow.
   </Step>
 
   <Step title="Authenticate">
-    On a machine with a browser, run the login flow:
+    On a machine with a browser, log in:
 
     ```bash
     lim login
     ```
 
-    The CLI opens the Limrun console, finishes authentication in your browser, and writes the API key to `~/.lim/config.yaml`.
+    The CLI opens the console in your browser, completes authentication, and stores the API key in `~/.lim/config.yaml`.
 
-    On a headless host (CI, a devcontainer, or a cloud agent), create a token manually: open [console.limrun.com/settings](https://console.limrun.com/settings), go to **API Keys**, click **Create Token**, then export it in the environment:
+    On a headless host such as a CI runner, a devcontainer, or a cloud agent, create a key instead: open [console.limrun.com/settings](https://console.limrun.com/settings), go to **API Keys**, click **Create Token**, and export it:
 
     ```bash
     export LIM_API_KEY=lim_...
     ```
   </Step>
 
-  <Step title="Get an iOS project to build">
-    Use the sample app for the quickest path. Already have an iOS project locally? Skip the clone and `cd` into your project directory.
+  <Step title="Get an iOS project">
+    Clone the sample app, or `cd` into an iOS project you already have:
 
     ```bash
     git clone https://github.com/limrun-inc/sample-native-app.git
@@ -62,71 +59,82 @@ The rest of this page covers the CLI flow.
   </Step>
 
   <Step title="Build on a cloud Mac">
-    From inside the project directory:
+    Run the build from the project directory:
 
     ```bash
     lim xcode build .
     ```
 
-    The first run provisions an Xcode build sandbox for you, syncs the project, and runs `xcodebuild` remotely. Build logs stream back as they happen. For multi-scheme projects, add `--scheme <name>` and either `--workspace <path>` or `--project <path>`.
+    The first run creates an Xcode sandbox, syncs the project to it, and runs `xcodebuild` there. Build logs stream back as they happen. For a project with several schemes, add `--scheme <name>` and either `--workspace <path>` or `--project <path>`.
   </Step>
 
   <Step title="Run it on a simulator">
-    Create a simulator attached to the sandbox. The attach installs and launches the build immediately, and every later successful build reinstalls automatically.
+    Create a simulator attached to the sandbox:
 
     ```bash
     lim ios create --attach --reuse-if-exists --label project=quickstart
     ```
 
-    Open the **Signed Stream URL** from the output in any browser to watch the simulator live. The URL has its own token embedded, so no sign-in is needed. Your app's first screen appears a few seconds after the attach.
+    Attaching installs and launches the latest build right away, and every later successful build reinstalls it. The CLI prints the **signed stream URL** and opens it in your browser. The URL carries its own token, so anyone you share it with can watch and control the simulator without signing in.
 
     <Frame>
-      <img src="/images/console/06-ios-app-launched.png" alt="The sample-native-app running on a remote iOS simulator, showing its 'Hello, world!' first screen" />
+      <img src="/images/console/06-ios-app-launched.png" width="300" alt="The sample app on a remote iOS simulator, showing the lim.run logo, the Hello, world! heading, a name field, and a Say hello button" />
     </Frame>
   </Step>
 </Steps>
 
-## Drive the app
+## Drive the app from your shell
 
-Once the build lands, you can read state and drive the UI directly from your shell. Most commands default to the last-created instance, so you rarely need to pass `--id`.
+The sample's first screen has a name field and a **Say hello** button. Read the screen, type a name, and check the result with `lim ios` commands. Without `--id`, each command targets the instance you created last in this git repository:
 
 ```bash
-lim ios screenshot ./screen.png
 lim ios element-tree
-lim ios tap-element --ax-label "Continue"
-lim ios type "Hello"
+lim ios tap-element --ax-unique-id nameField
+lim ios type "Ada" --enter
+lim ios screenshot ./screen.jpg
 ```
 
-The element tree is the source of truth for what the UI shows: labels, accessibility IDs, types, frames. Reach for it before every action; it's faster and more reliable than visual inspection.
+The heading changes to `Hello, Ada!`. The element tree lists every label, accessibility identifier, type, and frame on screen, which is where `nameField` comes from. Read the tree before each action and select elements by identifier; selectors keep working when the layout changes, pixel coordinates do not.
 
-## Tear down
+`type` sends real key presses at the cursor, so it adds to whatever the field already holds, and it fails when no field has focus. To replace a field's whole value instead, use `set-text`, then tap the button:
 
-When you're done, delete the instances. Without an ID, each delete removes the last instance of that type the CLI created for you (the pointer is in `~/.lim/last-instances.json`).
+```bash
+lim ios set-text "Grace" --ax-unique-id nameField
+lim ios tap-element --ax-unique-id greetButton
+```
+
+The app also logs each greeting. Read the log and keep only the sample's own lines:
+
+```bash
+lim ios app-log com.limrun.sample-native --tail 50 | grep '\[sample\]'
+```
+
+Change the greeting text in `ContentView.swift` and run `lim xcode build .` again. The new build replaces the app on the attached simulator.
+
+## Clean up
+
+Delete both instances when you are done. Without an ID, `delete` removes the last instance of that type the CLI created for you:
 
 ```bash
 lim ios delete
 lim xcode delete
 ```
 
-## Where to go next
+Instances you forget are deleted by your organization's inactivity timeout.
+
+## Next steps
 
 <Columns cols={2}>
-  <Card title="CLI for coding agents" icon="bot" href="/docs/agents/cli">
-    Hand the build, drive, and ship loop off to a coding agent via the bundled skill.
+  <Card title="Concepts" icon="layers" href="/docs/concepts">
+    Instances, tokens, labels, timeouts, and placement in one page.
   </Card>
-  <Card title="Build with remote Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
-    Every `lim xcode build` flag, real-device IPAs, source-sync internals, MCP-wrapped build tools.
+  <Card title="Build with Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
+    Schemes, sync rules, build settings, and artifact uploads.
   </Card>
-  <Card title="Embed the simulator" icon="monitor-play" href="/docs/platform/embed-simulator">
-    Stream a live iOS or Android simulator into your web app with `<RemoteControl />` from `@limrun/ui`.
+  <Card title="Run a simulator" icon="smartphone" href="/docs/ios/run-simulator">
+    Every device action: taps, batches, recordings, logs, files, and camera.
   </Card>
-  <Card title="Run an Android Emulator" icon="tablet-smartphone" href="/docs/android/run-emulator">
-    ADB tunnel, scrcpy streaming, Appium, and the rest of the Android toolchain over a remote emulator.
-  </Card>
-  <Card title="Remote MCP server" icon="plug" href="/docs/agents/remote-mcp">
-    Point any MCP client at mcp.limrun.com and let the agent create and drive devices itself.
-  </Card>
-  <Card title="Run XCTest suites" icon="flask-conical" href="/docs/ios/test-with-xctest">
-    Build a scheme's test targets on remote Xcode and run them on a cloud simulator with streamed results.
+  <Card title="Run an emulator" icon="tablet-smartphone" href="/docs/android/run-emulator">
+    The same loop on Android, with ADB, scrcpy, and Android Studio.
   </Card>
 </Columns>

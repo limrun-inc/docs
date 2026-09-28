@@ -1,0 +1,216 @@
+---
+title: "PR previews"
+description: "Give every pull request an iOS build that reviewers open in the browser from a link on the PR."
+order: 2
+icon: "git-pull-request"
+---
+# Automatic PR previews with GitHub Actions
+
+PR previews work like web deploy previews for an iOS app. Previews cover iOS apps only. The packaged Action runs on GitHub Actions, and the underlying `lim xcode build --upload` pattern works on any CI system.
+
+## How a preview link works
+
+A preview link points the Limrun console at an asset in [Asset Storage](/docs/platform/asset-storage):
+
+```text
+https://console.limrun.com/preview?asset=<asset-name>&platform=ios
+```
+
+Opening it provisions a fresh simulator with that build pre-installed. Reviewers need no install and no Mac, but they do need to be members of your Limrun organization.
+
+Any build that uploads to Asset Storage produces a previewable asset. From a shell or a coding agent, build with `--upload` and share the resulting URL:
+
+```bash
+ASSET_NAME="${PR_NUMBER:-$(date +%s)}.zip"
+lim xcode build . --upload "${ASSET_NAME}"
+echo "https://console.limrun.com/preview?asset=${ASSET_NAME}&platform=ios"
+```
+
+Bazel workspaces publish the same kind of asset with `lim xcode rbe upload <asset-name>` or `lim xcode rbe --auto-upload <asset-name>`; see [Build with Bazel](/docs/ios/build-with-bazel).
+
+## Use the packaged Action
+
+[`limrun-inc/ios-preview-action`](https://github.com/limrun-inc/ios-preview-action) wraps the create, build, upload, and PR comment steps into one. Its `post:` step deletes the Xcode sandbox after every run, so no sandbox outlives the job.
+
+Add `LIM_API_KEY` under **Settings**, **Secrets and variables**, **Actions** in the GitHub repository, then add this workflow:
+
+```yaml title=".github/workflows/ios-preview.yml"
+name: iOS Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: limrun-inc/ios-preview-action@main
+        with:
+          project-path: .
+          api-key: ${{ secrets.LIM_API_KEY }}
+```
+
+The Action posts a comment titled **Limrun Preview** with a table of the platform, the short commit SHA, and the preview link, and updates that same comment on later pushes. With `closed` in `on.pull_request.types`, the run on merge or close deletes the PR's Xcode sandboxes and changes the comment to say the preview was removed. The preview asset itself stays until its TTL expires, 14 days after the last upload by default.
+
+| Input | What it does |
+|---|---|
+| `api-key` | Required. Your Limrun API key, stored as a repository secret. |
+| `project-path` | Directory to sync to the Xcode sandbox. Defaults to the repository root. A Bazel workspace root here switches to remote build execution. |
+| `project` | Path to the `.xcodeproj` to build. Derived from the workspace file when omitted. |
+| `workspace` | Path to the `.xcworkspace` to build. Derived from the project file when omitted. |
+| `scheme` | Scheme to build. Derived from the project file when omitted. |
+| `sdk` | SDK to build. Defaults to `iphonesimulator`. |
+| `model` | Simulator model for previews: `iphone` (default) or `ipad`. |
+| `xcode-version` | Xcode major to build with, such as `27`. Switching majors invalidates the other version's build state, so the next build starts cold. Defaults to the sandbox default. |
+| `build-settings` | Newline-delimited `KEY=VALUE` Xcode build settings. Keys follow the same rules as `--build-setting`; see [Pass build settings](/docs/ios/build-with-xcode#pass-build-settings). Use `$(inherited)` to append. |
+| `bazel-target` | Bazel label of the app target, such as `//App`. Inferred for single-app workspaces. |
+| `github-token` | Token for posting the PR comment. Defaults to `github.token`. |
+| `media` | Newline-delimited image or video paths to show in the PR body. Add `#alt text` after an image path. Requires `media-token` and `gh` 2.99.0 or newer on the runner. |
+| `media-token` | User token (personal access token or OAuth) with write access to the repository, used only to upload media. GitHub rejects `github.token` for attachments. |
+
+The Action sets two outputs: `preview-url` and `asset-name`. Its `action.yml` also declares `asset-id`, but the Action never sets it, so that output is always empty.
+
+### Bazel projects
+
+The same Action handles Bazel workspaces. When `project-path` is a Bazel workspace root (it contains `MODULE.bazel`, `WORKSPACE`, or `WORKSPACE.bazel` directly), the Action builds with [remote build execution](/docs/ios/build-with-bazel) instead of `xcodebuild` and uploads the built app as the preview asset. The runner needs `bazelisk` on the `PATH`; GitHub-hosted runners have it preinstalled. Set `bazel-target`, for example `//App`, when the workspace has more than one app target; a single-app workspace is inferred:
+
+```yaml
+- uses: limrun-inc/ios-preview-action@main
+  with:
+    project-path: .
+    bazel-target: //App
+    api-key: ${{ secrets.LIM_API_KEY }}
+```
+
+The xcodebuild-only inputs (`project`, `workspace`, `scheme`, `build-settings`) fail the run in Bazel mode. Put your Bazel flags in `user.limrun.bazelrc` at the workspace root instead.
+
+## Write a custom workflow
+
+Write the workflow yourself when you need a different comment format, your own asset naming, or a CI system other than GitHub Actions. The CLI runs anywhere Node runs, so the same `lim xcode build --upload` pattern works on GitLab CI, CircleCI, Buildkite, and Jenkins.
+
+This workflow builds on every PR open or push, uploads under a PR-scoped asset name, and comments with the link. Replace `MyApp` with your scheme. Each run adds a new comment like this one:
+
+```markdown
+📱 **iOS preview ready**
+
+Preview: https://console.limrun.com/preview?asset=my-app-pr-42.zip&platform=ios
+```
+
+The workflow:
+
+```yaml title=".github/workflows/ios-preview.yml"
+name: iOS Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Limrun CLI
+        run: npm install --global lim
+
+      - name: Build on Limrun
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+          PR: ${{ github.event.number }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          ASSET_NAME="${REPO}-pr-${PR}.zip"
+          echo "ASSET_NAME=${ASSET_NAME}" >> $GITHUB_ENV
+
+          lim xcode create --reuse-if-exists \
+            --label pr=${PR} \
+            --label repo=${REPO}
+
+          lim xcode build . \
+            --scheme MyApp \
+            --upload "${ASSET_NAME}"
+
+      - name: Comment with preview link
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const assetName = process.env.ASSET_NAME;
+            const url = `https://console.limrun.com/preview?asset=${encodeURIComponent(assetName)}&platform=ios`;
+            const body = [
+              '📱 **iOS preview ready**',
+              '',
+              `Preview: ${url}`,
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+```
+
+What each step does:
+
+1. **Checkout.** The source tree is what gets synced to the Xcode sandbox.
+2. **Install Limrun CLI.** The build runs on Limrun's Macs, so the job stays on a Linux runner.
+3. **Build on Limrun.** `lim xcode create --reuse-if-exists` creates or reuses a sandbox labelled with the PR number and repository, so later pushes to the same PR land on the same sandbox. `lim xcode build . --upload <name>` syncs the source, runs `xcodebuild`, and uploads the artifact. Naming the asset after the PR means each push overwrites it, so the link always shows the latest commit. Build uploads expire 14 days after the latest upload by default, so the preview outlives the PR's last activity by 14 days; change the window with `--upload-ttl <duration>`.
+4. **Comment with preview link.** The script builds the preview URL and posts it on the PR.
+
+## Clean up when a PR closes
+
+The packaged Action deletes the sandboxes on its own, but leaves the preview asset to expire by TTL. For the custom workflow, add `closed` to `on.pull_request.types` and a job that deletes everything labelled with the closed PR:
+
+```yaml
+  cleanup:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm install --global lim
+      - name: Delete PR instances and assets
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+          PR: ${{ github.event.number }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          # Delete Xcode sandboxes for this PR in any state (list shows only ready ones by default)
+          lim xcode list --all --label-selector "pr=${PR},repo=${REPO}" --json \
+            | jq -r '.[].metadata.id' \
+            | xargs -r -n1 lim xcode delete
+
+          # Delete the preview asset
+          ASSET_NAME="${REPO}-pr-${PR}.zip"
+          ASSET_ID=$(lim asset list --name "${ASSET_NAME}" --json | jq -r '.[0].id // empty')
+          if [ -n "$ASSET_ID" ]; then
+            lim asset delete "$ASSET_ID"
+          fi
+```
+
+With the `build` job guarded the same way (`if: github.event.action != 'closed'`), one workflow file handles both.
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="Build with Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
+    Every `lim xcode build` flag and artifact upload option.
+  </Card>
+  <Card title="GitHub Actions recipes" icon="workflow" href="/docs/ci/github-actions">
+    Signed IPAs, Bazel builds, and signed AABs from Linux runners.
+  </Card>
+  <Card title="Asset Storage" icon="package" href="/docs/platform/asset-storage">
+    How preview assets are stored, named, and expired.
+  </Card>
+  <Card title="XCTest" icon="flask-conical" href="/docs/testing/xctest">
+    Gate previews on your test suite with `lim xcode test`.
+  </Card>
+</Columns>

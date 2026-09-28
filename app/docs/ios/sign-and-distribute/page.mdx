@@ -1,0 +1,336 @@
+---
+title: "Sign and distribute"
+description: "Produce App Store ready IPAs from any machine and get them to testers without a local Mac."
+order: 6
+icon: "key-round"
+---
+# Sign and distribute iOS builds
+
+A device build on an Xcode sandbox can come out signed and ready to ship. Sign with your own certificate and provisioning profiles, or let Apple's cloud signing manage them, then upload the IPA to Asset Storage or straight to App Store Connect for TestFlight.
+
+Every flag here adds to a normal [Xcode build](/docs/ios/build-with-xcode).
+
+## Device builds
+
+Device builds (`iphoneos`, `watchos`, `appletvos`, `xros`) compile every target for its standard architectures and turn code coverage instrumentation off, matching what Xcode's archive action produces. An embedded watch app keeps the `arm64_32` slice App Store Connect requires, and no binary carries coverage sections, so the IPA passes App Store validation. Projects that pin an unsupported architecture such as `armv7` in `ARCHS` fail as they do in Xcode. Simulator builds compile only the host architecture.
+
+### tvOS and visionOS
+
+Pass the device SDK and the scheme explicitly for tvOS and visionOS:
+
+```bash
+lim xcode build . --scheme TVApp --sdk appletvos
+lim xcode build . --scheme VisionApp --sdk xros
+```
+
+These builds use the same unsigned IPA, manual signing, cloud signing, and upload paths as iOS device builds. tvOS and visionOS simulator builds, simulator attachment, and XCTest runs are not supported yet.
+
+## Sign with your certificate
+
+To produce a signed IPA for distribution, select a device SDK and pass a P12 certificate, its password, and a provisioning profile. Add an upload so the IPA lands in Asset Storage with a download URL. If you omit the SDK, signing defaults to `iphoneos`; pass `watchos`, `appletvos`, or `xros` explicitly for another platform.
+
+```bash
+lim xcode build . \
+  --sdk iphoneos \
+  --scheme MyApp \
+  --certificate-p12 ./signing/dist.p12 \
+  --certificate-password "$P12_PASSWORD" \
+  --provisioning-profile ./signing/MyApp.mobileprovision \
+  --upload my-app-pr-42.ipa
+```
+
+From the TypeScript SDK, pass the material base64-encoded:
+
+```ts
+import fs from 'node:fs';
+
+const build = xcode.xcodebuild(
+  { scheme: 'MyApp', sdk: 'iphoneos' },
+  {
+    signing: {
+      certificateP12Base64: fs.readFileSync('./dist.p12').toString('base64'),
+      certificatePassword: process.env['P12_PASSWORD'],
+      provisioningProfilesBase64: [fs.readFileSync('./MyApp.mobileprovision').toString('base64')],
+    },
+    upload: { assetName: 'my-app-pr-42.ipa' },
+  },
+);
+
+const { exitCode, signedDownloadUrl } = await build;
+```
+
+Limrun verifies the signed app with Apple's code-signing verifier before uploading it. A signature that Apple's tooling would reject fails the build with a clear error instead of producing a broken IPA, so a signed build that succeeds has already passed Apple's verification.
+
+### Apps with extensions or a watch app
+
+App Store signing needs a distinct provisioning profile for every bundle the app embeds: the app itself plus each app extension (a WidgetKit widget, a share sheet, an intents extension) and watch app, all issued for the same distribution certificate. Repeat `--provisioning-profile` with one profile per bundle, or pass several entries in `provisioningProfilesBase64`. Each profile is matched to its bundle by the `application-identifier` it carries, so order does not matter, but every profile must name an explicit, non-wildcard bundle ID.
+
+```bash
+lim xcode build . \
+  --sdk iphoneos \
+  --scheme MyApp \
+  --certificate-p12 ./signing/dist.p12 \
+  --certificate-password "$P12_PASSWORD" \
+  --provisioning-profile ./signing/MyApp.mobileprovision \
+  --provisioning-profile ./signing/MyAppWidgets.mobileprovision \
+  --upload my-app-pr-42.ipa
+```
+
+```ts
+import fs from 'node:fs';
+
+const build = xcode.xcodebuild(
+  { scheme: 'MyApp', sdk: 'iphoneos' },
+  {
+    signing: {
+      certificateP12Base64: fs.readFileSync('./dist.p12').toString('base64'),
+      certificatePassword: process.env['P12_PASSWORD'],
+      provisioningProfilesBase64: [
+        fs.readFileSync('./MyApp.mobileprovision').toString('base64'),
+        fs.readFileSync('./MyAppWidgets.mobileprovision').toString('base64'),
+      ],
+    },
+    upload: { assetName: 'my-app-pr-42.ipa' },
+  },
+);
+```
+
+Before signing, Limrun checks that every embedded bundle in the built app has a matching profile. A missing one fails the build with the uncovered bundle ID, so you see it immediately instead of as an App Store validation rejection after upload.
+
+### Include the certificate chain
+
+Export your p12 with its certificate chain included, so signing works regardless of which Apple WWDR intermediate issued your certificate. Keychain Access exports include the chain. With OpenSSL, pass the chain with `-certfile`:
+
+```bash
+openssl pkcs12 -export -inkey dist.key -in dist.pem -certfile wwdr.pem -out dist-chain.p12
+```
+
+### Download the signed IPA
+
+When you configure an upload, the build result includes a signed download URL. Anyone with the URL can download the IPA without a Limrun API key, but the signature expires after 15 minutes, so use it right away and fetch a fresh one later with `lim asset list --name <asset-name> --download-url`. For links reviewers open days later, use [PR previews](/docs/ci/pr-previews).
+
+## Cloud signing
+
+Cloud signing produces a signed IPA without a p12 or provisioning profile. Xcode authenticates with an App Store Connect team API key, and Apple creates or reuses a cloud-managed certificate and the required profiles during export.
+
+```bash
+lim xcode build . \
+  --sdk iphoneos \
+  --configuration Release \
+  --scheme MyApp \
+  --signing-method release-testing \
+  --team-id VMBY3VYW4U \
+  --asc-key-id 2X9R4HXF34 \
+  --asc-issuer-id "$ASC_ISSUER_ID" \
+  --asc-key ./signing/AuthKey_2X9R4HXF34.p8 \
+  --upload my-app-pr-42.ipa
+```
+
+Choose the method for the IPA you need:
+
+| Method | Use |
+|---|---|
+| `debugging` | Development-signed IPA for devices registered to the team. |
+| `release-testing` | Distribution-signed IPA for registered test devices. |
+| `app-store-connect` | Distribution-signed IPA for App Store Connect. |
+
+Cloud signing works for device SDK builds: `--sdk iphoneos`, `watchos`, `appletvos`, and `xros`. It requires a team API key, its issuer ID, and a `--team-id` that matches the key's Apple Developer team. For `release-testing` and `app-store-connect`, the key must be an Admin key or have **Access to cloud-managed distribution certificates** enabled in App Store Connect.
+
+From the TypeScript SDK, pass `cloudSigning`:
+
+```ts
+import fs from 'node:fs';
+
+const build = xcode.xcodebuild(
+  { scheme: 'MyApp', sdk: 'iphoneos', configuration: 'Release' },
+  {
+    cloudSigning: {
+      method: 'release-testing',
+      teamId: 'VMBY3VYW4U',
+      apiKeyId: '2X9R4HXF34',
+      apiIssuerId: process.env['ASC_ISSUER_ID']!,
+      apiPrivateKeyBase64: fs.readFileSync('./AuthKey_2X9R4HXF34.p8').toString('base64'),
+    },
+    upload: { assetName: 'my-app-pr-42.ipa' },
+  },
+);
+```
+
+### Preserve entitlements
+
+Cloud signing archives your app unsigned, and Apple's export carries entitlements into the signed IPA only from an existing code signature. Capability entitlements from your project's `.entitlements` file (HealthKit, CloudKit, app groups, push) therefore do not survive on their own. Pass them with `--entitlements`, and the build server embeds them into the archive so the export keeps them. A bare path applies to the app. Use `<bundleId>=<path>` for embedded bundles such as widgets or a watch app, repeating the flag per bundle.
+
+```bash
+lim xcode build . \
+  --sdk iphoneos \
+  --configuration Release \
+  --scheme MyApp \
+  --signing-method release-testing \
+  --team-id VMBY3VYW4U \
+  --asc-key-id 2X9R4HXF34 \
+  --asc-issuer-id "$ASC_ISSUER_ID" \
+  --asc-key ./signing/AuthKey_2X9R4HXF34.p8 \
+  --entitlements ./MyApp/MyApp.entitlements \
+  --entitlements com.example.myapp.widgets=./Widgets/Widgets.entitlements \
+  --upload my-app-pr-42.ipa
+```
+
+In the TypeScript SDK, `entitlements` is keyed by bundle ID, and the empty key targets the app:
+
+```ts
+cloudSigning: {
+  method: 'release-testing',
+  teamId: 'VMBY3VYW4U',
+  apiKeyId: '2X9R4HXF34',
+  apiIssuerId: process.env['ASC_ISSUER_ID']!,
+  apiPrivateKeyBase64: fs.readFileSync('./AuthKey_2X9R4HXF34.p8').toString('base64'),
+  entitlements: {
+    '': fs.readFileSync('./MyApp/MyApp.entitlements').toString('base64'),
+    'com.example.myapp.widgets': fs.readFileSync('./Widgets/Widgets.entitlements').toString('base64'),
+  },
+},
+```
+
+Three rules apply:
+
+- **Every capability must be enabled on your App ID.** The export registers toggleable capabilities such as HealthKit and push on the App ID for you. Capabilities that need extra configuration, such as app group assignments or special-agreement entitlements, must be set up in the developer portal first, or the export fails naming them.
+- **Values must be fully expanded.** Build-setting references such as `$(AppIdentifierPrefix)` are rejected; write the concrete team prefix instead.
+- **Omit the keys the export manages.** Leave out `application-identifier`, `com.apple.developer.team-identifier`, `get-task-allow`, and `beta-reports-active`; the export sets them from the generated profile and distribution method.
+
+Check what landed in the IPA:
+
+```bash
+unzip -q my-app.ipa -d out && codesign -d --entitlements - out/Payload/MyApp.app
+```
+
+## Troubleshoot signing
+
+| Build output | Cause | Fix |
+|---|---|---|
+| `Unknown issuer hash` | The certificate's issuing CA is not recognized and the p12 carries no CA chain. | Re-export the p12 with the certificate chain included (see [Include the certificate chain](#include-the-certificate-chain)). |
+| `code signature verification failed` | The produced signature failed Apple's verifier. | Retry the build; contact support if it persists. |
+| `MAC verification failed` or other password errors | The certificate password does not match the p12. | Check the value you pass as the certificate password. |
+| `signing preflight failed: no provisioning profile covers ...` | An embedded bundle (extension, watch app) has no matching provisioning profile. | Pass one `--provisioning-profile` per bundle ID named in the error. |
+| `Cloud signing permission error` | The API key cannot use cloud-managed distribution certificates. | Use an Admin key or enable **Access to cloud-managed distribution certificates** for the key. |
+| `No Account for Team` | `--team-id` does not match the API key's team. | Pass the Apple Developer team ID associated with the API key. |
+| `Failed Registering Bundle Identifier` | The bundle ID cannot be registered to this team, usually because another team owns it. | Use a bundle ID the team already owns, or one that is available to register. |
+
+## Set up App Store Connect once
+
+Before the first upload, configure three App Store Connect settings. They make TestFlight delivery hands-off:
+
+1. **Create an App Store Connect team API key.** In [App Store Connect](https://appstoreconnect.apple.com), go to Users and Access, open the Integrations tab, select App Store Connect API, and generate a Team Key. A Developer key is enough for upload with manual signing. Cloud distribution signing requires an Admin key, or **Access to cloud-managed distribution certificates** enabled for the key. One team key serves all your apps. Collect the three values the build flags need:
+   - `--asc-key-id`: the Key ID shown next to the new key.
+   - `--asc-issuer-id`: the Issuer ID shown at the top of the Integrations page. It belongs to the team, not the key.
+   - `--asc-key`: the `.p8` file from the key's Download link. Download it right away and store it like a password: Apple keeps no copy, and the link disappears once you leave the page.
+2. **Answer the encryption question at build time**, or every build stalls in App Store Connect with "Missing Compliance" until someone answers manually. If your app only uses exempt encryption (HTTPS and the like), declare it in your project:
+
+   ```json
+   // Expo: app.json
+   { "expo": { "ios": { "config": { "usesNonExemptEncryption": false } } } }
+   ```
+
+   ```xml
+   <!-- Native: Info.plist -->
+   <key>ITSAppUsesNonExemptEncryption</key>
+   <false/>
+   ```
+
+   If your app uses non-exempt encryption, answer the compliance questions in App Store Connect instead.
+3. **Enable automatic distribution on an internal beta group.** In your app's TestFlight tab, create an internal group and choose automatic distribution, the option that gives the group access to all builds. Members then receive every new build with no per-build assignment. The setting is create-only, so if your existing group lacks it, create a new group with it enabled.
+
+With these in place, one build command puts the app on your testers' devices as soon as Apple finishes processing.
+
+## Upload to App Store Connect
+
+`--upload-to-appstore` sends the signed IPA to App Store Connect after the build, where it becomes available for TestFlight and App Store distribution. It works with manual or cloud signing. A cloud-signed build can use the same API key for signing and upload with the `app-store-connect` method:
+
+```bash
+lim xcode build . \
+  --sdk iphoneos \
+  --configuration Release \
+  --scheme MyApp \
+  --signing-method app-store-connect \
+  --team-id VMBY3VYW4U \
+  --upload-to-appstore \
+  --asc-key-id 2X9R4HXF34 \
+  --asc-issuer-id "$ASC_ISSUER_ID" \
+  --asc-key ./signing/AuthKey_2X9R4HXF34.p8
+```
+
+From the TypeScript SDK, pass `appstore` next to the signing options:
+
+```ts
+import fs from 'node:fs';
+
+const build = xcode.xcodebuild(
+  { scheme: 'MyApp', sdk: 'iphoneos', configuration: 'Release' },
+  {
+    cloudSigning: {
+      method: 'app-store-connect',
+      teamId: 'VMBY3VYW4U',
+      apiKeyId: '2X9R4HXF34',
+      apiIssuerId: process.env['ASC_ISSUER_ID']!,
+      apiPrivateKeyBase64: fs.readFileSync('./AuthKey_2X9R4HXF34.p8').toString('base64'),
+    },
+    appstore: {
+      apiKeyId: '2X9R4HXF34',
+      apiIssuerId: process.env['ASC_ISSUER_ID'],
+      apiPrivateKeyBase64: fs.readFileSync('./AuthKey_2X9R4HXF34.p8').toString('base64'),
+    },
+  },
+);
+
+const { exitCode, appstore } = await build;
+// appstore.state: 'uploading' | 'processing' | 'accepted' | 'failed' | 'unknown'.
+// The field may be absent.
+```
+
+With manual signing, keep the `--certificate-p12`, `--certificate-password`, and `--provisioning-profile` flags and add `--upload-to-appstore` with the `--asc-*` flags. App Store Connect upload supports `iphoneos`, `appletvos`, and `xros`; replace the SDK and scheme to deliver a tvOS or visionOS build. A standalone `watchos` build cannot use `--upload-to-appstore`; the CLI rejects it with `--upload-to-appstore requires --sdk iphoneos, --sdk appletvos, or --sdk xros`. An embedded watch app ships inside the iOS IPA. Combine with `--upload` if you also want the IPA in Asset Storage.
+
+Build with a released Xcode: Apple rejects uploads built with a beta. [Xcode and tool versions](/docs/ios/xcode-and-tools#choose-the-xcode-version) explains how a bare-major pin guarantees that.
+
+### Wait for Apple's verdict
+
+The build log streams the upload progress. By default the build succeeds as soon as the upload commits. Apple's processing routinely takes many minutes, so the verdict is left to App Store Connect, and the build prints the upload ID so you can check it there.
+
+To watch for the verdict instead, pass `--asc-wait-timeout <seconds>` (`waitTimeoutSeconds` in the SDK's `appstore` options, up to `1800`). A rejection within that window, such as a reused build number or a missing entitlement, fails the build with Apple's own error text. Expiry without a verdict is still a success, with the build processing on Apple's side.
+
+### Number builds automatically
+
+Every upload needs a `CFBundleVersion` higher than the last one for that version. Pass `--auto-build-number` (`autoIncrementBuildNumber: true` in the SDK's `appstore` options) to set it to one more than the highest build number already in App Store Connect, or 1 for a new app. It requires `--upload-to-appstore`. The lookup runs server-side with the same API key used for the upload.
+
+Manual signing requires Xcode-standard versioning (`CFBundleVersion = $(CURRENT_PROJECT_VERSION)`), which modern Xcode templates and Expo prebuilds use. Cloud signing updates the unsigned archive before export.
+
+### How the API key is handled
+
+Your API key travels with the build request over TLS. For cloud signing, the build service writes it with owner-only permissions in the disposable sandbox directory for the export command, then deletes it. The sandbox directory is discarded with the instance.
+
+## Troubleshoot App Store Connect
+
+TestFlight delivery requires a signed `iphoneos`, `appletvos`, or `xros` build, manual or cloud signing, and an existing app record in App Store Connect for your bundle ID. Apple's API cannot create app records. Each upload needs a `CFBundleVersion` higher than the last one for that version.
+
+| Build output | Cause | Fix |
+|---|---|---|
+| `bundle version must be higher` (or similar Apple text) | The `CFBundleVersion` was already used by an earlier upload. | Rebuild with `--auto-build-number`, or bump the build number manually. |
+| `HTTP 401` from App Store Connect | The key ID, issuer ID, and `.p8` do not belong together, or the key was revoked. | Re-check the three values in App Store Connect. Team keys need the issuer ID; individual keys must omit it. |
+| `HTTP 403` from App Store Connect | The key's role cannot upload builds. | Use a key with the Developer role or higher. |
+| `no App Store Connect app with bundle id ...` | No app record exists for the bundle ID you built. | Create the app record in App Store Connect first (Apps, then the plus button). |
+| Build stuck in "Missing Compliance" | The binary does not answer the export-compliance question. | Set `ITSAppUsesNonExemptEncryption` in `Info.plist` as described above. |
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="GitHub Actions recipes" icon="workflow" href="/docs/ci/github-actions">
+    Build a signed IPA on every pull request from a Linux runner.
+  </Card>
+  <Card title="Publish to the stores" icon="rocket" href="/docs/platform/publish-to-stores">
+    Add App Store and Google Play publishing to your own platform.
+  </Card>
+  <Card title="Build logs and webhooks" icon="webhook" href="/docs/ci/build-logs-and-webhooks">
+    Detach from long release builds and receive the result on your endpoint.
+  </Card>
+  <Card title="Asset Storage" icon="package" href="/docs/platform/asset-storage">
+    Where uploaded IPAs live and how to fetch fresh download URLs.
+  </Card>
+</Columns>

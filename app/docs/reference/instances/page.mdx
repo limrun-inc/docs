@@ -1,0 +1,210 @@
+---
+title: "Instance spec and status"
+description: "Look up any field you can set when creating an instance, or any field it reports back while it runs."
+order: 3
+icon: "layers"
+---
+# Instance spec and status
+
+Every create call takes `metadata` and `spec`, and every instance reports its URLs and state in `status`. The `spec` tables cover iOS simulators and Android emulators; the lifecycle, status, timeout, and placement rules apply to Xcode and Gradle sandboxes too. Build-specific settings for sandboxes live in [Build with Xcode](/docs/ios/build-with-xcode) and [Build with Gradle](/docs/android/build-with-gradle). For what the fields mean in practice, start with [Concepts](/docs/concepts); for the calls themselves, see [SDKs and REST API](/docs/reference/sdk).
+
+## Lifecycle states
+
+Every iOS, Android, Xcode, and Gradle instance moves through the same lifecycle: `creating` while hardware is provisioned, `assigned` while it boots, `ready` when the URLs in `status` are usable, and finally `terminated`.
+
+```text
+   creating ──┬──► assigned ──► ready ──► terminated
+              │
+              └──► (error) ──► terminated  (status.errorMessage set)
+```
+
+| State | Meaning |
+|---|---|
+| `unknown` | Default placeholder; not returned for live instances. |
+| `creating` | Provisioning. URLs in `status` are not populated yet. |
+| `assigned` | Hardware is assigned and the instance is booting. |
+| `ready` | Fully booted. All URLs are populated, and a control client can connect. |
+| `terminated` | Stopped by an explicit delete, the inactivity timeout, the hard timeout, or an error. |
+
+`status.errorMessage` is set when the instance terminated because of an error. A create call with `wait: true` returns once the instance is `ready`.
+
+## Status fields
+
+A `ready` instance carries the URLs its data plane needs in `status`. Every URL authenticates with the instance token, never the API key.
+
+| Field | iOS | Android | Xcode and Gradle | Use |
+|---|---|---|---|---|
+| `state` | ✓ | ✓ | ✓ | The [lifecycle state](#lifecycle-states). |
+| `token` | ✓ | ✓ | ✓ | Instance token for `apiUrl`, `endpointWebSocketUrl`, `adbWebSocketUrl`, and `mcpUrl`. Embedded in `signedStreamUrl`. Returned only to a credential that can control the instance; a read-only API key or a viewer seat gets no `token`. |
+| `streamToken` | ✓ | ✓ |   | Streaming-only token: opens `endpointWebSocketUrl` and nothing else, so a browser can hold it while `status.token` stays on your backend. Returned with `token`; get and list return it only while the instance runs. |
+| `apiUrl` | ✓ | ✓ | ✓ | HTTP base for the instance's daemon; pass it to the SDK and CLI control clients. On Android, the control WebSocket derives from it as `apiUrl + /ws`, and recording downloads use the same base. |
+| `signedStreamUrl` | ✓ | ✓ |   | Console-hosted watch URL with the token in the URL fragment, so the token never reaches a server. Opens in a browser without an API key or sign-in. |
+| `endpointWebSocketUrl` | ✓ | ✓ |   | WebSocket for the [`<RemoteControl />` component](/docs/platform/embed-simulator); pass `?token=<status.token>`. |
+| `mcpUrl` | ✓ | ✓ |   | The instance's MCP HTTP endpoint. Authenticate with `status.token` as `Authorization: Bearer`. See [Per-instance MCP server](/docs/agents/mcp); for one endpoint that also creates instances, see the [remote MCP server](/docs/agents/remote-mcp). |
+| `adbWebSocketUrl` |   | ✓ |   | ADB tunnel endpoint. Pass it as `adbUrl` to `createInstanceClient`. |
+| `targetHttpPortUrlPrefix` | ✓ | ✓ |   | Prefix for reaching HTTP services that run on the device. Append the target port, with no slash, to forward traffic; Appium uses it to reach WebDriverAgent. |
+| `sandbox.playwrightAndroid.url` |   | ✓ (when enabled) |   | Chrome DevTools Protocol URL when `spec.sandbox.playwrightAndroid.enabled` is `true`. See [Playwright](/docs/testing/playwright). |
+| `sandbox.xcode.url` | ✓ (legacy) |   |   | Embedded Xcode sandbox URL on instances that old clients created with `spec.sandbox.xcode.enabled`. The TypeScript SDK and CLI no longer offer it; create the Xcode sandbox separately and attach the simulator. See [Move off the embedded Xcode sandbox](/docs/ios/build-with-xcode#move-off-the-embedded-xcode-sandbox). |
+| `errorMessage` | ✓ | ✓ | ✓ | Set when the instance terminated because of an error. |
+| `terminationReason` | ✓ | ✓ | ✓ | Present once `state` is `terminated`, never before. Known values: `UserRequested` (a delete request), `InactivityTimeout`, `HardTimeout`, and `Unknown` (a cause the platform did not attribute, including instances that failed to become ready; see `errorMessage`). New values may be added, so treat unrecognized ones as `Unknown`. |
+
+The iOS and Android `status` blocks otherwise have the same shape. Reaching a server that runs inside the simulator (through `targetHttpPortUrlPrefix`) is the opposite direction from letting the device reach your machine; for that, see Connect to local services for [iOS](/docs/ios/local-services) or [Android](/docs/android/local-services).
+
+## Example create response
+
+A successful Android `create` with `wait: true` returns the full instance resource. An iOS response has the same shape without `adbWebSocketUrl`:
+
+```json
+{
+  "metadata": {
+    "id": "android_usw1_01krxvphn8e3rbeq0zewgw209a",
+    "createdAt": "2026-05-18T19:52:42Z",
+    "organizationId": "org_01kr52j...",
+    "displayName": "android_usw1_01krxvphn8e3rbeq0zewgw209a",
+    "labels": { "app": "demo", "session": "docs" }
+  },
+  "spec": {
+    "inactivityTimeout": "10m0s",
+    "region": "us-west2"
+  },
+  "status": {
+    "state": "ready",
+    "apiUrl":               "https://us-west2-1234567.limrun.net/v1/android_usw1_01krxv.../api",
+    "adbWebSocketUrl":      "wss://us-west2-1234567.limrun.net/v1/organizations/org_01kr52j.../android.limrun.com/v1/instances/android_usw1_01krxv.../adbWebSocket",
+    "endpointWebSocketUrl": "wss://us-west2-1234567.limrun.net/v1/organizations/org_01kr52j.../android.limrun.com/v1/instances/android_usw1_01krxv.../endpointWebSocket",
+    "signedStreamUrl":      "https://console.limrun.com/signedStream?url=wss%3A%2F%2Fus-west2-1234567.limrun.net%2F...%2FendpointWebSocket#token=lim_...",
+    "mcpUrl":               "https://us-west2-1234567.limrun.net/v1/android_usw1_01krxv.../mcp",
+    "targetHttpPortUrlPrefix": "wss://us-west2-1234567.limrun.net/v1/organizations/org_01kr52j.../android.limrun.com/v1/instances/android_usw1_01krxv.../targetHttpPort",
+    "token": "lim_...",
+    "streamToken": "lim_..."
+  }
+}
+```
+
+The metadata and spec fields in the response:
+
+| Field | Use |
+|---|---|
+| `metadata.id` | Stable instance identifier. Pass it to `get`, `delete`, and `connect`. |
+| `metadata.labels` | Echoed back. Drives `reuseIfExists` matching and label-selector listing. |
+| `metadata.displayName` | Human-readable name shown in the console. |
+| `spec.region` | The region the scheduler placed the instance in. |
+| `spec.inactivityTimeout` | Returned as a Go duration string (`"10m0s"`), not the `"10m"` you passed. |
+
+## Create parameters
+
+Every create call, for any instance type, accepts these parameters next to `spec`:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `wait` | boolean | When `true`, the call returns only after `status.state === 'ready'`; without it, poll. Default `false`. |
+| `reuseIfExists` | boolean | When `true`, return the existing instance whose `metadata.labels` match exactly instead of creating one. The lookup runs in the region that handles the create, so a placement change can miss. Default `false`. |
+| `metadata.labels` | `Record<string, string>` | Free-form `key=value` map. Powers `reuseIfExists`, `labelSelector` listing, and bulk cleanup. See [Labels](#labels). |
+| `metadata.displayName` | string | Human-readable name shown in the console next to `metadata.id`. |
+
+## Timeouts
+
+Two timeouts end an instance without a delete call. Both take a duration string such as `1m`, `10m`, or `3h`.
+
+- **`spec.inactivityTimeout`** terminates the instance after this long without activity. The timer starts once the instance is `ready`. Omitted or `'0'`, it uses your organization's default for the platform: new organizations start at 3 minutes for iOS and Android and 10 minutes for Xcode, and Gradle sandboxes default to 10 minutes. An organization default of `0` means instances are never terminated for inactivity. The maximum is `24h`.
+- **`spec.hardTimeout`** terminates the instance after this much wall-clock time, active or not. Default `'0'`, no cap.
+
+A terminated instance reports which one fired in [`status.terminationReason`](#status-fields).
+
+## iOS spec
+
+The `spec` fields accepted by `iosInstances.create` (TypeScript names; Python uses snake_case). The CLI flags for the same fields are in [Run a simulator](/docs/ios/run-simulator).
+
+| Field | Type | Meaning |
+|---|---|---|
+| `spec.model` | `'iphone' \| 'iphone-duo' \| 'ipad' \| 'watch'` | Apple Simulator model. Default `iphone`. `iphone-duo` must be available to your organization. The Go SDK does not expose this field. |
+| `spec.jurisdiction` | `'us' \| 'eu' \| 'as'` | Hard constraint: schedule only inside this jurisdiction; creation fails when no region there has capacity. TypeScript SDK, CLI, and REST only. See [Placement](#placement). |
+| `spec.region` | string | Deprecated. A region preference such as `us-east1`, not a hard pin. See [Placement](#placement). |
+| `spec.inactivityTimeout` | duration string | See [Timeouts](#timeouts). |
+| `spec.hardTimeout` | duration string | See [Timeouts](#timeouts). |
+| `spec.forceBundleId` | string | After this app first enters the foreground, Limrun brings it back whenever it is closed or backgrounded. It does not launch the app at startup. |
+| `spec.clues[]` | array | Placement hints: `ClientIP` with the end user's IP, or `ClientLocation` with coordinates (TypeScript SDK and REST only). See [Client location clues](#client-location-clues). |
+| `spec.initialAssets[]` | array | Apps or keychain state to apply at boot. App entries use `kind: 'App'` with `source` `URL`, `AssetName`, or `AssetID`, plus an optional `launchMode` of `ForegroundIfRunning` or `RelaunchIfRunning`; omit `launchMode` to install without launching. Keychain entries use `kind: 'Keychain'` and require `encryptionKey`. See [Pre-install at boot](/docs/platform/asset-storage#pre-install-at-boot) and [Save and restore the keychain](/docs/ios/run-simulator#save-and-restore-the-keychain). |
+| `spec.sandbox.xcode.enabled` | boolean | Legacy: create an embedded Xcode sandbox with the simulator. The API still accepts it for old clients, but the TypeScript SDK (from 0.54.0) and CLI (from 0.35.0) no longer offer it. Create the sandbox separately and attach instead; see [Move off the embedded Xcode sandbox](/docs/ios/build-with-xcode#move-off-the-embedded-xcode-sandbox). |
+
+<Frame>
+  <img src="/images/console/03-ios-models.png" alt="Console Playground iOS model picker showing iPhone, iPad, and Apple Watch options" />
+</Frame>
+
+## Android spec
+
+The `spec` fields accepted by `androidInstances.create`. The CLI flags for the same fields are in [Run an emulator](/docs/android/run-emulator).
+
+| Field | Type | Meaning |
+|---|---|---|
+| `spec.model` | `'phone' \| 'tablet'` | Android device model. Default `phone`. TypeScript SDK, CLI, and REST only; the Python and Go SDKs do not expose it. |
+| `spec.jurisdiction` | `'us' \| 'eu' \| 'as'` | Hard constraint: schedule only inside this jurisdiction; creation fails when no region there has capacity. TypeScript SDK, CLI, and REST only. See [Placement](#placement). |
+| `spec.region` | string | Deprecated. A region preference such as `us-east1`, not a hard pin. See [Placement](#placement). |
+| `spec.inactivityTimeout` | duration string | See [Timeouts](#timeouts). |
+| `spec.hardTimeout` | duration string | See [Timeouts](#timeouts). |
+| `spec.clues[].kind` | `'ClientIP' \| 'ClientLocation' \| 'OSVersion'` | Placement hint: bias by Android version or by the end user's location. |
+| `spec.clues[].clientIp` | string | Required when `kind: 'ClientIP'`. The IP of the end user whose browser streams the emulator; the scheduler geolocates it and provisions in the nearest region. `spec.region` overrides this clue. |
+| `spec.clues[].clientLocation` | object | `{ latitude, longitude }` in decimal degrees when `kind: 'ClientLocation'`. Both coordinates are required. Takes precedence over `ClientIP`. TypeScript SDK and REST only. |
+| `spec.clues[].osVersion` | string | Required when `kind: 'OSVersion'`. The Android major version, `'14'` or `'15'`. |
+| `spec.initialAssets[]` | array | APKs to install while provisioning, plus `Configuration` entries such as Chrome flags. Plural sources install split APKs as one group. See [Pre-install APKs](/docs/android/run-emulator#pre-install-apks). |
+| `spec.sandbox.playwrightAndroid.enabled` | boolean | Provision a Playwright sub-sandbox next to the emulator and report its CDP URL in `status.sandbox.playwrightAndroid.url`. Default `false`. See [Playwright](/docs/testing/playwright). |
+| `spec.sandbox.playwrightAndroid.version` | `'1.56.1-lim.1' \| '1.60.0-lim.1'` | Playwright server version for the sub-sandbox. Omit it for `1.56.1-lim.1`. Your Playwright client version must match. |
+
+The CLI's `--os-version` and `--model` flags set the OS version and model. It has no flags for the `ClientIP` and `ClientLocation` clues or for `spec.sandbox.playwrightAndroid`; set those from an SDK or REST.
+
+## Labels
+
+`metadata.labels` is a free-form `{ [key: string]: string }` map used for reuse, listing, and cleanup; [Labels and reuse](/docs/concepts#labels-and-reuse) explains how. Avoid keys that could collide with metadata Limrun adds itself, such as the `created-by: mcp` label on instances the [remote MCP server](/docs/agents/remote-mcp) creates.
+
+## Placement
+
+`spec.jurisdiction` (`us`, `eu`, or `as`) keeps an instance inside one jurisdiction. It is a hard constraint: creation fails when no region there has capacity.
+
+`spec.region` is deprecated. It is a preference, such as `eu-north1` or `us-east1`, that is tried first and overflows to other regions by proximity when the preferred ones are full. When both are omitted, Limrun places the instance by `spec.clues` and current availability.
+
+`jurisdiction` is available in the TypeScript SDK and the CLI today; the Python and Go SDKs expose only `region`. The console's **Analytics** tab breaks down runtime minutes per platform and per region, which shows which regions your organization has used:
+
+<Frame>
+  <img src="/images/console/11-analytics.png" alt="Console Analytics tab showing daily runtime minutes for Android, iOS, and XCode, broken down by eu-north1 and us-east1 regions" />
+</Frame>
+
+### Client location clues
+
+When you create an Android, iOS, Xcode, or Gradle instance through the REST API, supply the end user's coordinates as a `ClientLocation` clue to prefer a nearby region:
+
+```json
+{
+  "spec": {
+    "clues": [
+      {
+        "kind": "ClientLocation",
+        "clientLocation": {
+          "latitude": 37.7749,
+          "longitude": -122.4194
+        }
+      }
+    ]
+  }
+}
+```
+
+Both coordinates are required and use decimal degrees. Latitude must be between -90 and 90, and longitude between -180 and 180, inclusive. Zero is valid. Missing or invalid coordinates return HTTP 400.
+
+`ClientLocation` takes precedence over `ClientIP` regardless of their order in `spec.clues`. Without coordinates, pass `{ "kind": "ClientIP", "clientIp": "203.0.113.42" }` to locate the end user by IP. For requests without either clue, Limrun uses available visitor coordinates first, then the connecting IP.
+
+Location clues express a preference. `spec.jurisdiction` still constrains placement, and a full region can lead to creation in another eligible region. A specific `spec.region` overrides location clues. Use the REST payload above if your installed SDK does not expose `ClientLocation` yet.
+
+<Note>
+  For embedded devices, always pass the end user's location or IP. It places the instance near the person streaming it, which is the difference between a responsive device and one that lags across continents.
+</Note>
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="Concepts" icon="book-open" href="/docs/concepts">
+    Instances, credentials, labels, and placement explained.
+  </Card>
+  <Card title="SDKs and REST API" icon="book-open" href="/docs/reference/sdk">
+    The create, list, get, and delete calls in every language.
+  </Card>
+</Columns>

@@ -1,28 +1,38 @@
 ---
-title: "Embed the simulator"
-description: "Render a live iOS or Android device inside your web app with `<RemoteControl />` from `@limrun/ui`. Your backend keeps the API key; the browser only sees a per-instance URL and token."
+title: "Embed a device"
+description: "Show your users a live iOS simulator or Android emulator inside your own web app."
 order: 1
 icon: "monitor-play"
 ---
-# Embed the simulator
+# Embed a live device in your web app
 
-`<RemoteControl />` from [`@limrun/ui`](https://www.npmjs.com/package/@limrun/ui) streams a Limrun instance into a `<div>` in your web app. It opens a WebSocket + WebRTC connection to the instance, paints the screen, forwards touch and keyboard input, and exposes imperative control through a React ref.
+Your backend creates the instance with the Limrun SDK and hands the browser only that instance's URL and token. On the page, `<RemoteControl />` from [`@limrun/ui`](https://www.npmjs.com/package/@limrun/ui) streams it into a `<div>`, forwards touch and keyboard input, and exposes imperative control through a React ref.
 
-This is the path platform integrators take: companies whose end users need a live mobile device on the page. Cloud coding agents that work on iOS or Android. Mobile preview tools. Internal QA dashboards. Same component, same wiring, on every one of those.
+Platform integrators use this path: products whose end users need a live mobile device on the page, such as mobile preview tools, internal QA dashboards, and cloud coding agents that work on iOS or Android.
 
 <Frame>
   <img src="/images/console/05-ios-stream-booting.png" alt="A live iOS simulator running inside a device frame, rendered by `<RemoteControl />`. The same look-and-feel ships in your app." />
 </Frame>
 
-The Limrun console's Playground uses this exact component for its own streaming view, so what you ship to your users looks the same.
+The Limrun console's Playground uses this same component for its streaming view, so what you ship to your users looks the same.
 
-## Architecture overview for platforms
+## Before you start
 
-```
+- **An API key, kept server-side.** Create one at [console.limrun.com](https://console.limrun.com) under **Settings → API Keys**. See [Authentication](/docs/reference/sdk#authentication).
+- **A backend that can create instances.** The single contract between your backend and `<RemoteControl />` is the pair `status.endpointWebSocketUrl` and a token. The examples pass `status.token`. `status.streamToken` opens only the streaming WebSocket, so a browser can hold it while `status.token` stays on your backend. Every spec field, clue, and timeout is listed in [Instance spec and status](/docs/reference/instances).
+- **A React 18+ frontend**, such as Vite, Next.js, Create React App, or Remix.
+
+If your platform also builds your customers' apps, [Build with Xcode](/docs/ios/build-with-xcode) covers compiling iOS apps on a remote Mac.
+
+## How the pieces fit
+
+The browser talks to the instance directly. Your backend is the only party that holds the API key:
+
+```text
 ┌─ End user's browser ────────────┐    ┌─ Your backend ──────────────────┐
 │                                 │    │                                 │
 │  <RemoteControl                 │    │  POST /sessions/start ─┐        │
-│    url={webrtcUrl}              │    │                        │        │
+│    url={endpointWebSocketUrl}   │    │                        │        │
 │    token={token}                │◀───┤  new Limrun({ apiKey })│        │
 │  />                             │    │    .iosInstances.create(…)      │
 └────────────────┬────────────────┘    └────────────────┬────────────────┘
@@ -34,31 +44,15 @@ The Limrun console's Playground uses this exact component for its own streaming 
           (status.endpointWebSocketUrl, status.token)
 ```
 
-Three parts of the system:
-
-- **End user's browser.** Renders `<RemoteControl />`, sees only a per-instance WebSocket URL and a per-instance token. Never sees your API key.
-- **Your backend.** Holds your API key, creates the instance via the Limrun SDK, returns `{ webrtcUrl, token }` to the browser, and handles teardown.
+- **End user's browser.** Renders `<RemoteControl />` and sees only a per-instance WebSocket URL and an instance token. It never sees your API key.
+- **Your backend.** Holds the API key, creates the instance with the Limrun SDK, returns `{ endpointWebSocketUrl, token }` to the browser, and handles teardown.
 - **Limrun control plane.** Provisions the instance and returns a token scoped to it.
 
-### Authentication
+The instance token works only while that one instance is running and grants access to nothing else. See [Concepts](/docs/concepts) for how API keys and instance tokens differ.
 
-The client browser never sees your API key, it uses a WebSocket URL and a token scoped to just the **one** instance. This token works only as long as that instance is running, and can't be used to access anything else.
+## Create the instance on your backend
 
-## Prerequisites
-
-Before you embed, you need:
-
-- **A Limrun API key, kept server-side.** Sign up at [console.limrun.com](https://console.limrun.com), open **Settings → API Keys**, and create a token. See [Authentication](/docs/reference/sdk#authentication) for the full flow.
-- **A way to create an instance from your backend.** Follow [Run an iOS simulator](/docs/ios/run-simulator) (covers iPhone, iPad, Apple Watch) or [Run an Android emulator](/docs/android/run-emulator).
-- **A React 18+ frontend.** Vite, Next.js, Create React App, Remix, etc.
-
-The single contract between your backend and `<RemoteControl />` is the pair `endpointWebSocketUrl + token` from `instance.status`. Every spec field, region clue, label pattern, and lifecycle knob lives on the per-platform pages above.
-
-If your platform also builds your customers' apps in the cloud (not just runs them), [Build with remote Xcode](/docs/ios/build-with-xcode) is the companion page for compiling iOS apps on a remote Mac.
-
-## Backend provisioning
-
-A minimal session endpoint creates an instance for an end user and returns the two strings the frontend needs. The same shape works in Fastify, Next.js route handlers, Go's `net/http`, or Python's FastAPI; only the framework wrapper changes.
+A minimal session endpoint creates an instance for an end user and returns the two strings the frontend needs. The same shape works in Fastify, Next.js route handlers, Go's `net/http`, or FastAPI; only the framework wrapper changes.
 
 <CodeGroup labels={["TypeScript","Go","Python"]}>
 ```ts title="backend/index.ts"
@@ -93,7 +87,7 @@ app.post('/sessions/start', async (req, res) => {
 
   res.json({
     id:        instance.metadata.id,
-    webrtcUrl: instance.status.endpointWebSocketUrl,
+    endpointWebSocketUrl: instance.status.endpointWebSocketUrl,
     token:     instance.status.token,
   });
 });
@@ -117,6 +111,7 @@ package main
 
 import (
     "encoding/json"
+    "net"
     "net/http"
     "os"
     "strings"
@@ -135,8 +130,18 @@ type startReq struct {
 
 func startHandler(w http.ResponseWriter, r *http.Request) {
     var body startReq
-    json.NewDecoder(r.Body).Decode(&body)
-    clientIP := clientIPFrom(r)
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    spec := limrun.IosInstanceNewParamsSpec{InactivityTimeout: param.NewOpt("15m")}
+    if clientIP := clientIPFrom(r); clientIP != "" {
+        spec.Clues = []limrun.IosInstanceNewParamsSpecClue{{
+            Kind:     "ClientIP",
+            ClientIP: param.NewOpt(clientIP),
+        }}
+    }
 
     inst, err := lim.IosInstances.New(r.Context(), limrun.IosInstanceNewParams{
         Wait:          param.NewOpt(true),
@@ -148,19 +153,13 @@ func startHandler(w http.ResponseWriter, r *http.Request) {
                 "managed_by": "platform-embed",
             },
         },
-        Spec: limrun.IosInstanceNewParamsSpec{
-            InactivityTimeout: param.NewOpt("15m"),
-            Clues: []limrun.IosInstanceNewParamsSpecClue{{
-                Kind:     "ClientIP",
-                ClientIP: param.NewOpt(clientIP),
-            }},
-        },
+        Spec: spec,
     })
     if err != nil { http.Error(w, err.Error(), 500); return }
 
     json.NewEncoder(w).Encode(map[string]string{
         "id":        inst.Metadata.ID,
-        "webrtcUrl": inst.Status.EndpointWebSocketURL,
+        "endpointWebSocketUrl": inst.Status.EndpointWebSocketURL,
         "token":     inst.Status.Token,
     })
 }
@@ -169,22 +168,42 @@ func clientIPFrom(r *http.Request) string {
     if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
         return strings.TrimSpace(strings.Split(xff, ",")[0])
     }
-    host, _, _ := strings.Cut(r.RemoteAddr, ":")
+    host, _, err := net.SplitHostPort(r.RemoteAddr)
+    if err != nil {
+        return ""
+    }
     return host
+}
+
+func stopHandler(w http.ResponseWriter, r *http.Request) {
+    var body struct {
+        ID string `json:"id"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    if err := lim.IosInstances.Delete(r.Context(), body.ID); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    w.WriteHeader(http.StatusNoContent)
 }
 
 func main() {
     http.HandleFunc("/sessions/start", startHandler)
+    http.HandleFunc("/sessions/stop", stopHandler)
     http.ListenAndServe(":3001", nil)
 }
 ```
 
 ```python title="backend/main.py"
 from fastapi import FastAPI, Request
-from limrun_api import Limrun
+from limrun_api import AsyncLimrun
 import os
 
-lim = Limrun(api_key=os.environ["LIM_API_KEY"])
+# The async client keeps FastAPI's event loop free while an instance boots.
+lim = AsyncLimrun(api_key=os.environ["LIM_API_KEY"])
 app = FastAPI()
 
 @app.post("/sessions/start")
@@ -192,7 +211,7 @@ async def start(req: Request):
     body = await req.json()
     client_ip = (req.headers.get("x-forwarded-for") or req.client.host).split(",")[0].strip()
 
-    instance = lim.ios_instances.create(
+    instance = await lim.ios_instances.create(
         wait=True,
         reuse_if_exists=True,
         metadata={
@@ -210,57 +229,62 @@ async def start(req: Request):
     )
     return {
         "id":        instance.metadata.id,
-        "webrtcUrl": instance.status.endpoint_web_socket_url,
+        "endpointWebSocketUrl": instance.status.endpoint_web_socket_url,
         "token":     instance.status.token,
     }
 
 @app.post("/sessions/stop")
 async def stop(req: Request):
     body = await req.json()
-    lim.ios_instances.delete(body["id"])
+    await lim.ios_instances.delete(body["id"])
     return {"ok": True}
 ```
 </CodeGroup>
 
-A few details worth calling out. Full coverage of each lives on [Run an iOS simulator](/docs/ios/run-simulator#configure-the-instance) and [Run an Android emulator](/docs/android/run-emulator#configure-the-instance).
+Four choices in that call shape the user experience:
 
-- **Scheduling clues.** Pass the end user's coordinates as a REST API `ClientLocation` clue, or their IP as a `ClientIP` clue, to prefer a nearby region. `ClientLocation` takes precedence when both are supplied. See [client location clues](/docs/reference/sdk#client-location-clues) for the payload and coordinate limits.
-- **Labels for tenant scope and reuse.** Labels are free-form key-value pairs which can be used to organise multiple tenants or reuse hot instances. If `reuseIfExists` is set to `true`, the scheduler returns an existing hot instance whose `labels` match the current create call exactly, looked up in the region that handles the call, so a user reopening their tab lands back on the same warm instance.
-- **Pre-install the customer's app.** Reference an uploaded build (or an [App Store catalog entry like Expo Go](/docs/platform/asset-storage#working-with-expo-go)) via `spec.initialAssets`, and the embedded simulator is launched with the app pre-installed during provisioning. See [Asset Storage](/docs/platform/asset-storage).
-- **Session lifecycle.** `inactivityTimeout` defaults to `3m`, almost always too short for an embedded UI; set 10 to 30 minutes. `hardTimeout` is a forced-termination safety cap, default `'0'` (no cap). Always wire up an explicit `delete` on tab close.
+- **Scheduling clues.** Pass the end user's coordinates as a REST API `ClientLocation` clue, or their IP as a `ClientIP` clue, so the instance lands in a region near them. `ClientLocation` wins when both are present. See [client location clues](/docs/reference/instances#client-location-clues).
+- **Labels for tenant scope and reuse.** With `reuseIfExists: true`, Limrun returns an existing instance whose labels match exactly, so a user who reopens their tab lands on the same warm instance. See [Labels and reuse](/docs/concepts#labels-and-reuse) for how the lookup works.
+- **Pre-installed app.** Reference an uploaded build, or an [App Store catalog entry such as Expo Go](/docs/platform/asset-storage#use-expo-go-and-other-catalog-apps), in `spec.initialAssets` and the device opens with the app installed. See [Asset Storage](/docs/platform/asset-storage).
+- **Session lifecycle.** `inactivityTimeout` defaults to your organization's setting, which may be shorter than an embedded session needs; set 10 to 30 minutes explicitly. `hardTimeout` is a forced-termination cap, default `'0'` (no cap). Always call `delete` when the tab closes.
 
 ## Install `@limrun/ui`
 
-Add the UI package to your frontend. It ships ES modules and TypeScript types; styles are bundled into the build.
+Add the UI package to your frontend. It ships ES modules and TypeScript types, and its styles are bundled into the build:
 
 ```bash
-# Pick your package manager
 npm  install @limrun/ui
 pnpm add     @limrun/ui
 bun  add     @limrun/ui
 ```
 
-Works in any React 18+ tree (Vite, Next.js, Create React App, Remix). `<RemoteControl />` is a single forward-refed component with no providers, no context, and no global state.
+`<RemoteControl />` is a single forward-refed component with no providers, no context, and no global state.
 
 ## Render `<RemoteControl />`
 
-Ask your backend for a session, render the component, post a stop when the user leaves.
+Ask your backend for a session, render the component, and post a stop when the user leaves:
 
 ```tsx title="frontend/Simulator.tsx"
 import { RemoteControl, type RemoteControlHandle } from '@limrun/ui';
 import { useEffect, useRef, useState } from 'react';
 
-type Session = { id: string; webrtcUrl: string; token: string };
+type Session = { id: string; endpointWebSocketUrl: string; token: string };
 
 export function Simulator() {
   const [session, setSession] = useState<Session | null>(null);
+  // One signaling-session ID per mount; a new value on every render would restart the stream.
+  const [tabId] = useState(() => `tab-${crypto.randomUUID()}`);
   const ctrlRef = useRef<RemoteControlHandle>(null);
 
   useEffect(() => {
     let cancelled = false;
     let sessionId: string | undefined;
 
-    fetch('/sessions/start', { method: 'POST' })
+    fetch('/sessions/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant: 'acme', user: 'user_42' }),
+    })
       .then((r) => r.json())
       .then((s: Session) => {
         if (cancelled) return;
@@ -286,70 +310,73 @@ export function Simulator() {
   return (
     <RemoteControl
       ref={ctrlRef}
-      url={session.webrtcUrl}
+      url={session.endpointWebSocketUrl}
       token={session.token}
-      sessionId={`tab-${Date.now()}`}
+      sessionId={tabId}
     />
   );
 }
 ```
 
-`keepalive: true` on the cleanup fetch lets the request complete even if the tab is closing, so the instance terminates promptly instead of waiting for `inactivityTimeout`.
+`keepalive: true` on the cleanup request lets it complete while the tab closes, so the instance terminates promptly instead of waiting for `inactivityTimeout`.
 
 ## Component props
+
+These props match `@limrun/ui` 0.16.0, the current `latest` release on npm. The iPhone Duo props ship in the 0.17.0 release candidate (`npm install @limrun/ui@rc`).
 
 | Prop | Type | Default | Use |
 |---|---|---|---|
 | `url` | string | required | WebSocket URL from the instance. Pass `instance.status.endpointWebSocketUrl`. |
-| `token` | string | required | Per-instance bearer. Pass `instance.status.token`. The component appends it to the connection URL as `?token=…`. |
-| `sessionId` | string | random | A unique signaling-session identifier. Prevents collisions when multiple browser tabs resolve to the same reusable instance. Use a fresh value per tab (e.g. `tab-${Date.now()}`). |
-| `openUrl` | string | none | A URL or deep link to open on the device once the control channel opens (e.g. `https://example.com`, `myapp://orders/42`, `exp://…` for Expo Go). |
-| `showFrame` | boolean | `true` | Draw the device frame. For Duo, `false` hides the frame, hardware buttons, viewer toolbar and 2D/3D toggle. See [iPad and Apple Watch](#ipad-and-apple-watch) for models without built-in frames. |
-| `deviceModel` | `'iphone-duo'` | auto-detected | Enable the Duo viewer explicitly. Otherwise the component discovers Duo support from the connection. This does not select the model when creating an instance. |
-| `duoModelUrl` | string | built-in model | Optional URL of a prepared custom Duo GLB. See [iPhone Duo frame](#iphone-duo-frame). |
-| `autoReconnect` | boolean | `false` | If a working session's connection drops, reconnect automatically instead of showing the Retry button. |
+| `token` | string | required | Instance token. Pass `instance.status.token`. The component appends it to the connection URL as `?token=…`. |
+| `sessionId` | string | random | A unique signaling-session identifier. Prevents collisions when several browser tabs resolve to the same reused instance. Create it once per mount, for example with `useState` and `crypto.randomUUID()` as in the example above; a value that changes between renders restarts the stream. |
+| `openUrl` | string | none | A URL or deep link to open on the device once the component is ready, such as `https://example.com`, `myapp://orders/42`, or `exp://…` for Expo Go. |
+| `showFrame` | boolean | `true` | Draw the device frame. See [iPad and Apple Watch](#ipad-and-apple-watch) for models without built-in frames. |
+| `assets` | object | bundled frames | Device frame and boot-logo images. The default entry bundles Limrun's frames; the `@limrun/ui/lite` entry omits them so a frameless embed stays small. |
+| `autoReconnect` | boolean | `false` | Reconnect automatically when a working session's connection drops, instead of showing the Retry button. |
+| `onConnectionStateChange` | callback | none | Reports the coarse connection state, `connecting`, `connected`, `reconnecting`, `failed`, or `terminated`, for status UI outside the component. |
+| `onTerminated` | callback | none | Fires once when the component concludes the instance is gone, not just disconnected. After a drop it probes the instance over HTTP; a 404 stops reconnecting, replaces the Retry button with a terminated message, and calls this. |
 | `className` | string | none | Extra class names applied on top of the component's defaults. |
-| `onCameraDemandChange` | callback | none | Reports when an app opens or closes its camera and includes the browser's actual capture settings after permission or a track change. |
+| `inspectMode` | `boolean \| 'hover-only'` | off | Draw accessibility boxes over the stream. `true` makes boxes selectable, with Tap, Copy selector, and Copy id actions, and blocks device input; `'hover-only'` previews boxes under the cursor while input still passes through. |
+| `onAxSnapshotChange` | callback | none | Receives each new accessibility snapshot while inspect mode is on, for your own side panel or agent prompt. Identical snapshots are not re-sent. |
+| `onInspectSelectionChange` | callback | none | Receives the element the user clicks in inspect mode, with the snapshot at that moment, or `null` on deselection. |
+| `onAxStatusChange` | callback | none | Reports the accessibility subsystem status: `idle`, `starting`, `ready`, `unavailable`, or `error`, with an error message for the last two. Recovery is automatic. |
+| `axPollIntervalMs` | number | `500` | Base interval between accessibility-tree fetches in inspect mode. Unchanged snapshots back off; input triggers a short burst of more frequent fetches. |
+| `axMaxBackoffMs` | number | `2000` | Upper bound on the fetch interval while snapshots stay unchanged. |
+| `androidElementTreeOptions` | object | none | Android element-tree fetch options, currently `waitForIdleTimeoutMs`. |
+| `onCameraDemandChange` | callback | none | Reports when an app opens or closes its camera, including the browser's actual capture settings after permission or a track change. See [Camera](#camera). |
+| `onCameraStats` | callback | none | About once per second while the camera is streaming, reports outbound WebRTC stats such as codec, fps, bitrate, round-trip time, and quality limitation; `null` once it goes idle. |
+| `microphoneEnabled` | boolean | `false` | Capture the user's microphone and stream it into the device's microphone. Apps that consume microphone input also start capture on their own. |
+| `onMicrophoneStateChange` | callback | none | Reports microphone capture state: whether it is active, the device label, and any error. |
+| `deviceModel` | `'iphone-duo'` | auto-detected | 0.17.0 release candidate. Enable the Duo viewer explicitly; otherwise the component discovers Duo support from the connection. It does not select the model when creating an instance. |
+| `duoModelUrl` | string | built-in model | 0.17.0 release candidate. URL of a prepared custom Duo GLB. See [iPhone Duo frame](#iphone-duo-frame). |
 
-## Pre-wired interactions
+## Built-in input handling
 
-The component translates browser events into device input on its own. No wiring required from your side.
+The component translates browser events into device input without any wiring on your side:
 
 | Browser input | Device input |
 |---|---|
-| Mouse click / tap | Tap |
-| Mouse drag / single-finger touch drag | Swipe |
-| Alt + drag | Two-finger pinch (mirrored around the screen center) |
-| Two-finger touch on a touchscreen | Two-finger pinch / pan |
-| Letters, numbers, arrows, `Enter`, `Backspace`, modifiers | Forwarded as device key events |
-| `Cmd + V` / `Ctrl + V` | Reads browser clipboard, pastes into the focused field on the device |
-| `Cmd + M` / `Ctrl + M` | Sends the Menu key |
+| Mouse click or tap | Tap |
+| Mouse drag or single-finger touch drag | Swipe |
+| Alt + drag | Two-finger pinch, mirrored around the screen center |
+| Two-finger touch on a touchscreen | Two-finger pinch or pan |
+| Letters, numbers, arrows, `Enter`, `Backspace`, modifiers | Device key events |
+| `Cmd + V` / `Ctrl + V` | Reads the browser clipboard and pastes into the focused field on the device |
+| `Cmd + M` / `Ctrl + M` | Menu key |
 
-These gestures apply to the standard viewer. Duo supports single-finger taps and
-drags in both modes, but not multi-touch or mouse-wheel scrolling. In Duo's 3D
-view, Alt-drag rotates the view rather than pinching the screen.
+Keyboard events forward while the embedded screen has focus; tap the screen to focus it. These gestures apply to the standard viewer. iPhone Duo supports single-finger taps and drags in both modes, but not multi-touch or mouse-wheel scrolling, and in Duo's 3D view Alt-drag rotates the view instead of pinching.
 
-Keyboard events forward while the embedded screen is focused. Tap the screen to focus it.
+### Camera
 
-### Camera simulation
+When an app opens its front or back virtual camera, `<RemoteControl />` asks the browser for the matching `user` or `environment` camera and sends that track to the instance. Switching cameras in the app replaces the WebRTC track automatically, so your embed needs no camera toggle of its own.
 
-When an app opens its front or back virtual camera, `<RemoteControl />` asks
-the browser for the matching `user` or `environment` camera and sends that
-track to the instance. Switching cameras in the app replaces the WebRTC track
-automatically; your embed does not need its own camera toggle.
+Facing is a preference, not a requirement. A facing change restarts browser capture with an `ideal` constraint, so on a laptop with one camera the browser returns that camera again while the app still sees the selected virtual position and its normal front-camera mirroring. The browser and WebRTC choose the capture resolution, and the virtual-camera output follows each decoded frame's rotated dimensions, including changes after a camera switch.
 
-Facing is a preference rather than a requirement. A facing change restarts
-browser capture with an `ideal` constraint. On a laptop with one camera, the
-browser naturally returns that camera again while the app still observes the
-selected virtual position and its normal front-camera mirroring behavior.
-
-The browser and WebRTC choose the capture resolution. The virtual-camera output
-automatically follows each decoded frame's rotated dimensions, including
-dimension changes after a camera switch.
+Observe camera demand with the callback prop:
 
 ```tsx
 <RemoteControl
-  url={session.webrtcUrl}
+  url={session.endpointWebSocketUrl}
   token={session.token}
   onCameraDemandChange={(active, granted, camera) => {
     console.log({ active, granted, camera });
@@ -357,37 +384,43 @@ dimension changes after a camera switch.
 />
 ```
 
-Camera capture requires HTTPS or `http://localhost`, as required by
-`getUserMedia`.
+iOS instances always report camera demand. Android instances report it when the instance supports camera injection (Android 15 and later); older Android instances stay silent. Camera capture requires HTTPS or `http://localhost`, as `getUserMedia` does. To feed a recorded video instead of a live camera, see [Simulate the camera with a video](/docs/ios/run-simulator#simulate-the-camera).
 
 ### iOS extended touch area
-iOS treats the home-indicator strip as part of the gesture surface. To make swipe-up-from-home, app-switcher, and pull-from-bottom gestures work the same way they do on a real device, `<RemoteControl />` exposes a 60-pixel extended touch area below the visible screen. A drag started inside that strip and moved up enters the iOS gesture system the way it would on hardware. This extended area applies to the standard viewer; on Duo, start the gesture on the visible display.
 
-### Reconnect behavior
+iOS treats the home-indicator strip as part of its gesture surface. `<RemoteControl />` adds a 60-pixel touch area below the visible screen, so a drag that starts there and moves up enters the iOS gesture system the way it would on hardware: swipe up to go home, open the app switcher, or pull from the bottom. This area applies to the standard viewer; on iPhone Duo, start the gesture on the visible display.
 
-`<RemoteControl />` runs its own retry budget when a connection fails:
+### Reconnects
 
-- During the initial connect, up to **3 attempts** with a 1 s delay between them; if the control channel doesn't open within **15 s**, the current attempt counts as failed.
-- If all 3 initial attempts fail, the component renders a **Retry** button and stops trying. The user clicking it (or your code calling `ctrlRef.current.reconnect()`) starts over.
-- If a connection succeeds, the user uses the simulator for a while, and *then* the connection drops:
-  - With `autoReconnect={false}` (default), the Retry button is shown.
-  - With `autoReconnect={true}`, the component reconnects in the background.
+`<RemoteControl />` runs its own retry budget:
 
-`autoReconnect={true}` is the right default for long-running embedded sessions where transient network blips are expected. The Retry button is more honest for short sessions where the user benefits from knowing the connection dropped.
+- During the initial connect it makes up to **3 attempts** with a 1 s delay between them. If the control channel does not open within **15 s**, that attempt counts as failed.
+- If all 3 initial attempts fail, the component shows a **Retry** button and stops. Clicking it, or calling `ctrlRef.current.reconnect()`, starts over.
+- If a working connection drops later, the component shows the Retry button with `autoReconnect={false}` (the default), or reconnects in the background with `autoReconnect={true}`.
 
-A separate keep-alive ping fires every 10 s while the page is visible, and pauses while the tab is hidden (so an idle background tab doesn't waste your `inactivityTimeout` budget).
+Use `autoReconnect` for long-running embedded sessions where transient network blips are expected. The Retry button is more honest for short sessions where the user benefits from knowing the connection dropped.
 
-## Configurable actions using `<RemoteControlHandle>`
+A keep-alive ping fires every 10 s while the page is visible and pauses while the tab is hidden, so an idle background tab does not keep the instance alive past its `inactivityTimeout`.
 
-Pass a ref to call methods imperatively from the React side. The handle is populated once the WebSocket and control channel are open. Five methods, no more:
+## Control the device from React
+
+Pass a ref to call methods imperatively. The handle is populated once the WebSocket and control channel are open:
 
 | Method | Returns | Notes |
 |---|---|---|
-| `openUrl(url: string)` | `void` | Sends a URL/deep-link message over the WebSocket. The component URL-decodes the string before sending. |
-| `screenshot()` | `Promise<{ dataUri: string }>` | Rejects after 30 s if no reply. |
-| `terminateApp(bundleId: string)` | `Promise<void>` | Rejects after 30 s if no reply. iOS only today. |
-| `sendKeyEvent({ type, code, shiftKey?, altKey?, ctrlKey?, metaKey? })` | `void` | `type` is `'keydown' \| 'keyup'`, `code` is a DOM `KeyboardEvent.code` value (e.g. `'KeyA'`, `'Enter'`, `'ArrowDown'`). |
-| `reconnect()` | `void` | Tears down the current WebSocket/RTC connection and starts a fresh attempt with the same `url`/`token`. |
+| `openUrl(url: string)` | `void` | Sends a URL or deep-link message over the WebSocket. The component URL-decodes the string before sending. |
+| `screenshot()` | `Promise<{ dataUri: string }>` | Rejects after 30 s without a reply. In the 0.17.0 release candidate it takes an optional `'outer' \| 'inner'` display for iPhone Duo. |
+| `terminateApp(bundleId: string)` | `Promise<void>` | Rejects after 30 s without a reply. iOS only today. |
+| `sendKeyEvent({ type, code, shiftKey?, altKey?, ctrlKey?, metaKey? })` | `void` | `type` is `'keydown' \| 'keyup'`; `code` is a DOM `KeyboardEvent.code` value such as `'KeyA'`, `'Enter'`, or `'ArrowDown'`. |
+| `reconnect()` | `void` | Tears down the current WebSocket and RTC connection and starts a fresh attempt with the same `url` and `token`. |
+| `refreshAxTree()` | `Promise<AxSnapshot>` | Fetches the accessibility tree now, outside the normal poll cadence. |
+| `getAxSnapshot()` | `AxSnapshot \| null` | The most recent snapshot, or `null` when none has arrived or inspect mode is off. |
+| `setInspectHighlight(element)` / `setInspectSelection(element)` | `void` | Drive the overlay's highlight or selection from your own UI; pass `null` to clear. |
+| `getAxStatus()` | `AxStatus` | The current accessibility status, the same value `onAxStatusChange` reports. |
+
+The inspect helpers do nothing when inspect mode is off or the WebSocket is closed.
+
+Each method in use:
 
 ```tsx
 const ctrlRef = useRef<RemoteControlHandle>(null);
@@ -408,25 +441,25 @@ ctrlRef.current?.sendKeyEvent({ type: 'keydown', code: 'Enter' });
 ctrlRef.current?.reconnect();
 ```
 
-These are browser-side imperatives. If you need richer **backend-side** control of the same device (taps by accessibility selector, element-tree inspection, video recording, reverse tunnels, soft-resets), drive the instance from your server with [`Ios.createInstanceClient`](/docs/ios/run-simulator#connect-to-your-instance) or the Android equivalent. The two paths are fully compatible; you can run both at once.
+These are browser-side controls. For richer control from your server, such as taps by accessibility selector, element trees, video recording, or app resets, drive the same instance with the device clients in [Run a simulator](/docs/ios/run-simulator) or [Run an emulator](/docs/android/run-emulator). Both paths work on one instance at the same time.
 
 ## iPad and Apple Watch
 
-`showFrame` ships native bezel art for iPhone (iOS), Pixel 9 (Android phone), and Pixel Tablet (Android tablet). **iPad** and **Apple Watch** don't have a dedicated frame today; render them frameless:
+`showFrame` ships device art for iPhone (iOS), Pixel 9 (Android phone), and Pixel Tablet (Android tablet). iPad and Apple Watch have no dedicated frame today, so render them frameless:
 
 ```tsx
 <RemoteControl
-  url={session.webrtcUrl}
+  url={session.endpointWebSocketUrl}
   token={session.token}
   showFrame={false}
 />
 ```
 
-The video stream still carries the correct aspect ratio and resolution; you can wrap the component in your own chrome if you want a frame. To pick the model on the backend side, set `spec.model: 'ipad'` or `spec.model: 'watch'` on the iOS create call.
+The video stream keeps the correct aspect ratio and resolution, so you can wrap the component in your own chrome. Select the model on the backend with `spec.model: 'ipad'` or `spec.model: 'watch'`.
 
 ## End-to-end example
 
-A self-contained backend + frontend pair. Backend creates an instance (with Expo Go pre-installed and a client-IP scheduling clue), frontend renders it and tears down on unmount. Drop these two files into a fresh project and you have a working embedded simulator.
+This self-contained backend and frontend pair creates an iPhone with Expo Go pre-installed and a client-IP clue, renders it, and tears it down on unmount. Drop the two files into a fresh project for a working embedded simulator:
 
 ```ts title="backend/index.ts"
 import express, { Request, Response } from 'express';
@@ -472,7 +505,7 @@ app.post('/sessions/start', async (req: Request, res: Response) => {
 
     res.json({
       id:        instance.metadata.id,
-      webrtcUrl: instance.status.endpointWebSocketUrl,
+      endpointWebSocketUrl: instance.status.endpointWebSocketUrl,
       token:     instance.status.token,
     });
   } catch (err) {
@@ -500,11 +533,12 @@ app.listen(3001, () => console.log('Backend listening on :3001'));
 import { RemoteControl, type RemoteControlHandle } from '@limrun/ui';
 import { useEffect, useRef, useState } from 'react';
 
-type Session = { id: string; webrtcUrl: string; token: string };
+type Session = { id: string; endpointWebSocketUrl: string; token: string };
 
 export function Simulator({ tenant, user }: { tenant: string; user: string }) {
   const [session, setSession] = useState<Session | null>(null);
   const [error,   setError]   = useState<string | null>(null);
+  const [tabId] = useState(() => `tab-${crypto.randomUUID()}`);
   const ctrlRef = useRef<RemoteControlHandle>(null);
 
   useEffect(() => {
@@ -556,9 +590,9 @@ export function Simulator({ tenant, user }: { tenant: string; user: string }) {
     <div style={{ display: 'flex', gap: 12 }}>
       <RemoteControl
         ref={ctrlRef}
-        url={session.webrtcUrl}
+        url={session.endpointWebSocketUrl}
         token={session.token}
-        sessionId={`tab-${Date.now()}`}
+        sessionId={tabId}
         autoReconnect
         openUrl="exp://exp.host/@anonymous/my-snack"
       />
@@ -575,76 +609,48 @@ export function Simulator({ tenant, user }: { tenant: string; user: string }) {
 }
 ```
 
-A more elaborate version of the same pattern lives in [`typescript-sdk/examples/fullstack`](https://github.com/limrun-inc/typescript-sdk/tree/main/examples/fullstack), with a UI for switching platforms and iOS models.
+A fuller version of this pattern, with a UI for switching platforms and iOS models, lives in [`typescript-sdk/examples/fullstack`](https://github.com/limrun-inc/typescript-sdk/tree/main/examples/fullstack).
 
 ## iPhone Duo frame
 
-Create an iPhone Duo on your backend by setting `spec.model` to `iphone-duo` in
-`lim.iosInstances.create`. The model must be available to your organization.
-Return `instance.status.endpointWebSocketUrl` and `instance.status.token` to the
-frontend, as in the provisioning example above.
-
-Render the Duo with the same component:
+The Duo viewer ships in the `@limrun/ui` 0.17.0 release candidate (`npm install @limrun/ui@rc`). Create an iPhone Duo on your backend by setting `spec.model` to `iphone-duo` in `lim.iosInstances.create`. The model must be available to your organization. Return `instance.status.endpointWebSocketUrl` and `instance.status.token` to the frontend as in the provisioning example, then render the Duo with the same component:
 
 ```tsx
 import { RemoteControl } from '@limrun/ui';
 
 <RemoteControl
-  url={webrtcUrl}
+  url={endpointWebSocketUrl}
   token={token}
   deviceModel="iphone-duo"
   showFrame
 />;
 ```
 
-`deviceModel` can be omitted when the connection reports native Duo support.
-Our 2D frame and procedural 3D model ship with `@limrun/ui`; you do not need to
-host a model file. The CLI and device API control the simulator, while the UI
-package renders its frame.
+`deviceModel` can be omitted when the connection reports native Duo support. The 2D frame and the procedural 3D model ship with `@limrun/ui`, so you do not host a model file. The CLI and device API control the simulator; the UI package renders its frame.
 
-When connected to an iPhone Duo instance, the component defaults to a lightweight
-2D view with a silver Duo frame, hinge spine and physical buttons. Both views share
-the fold, hinge-angle and rotation toolbar. Select **3D** to load the
-folding frame on demand. Switching back to **2D** releases the 3D renderer while
-keeping the simulator connected.
+The component defaults to a lightweight 2D view with a silver Duo frame, hinge spine, and physical buttons. Both views share the fold, hinge-angle, and rotation toolbar. Select **3D** to load the folding frame on demand; switching back to **2D** releases the 3D renderer while the simulator stays connected.
 
-The 2D frame shows the active display flat, with a brief hinge animation when you fold
-or unfold it. The animation loads on demand and respects reduced motion; without
-WebGL, the view stays flat. When a screen image is available, the animation holds
-it briefly while waiting for a frame from the incoming display. The 3D frame shows
-the physical hinge pose, and position starts unlocked. Drag the frame or background, or Alt-drag the
-screen, to rotate the 3D view. Ordinary screen gestures control iOS. Use Lock position
-to prevent rotation. In both modes, the device's Sleep/Wake and volume buttons support
-clicking and holding. Hover near an edge to reveal its icons, then click either
-the icon or the physical button. The icons follow the device when it rotates.
-Camera Control is not yet supported.
+- **2D view.** Shows the active display flat, with a brief hinge animation when you fold or unfold. The animation loads on demand and respects reduced motion; without WebGL, the view stays flat. When a screen image is available, the animation holds it briefly while it waits for a frame from the incoming display.
+- **3D view.** Shows the physical hinge pose, and position starts unlocked. Drag the frame or background, or Alt-drag the screen, to rotate the view. Ordinary screen gestures control iOS. Use **Lock position** to prevent rotation.
+- **Hardware buttons.** In both views, the Sleep/Wake and volume buttons support clicking and holding. Hover near an edge to reveal its icons, then click either the icon or the physical button. The icons follow the device when it rotates. Camera Control is not supported yet.
 
-Set `showFrame={false}` to show only the active display, without the frame,
-hardware buttons, viewer toolbar, or 2D/3D toggle. Touch, drag, and keyboard input
-remain active. The video follows native display and orientation changes without
-loading a 3D renderer. Use the [device client or CLI](/docs/ios/run-simulator#fold-an-iphone-duo)
-to control the hinge and orientation outside the viewer.
+Set `showFrame={false}` to show only the active display, without the frame, hardware buttons, viewer toolbar, or 2D/3D toggle. Touch, drag, and keyboard input stay active, and the video follows native display and orientation changes without loading a 3D renderer. Use the [device client or CLI](/docs/ios/run-simulator#fold-an-iphone-duo) to control the hinge and orientation outside the viewer.
 
-For a custom 3D body appearance, pass `duoModelUrl` with a prepared GLB that you are
-licensed to serve. Limrun does not bundle a third-party model. The file must follow
-the [Duo appearance contract](https://github.com/limrun-inc/typescript-sdk/blob/main/packages/ui/README.md#optional-duo-appearance).
-The live simulator screens and fold controls remain active with a custom appearance.
-This prop replaces the full 3D body only; the 2D frame and its fold animation keep
-the built-in appearance.
+For a custom 3D body, pass `duoModelUrl` with a prepared GLB that you are licensed to serve. Limrun does not bundle a third-party model. The file must follow the [Duo appearance contract](https://github.com/limrun-inc/typescript-sdk/blob/main/packages/ui/README.md#optional-duo-appearance). The live screens and fold controls keep working with a custom appearance. The prop replaces only the 3D body; the 2D frame and its fold animation keep the built-in appearance.
 
 ## Next steps
 
 <Columns cols={2}>
   <Card title="Asset Storage" icon="database" href="/docs/platform/asset-storage">
-    Upload customer builds and reference them in `spec.initialAssets` so the embedded simulator opens on their app.
+    Upload customer builds and reference them in `spec.initialAssets` so the device opens on their app.
   </Card>
-  <Card title="Run an iOS Simulator" icon="smartphone" href="/docs/ios/run-simulator">
-    Backend-side device control: tap by accessibility selector, element-tree, recording, reverse tunnels.
+  <Card title="Instance spec and status" icon="layers" href="/docs/reference/instances">
+    Every create field, clue, and status URL your backend can use.
   </Card>
-  <Card title="Run an Android Emulator" icon="tablet-smartphone" href="/docs/android/run-emulator">
-    Same embed wiring, Android side. ADB tunnel, scrcpy, Appium, OS-version clues.
+  <Card title="Run a simulator" icon="smartphone" href="/docs/ios/run-simulator">
+    Server-side device control: selectors, element trees, recording, app resets.
   </Card>
-  <Card title="Build with remote Xcode" icon="hammer" href="/docs/ios/build-with-xcode">
-    If your customers also compile iOS apps in your product, run `xcodebuild` on Limrun and pipe the result into the same simulator.
+  <Card title="Run an emulator" icon="tablet-smartphone" href="/docs/android/run-emulator">
+    Android create options, the ADB tunnel, and OS-version clues.
   </Card>
 </Columns>

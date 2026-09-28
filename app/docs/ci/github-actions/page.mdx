@@ -1,0 +1,164 @@
+---
+title: "GitHub Actions recipes"
+description: "Copy-ready workflows that build signed iOS and Android apps on Limrun from a Linux runner."
+order: 1
+icon: "workflow"
+---
+# GitHub Actions recipes
+
+Every build on this page runs on a standard `ubuntu-latest` runner. The Macs, the Xcode install, the Android SDK, and the JDK live on Limrun's side, so the runner only needs Node to install the `lim` CLI and a `LIM_API_KEY` secret. No `runs-on: macos-latest`, no Apple-licensed CI runner.
+
+Add the key under **Settings**, **Secrets and variables**, **Actions** in your repository as `LIM_API_KEY`. Signing secrets that a recipe needs are listed with it.
+
+## Build a signed IPA on every pull request
+
+This job signs a device build with a p12 certificate and a provisioning profile, then uploads the IPA to [Asset Storage](/docs/platform/asset-storage). Store the certificate and profile as base64 secrets (`P12_BASE64`, `PROFILE_BASE64`) along with `P12_PASSWORD`:
+
+```yaml title=".github/workflows/build.yml"
+name: iOS build
+on: { pull_request: { types: [opened, synchronize] } }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --global lim
+      - name: Build
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          P12_BASE64: ${{ secrets.P12_BASE64 }}
+          PROFILE_BASE64: ${{ secrets.PROFILE_BASE64 }}
+        run: |
+          echo "$P12_BASE64" | base64 -d > /tmp/dist.p12
+          echo "$PROFILE_BASE64" | base64 -d > /tmp/MyApp.mobileprovision
+          lim xcode create --reuse-if-exists \
+            --label repo=${{ github.event.repository.name }} \
+            --label pr=${{ github.event.number }}
+          lim xcode build . \
+            --scheme MyApp \
+            --sdk iphoneos \
+            --certificate-p12 /tmp/dist.p12 \
+            --certificate-password "$P12_PASSWORD" \
+            --provisioning-profile /tmp/MyApp.mobileprovision \
+            --upload my-app-pr-${{ github.event.number }}.ipa
+      - name: Delete the sandbox
+        if: always()
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+        run: |
+          lim xcode list --all \
+            --label-selector "repo=${{ github.event.repository.name }},pr=${{ github.event.number }}" --json \
+            | jq -r '.[].metadata.id' \
+            | xargs -r -n1 lim xcode delete
+```
+
+What the workflow does:
+
+1. Checks out the PR's code on an Ubuntu runner.
+2. Installs the `lim` CLI with `npm`.
+3. Decodes the signing certificate and provisioning profile from the base64 secrets onto the runner's filesystem. The secrets reach the script through `env:`, never interpolated into the script body.
+4. Creates an Xcode sandbox labelled with the repository and PR number, so the cleanup step can find it. If you drop the cleanup step, the same labels and `--reuse-if-exists` let later pushes to the PR reuse the warm sandbox.
+5. Runs a signed device build and uploads the IPA under a name tied to the PR number. The CLI prints the artifact download URL to the job log.
+6. Deletes the sandbox by label, even when the build fails. Drop this step if you would rather keep a warm sandbox between pushes and let its inactivity timeout clean it up.
+
+To sign without a p12 at all, or to upload straight to TestFlight, swap the signing flags for cloud signing and `--upload-to-appstore`; see [Sign and distribute](/docs/ios/sign-and-distribute).
+
+## Build a Bazel workspace
+
+For Bazel workspaces, start the remote build execution endpoint, build with the printed command, upload the result, and stop the stack:
+
+```yaml title=".github/workflows/ios-build.yml"
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --global lim
+      - name: Build on Limrun RBE
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+        run: |
+          lim xcode rbe
+          bazelisk --digest_function=sha256 build --config=limrun //App
+          lim xcode rbe upload my-app-pr-${{ github.event.number }}
+      - name: Stop the stack and delete the sandbox
+        if: always()
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+        run: |
+          lim xcode rbe --stop
+          lim xcode delete
+```
+
+`lim xcode rbe upload` publishes the latest successful build before the cleanup step runs. `lim xcode rbe --stop` stops only the tunnel and the remote stack, so the step also deletes the Xcode sandbox, even when the build fails. Prefer it over `--auto-upload` in CI: an automatic upload runs after the build returns, and stopping the stack right away can cancel it. Keep `--digest_function=sha256` in front of `build`; [Build with Bazel](/docs/ios/build-with-bazel) explains why and covers the generated `--config=limrun`.
+
+## Build a signed AAB on every push
+
+This job builds a release AAB signed with your organization's escrowed upload key, so no Android SDK, JDK, or keystore exists anywhere in the pipeline:
+
+```yaml title=".github/workflows/android-release.yml"
+name: Android release build
+on: { push: { branches: [main] } }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --global lim
+      - name: Build signed AAB
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+        run: lim gradle build . --sign --upload myapp-${{ github.sha }}.aab
+      - name: Delete the sandbox
+        if: always()
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+        run: lim gradle delete
+```
+
+What the workflow does:
+
+1. Checks out the code on an Ubuntu runner.
+2. Installs the `lim` CLI with `npm`.
+3. Runs a signed release build on a Limrun Gradle sandbox and uploads the AAB under a name tied to the commit. The CLI prints the asset name and a signed download URL, which expires after 15 minutes.
+4. Deletes the Gradle sandbox the build used, even when the build fails.
+
+To download the AAB later, ask Asset Storage for a fresh signed URL:
+
+```bash
+lim asset list --name myapp-<commit-sha>.aab --download-url
+```
+
+The only secret in the pipeline is `LIM_API_KEY`. The upload keystore never exists on the runner, so there is nothing to rotate if a CI provider is compromised. [Sign and publish](/docs/android/sign-and-publish) covers how `--sign` escrows the key and how to bring your own.
+
+## Run tests and previews
+
+Test and preview workflows live next to the tools they run:
+
+- [PR previews](/docs/ci/pr-previews): build every pull request and comment with a preview link, including cleanup when the PR closes.
+- [XCTest](/docs/testing/xctest): `lim xcode test .` exits non-zero when any test fails, so it works as a CI step with no output parsing.
+- [Maestro](/docs/testing/maestro#run-from-a-linux-ci-runner) and [Appium](/docs/testing/appium#run-from-a-linux-ci-runner): complete Linux runner workflows for each framework.
+
+Delete the instances a job creates in an `if: always()` step, by label as the IPA recipe does or as the last instance of its type as the other recipes do. Inactivity timeouts clean up after jobs that crash before that step runs.
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="Build logs and webhooks" icon="webhook" href="/docs/ci/build-logs-and-webhooks">
+    Detach from long builds and receive the result on your own endpoint.
+  </Card>
+  <Card title="PR previews" icon="git-pull-request" href="/docs/ci/pr-previews">
+    A live preview link on every pull request.
+  </Card>
+  <Card title="Sign and distribute" icon="key-round" href="/docs/ios/sign-and-distribute">
+    Cloud signing, extensions, and TestFlight uploads.
+  </Card>
+  <Card title="Sign and publish" icon="key-round" href="/docs/android/sign-and-publish">
+    Escrowed upload keys and Google Play publishing.
+  </Card>
+</Columns>
