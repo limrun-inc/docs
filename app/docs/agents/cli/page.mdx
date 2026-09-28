@@ -64,6 +64,18 @@ The loop the skill walks the agent through:
 
 The rest of this page is the command reference behind each step.
 
+## Use a simulator you already have
+
+If you are watching a simulator in the console, give its instance ID to the agent:
+
+```bash
+lim run --ios-id <ios-instance-id>
+```
+
+The CLI attaches that simulator to the cloud Xcode builder before syncing and compiling. The console can then show live build output beside the simulator. Successful builds install and launch on the same device; build or install failures leave it running for retries.
+
+Without `--ios-id`, `lim run` creates a simulator only after its build succeeds.
+
 ## Create an instance
 
 ```bash
