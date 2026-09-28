@@ -19,7 +19,27 @@ SCIM manages who can access your organization. [OIDC SSO](/reference/single-sign
 
 During setup, users and groups synchronize while existing members retain access. Newly provisioned users cannot sign in until activation. Activation is permanent; subsequent directory changes and saved mappings apply immediately. Directory syncs and credential rotation preserve unsaved role choices. If another admin changes mappings or activates SCIM, refresh before saving.
 
-For Okta, use a SCIM 2.0 application integration with HTTP bearer authentication. Enable user provisioning and Group Push; setting up an OIDC SSO application alone does not enable SCIM. For Microsoft Entra ID, use a custom SCIM enterprise application's automatic provisioning and enable user and group mappings. Use the generated SCIM credential as its secret token. Test the connection and verify a user and group sync before activation. Limrun supports standard provisioning requests; it does not install an IdP application or configure directory assignments for you.
+## Identity provider setup
+
+SSO and provisioning require separate configuration. Installing an SSO application does not start directory synchronization.
+
+| Identity provider | Provisioning configuration |
+|---|---|
+| Okta | Use a SCIM 2.0 application integration with HTTP bearer authentication. Enable user provisioning and Group Push. See [Okta SSO](/reference/single-sign-on/okta) for sign-in setup. |
+| Microsoft Entra ID | Create a non-gallery enterprise application and configure automatic provisioning with the SCIM base URL and credential as the **Secret Token**. Enable user and group mappings. Follow the [Microsoft Entra ID guide](/reference/single-sign-on/microsoft-entra#configure-scim-provisioning). |
+
+Use the generated SCIM credential, not a Limrun organization API key or the OIDC application's client secret. For Entra's non-gallery setup, this credential works directly in the provisioning configuration; no OAuth token endpoint is needed.
+
+### Check provisioning before activation
+
+1. Test the connection in your identity provider.
+2. Synchronize a pilot user and a group containing that user. Confirm the email matches their OIDC `email` claim.
+3. In Limrun, confirm the group contains the expected user and map it to a role. Provisioning a user without a mapped group grants no access after activation.
+4. Synchronize and map an admin group that includes the administrators who should retain access. Check existing members as well as new users before selecting **Activate SCIM**.
+
+After activation, test sign-in, group removal, deactivation, and reactivation with a pilot user. Check your identity provider's provisioning logs and Limrun's provisioning history after each change. Access changes take effect when Limrun receives the provisioning request, so allow for the provider's synchronization schedule.
+
+Limrun supports direct user membership in groups. Configure directory assignments and attribute mappings in your identity provider; Limrun does not create them for you.
 
 ## How access is calculated
 
@@ -31,7 +51,7 @@ Deactivating or deleting a user removes their organization membership. Deactivat
 
 SCIM can remove or demote the last admin, including the person who activates SCIM. Keep an appropriate admin group mapped before applying the policy. If the last admin loses access, assign an active user to that mapped admin group in the identity provider to restore administration.
 
-Connecting SCIM disables domain auto-join, invitations, and manual membership changes, including during setup. Having an email in the organization's domain is not enough to join. SSO remains required for verified domains. Users denied admission see “Your organization manages access through SCIM” and should ask their administrator for an access-group assignment.
+Connecting SCIM disables domain auto-join, invitations, and manual membership changes, including during setup. Having an email in the organization's domain is not enough to join. SSO remains required for verified domains. Users denied admission see "Your organization manages access through SCIM" and should ask their administrator for an access-group assignment.
 
 Removal affects this organization's user access and user-approved MCP grants. It preserves the user's other organizations, shared organization API keys, and already-running instances.
 
