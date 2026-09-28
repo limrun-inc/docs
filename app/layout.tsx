@@ -48,6 +48,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="ai-catalog" href="/.well-known/ai-catalog.json" />
+        {/* Tells is-agentic.com to score this as a documentation site. */}
+        <meta name="is-agentic-site-type" content="docs" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable}`}
