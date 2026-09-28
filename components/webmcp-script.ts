@@ -1,10 +1,11 @@
 // WebMCP (https://webmachinelearning.github.io/webmcp/) lets an agent running
 // in the browser call page tools directly. These wrap the same public
 // endpoints the docs MCP server and llms.txt already serve, so they expose
-// nothing new. The root layout inlines this in <head> rather than registering
-// from a React effect: scanners check right after load, before hydration, and
-// the site root navigates on to /docs before it hydrates at all. Browsers
-// without the API skip registration.
+// nothing new. The root layout inlines this as a module script at the end of
+// <body>, not in a React effect: scanners check right after load, before
+// hydration finishes, and the API may only appear once the document has been
+// parsed (a head script runs too early for isitagentready's detection).
+// Browsers without the API skip registration.
 
 export const webMcpScript = `
 (function () {

@@ -48,8 +48,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="ai-catalog" href="/.well-known/ai-catalog.json" />
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static WebMCP registration, see webmcp-script.ts */}
-        <script dangerouslySetInnerHTML={{ __html: webMcpScript }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable}`}
@@ -60,6 +58,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <RootProvider theme={{ defaultTheme: "light", disableTransitionOnChange: false }}>
           {children}
         </RootProvider>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static WebMCP registration, see webmcp-script.ts */}
+        <script type="module" dangerouslySetInnerHTML={{ __html: webMcpScript }} />
       </body>
     </html>
   );
