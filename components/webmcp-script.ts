@@ -1,18 +1,13 @@
 // WebMCP (https://webmachinelearning.github.io/webmcp/) lets an agent running
 // in the browser call page tools directly. These wrap the same public
 // endpoints the docs MCP server and llms.txt already serve, so they expose
-// nothing new. The root layout inlines this in <head> so the tools exist while
-// the page is still parsing: scanners check right after load, before React
-// hydrates, and the site root navigates on to /docs before hydration at all.
-// Browsers without the API skip registration.
+// nothing new. The root layout inlines this in <head> rather than registering
+// from a React effect: scanners check right after load, before hydration, and
+// the site root navigates on to /docs before it hydrates at all. Browsers
+// without the API skip registration.
 
 export const webMcpScript = `
 (function () {
-  var contexts = [navigator.modelContext, document.modelContext].filter(function (c, i, all) {
-    return c && typeof c.registerTool === "function" && all.indexOf(c) === i;
-  });
-  if (!contexts.length) return;
-
   function fetchText(url, signal, accept) {
     return fetch(url, { headers: { Accept: accept }, signal: signal }).then(function (response) {
       return response.text().then(function (text) {
@@ -25,7 +20,6 @@ export const webMcpScript = `
   var tools = [
     {
       name: "search_docs",
-      title: "Search the docs",
       description: "Search the Limrun documentation (cloud iOS simulators, Android emulators, remote Xcode and Gradle builds). Returns matching pages and sections as JSON with their URLs.",
       inputSchema: {
         type: "object",
@@ -39,7 +33,6 @@ export const webMcpScript = `
     },
     {
       name: "read_docs_page",
-      title: "Read a docs page",
       description: "Read one Limrun documentation page as Markdown. Pass the page path without the /docs prefix, such as \\"quickstart\\" or \\"ios/run-simulator\\"; an empty path returns the introduction.",
       inputSchema: {
         type: "object",
@@ -54,7 +47,6 @@ export const webMcpScript = `
     },
     {
       name: "list_docs_pages",
-      title: "List all docs pages",
       description: "List every Limrun documentation page with a one-line description (the llms.txt index).",
       inputSchema: { type: "object", properties: {} },
       annotations: { readOnlyHint: true },
@@ -64,12 +56,30 @@ export const webMcpScript = `
     }
   ];
 
-  contexts.forEach(function (context) {
-    tools.forEach(function (tool) {
+  // The API is still in flux: some implementations take every tool at once
+  // through provideContext, the current draft registers them one at a time.
+  // The API object can appear after this script runs (an extension or test
+  // harness may inject it late), so try now, at DOMContentLoaded, and at load,
+  // registering with each object once.
+  var done = [];
+  function register() {
+    [navigator.modelContext, document.modelContext].forEach(function (context) {
+      if (!context || done.indexOf(context) !== -1) return;
+      if (typeof context.provideContext !== "function" && typeof context.registerTool !== "function") return;
+      done.push(context);
       try {
-        Promise.resolve(context.registerTool(tool)).catch(function () {});
+        if (typeof context.provideContext === "function") {
+          context.provideContext({ tools: tools });
+          return;
+        }
+        tools.forEach(function (tool) {
+          Promise.resolve(context.registerTool(tool)).catch(function () {});
+        });
       } catch (e) {}
     });
-  });
+  }
+  register();
+  document.addEventListener("DOMContentLoaded", register);
+  window.addEventListener("load", register);
 })();
 `;
