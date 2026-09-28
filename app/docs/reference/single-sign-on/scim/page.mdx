@@ -46,6 +46,8 @@ The provisioning screen shows synchronized users, their group-derived roles, and
 
 The base URL serves `/Users`, `/Groups`, `/ServiceProviderConfig`, `/ResourceTypes`, and `/Schemas`. User and group resources support create, read, replace, atomic PATCH, and delete. Lists support `startIndex` and `count`, up to 1,000 results per request. A zero count returns only the total.
 
-Supported equality filters are `userName eq "alice@example.com"` for users, `displayName eq "Engineering"` for groups, and `externalId` or `id` for either resource. User names and group display names match without regard to case. The service also supports selecting or excluding top-level attributes. Unsupported filters return a SCIM `invalidFilter` error.
+Supported equality filters are `userName eq "alice@example.com"` for users, `displayName eq "Engineering"` for groups, and `externalId` or `id` for either resource. User names and group display names match without regard to case. Use `attributes` or `excludedAttributes` to select or exclude fields, including sub-attributes such as `name.givenName`. These parameters cannot be combined. Unsupported filters return a SCIM `invalidFilter` error.
+
+Requests are limited to 1 MiB. PATCH requests support up to 100 operations and apply atomically. Value filters in PATCH paths support compound expressions, such as `emails[type eq "work" and primary eq true].value`. Requests exceeding the filter evaluation or output limits return HTTP 413.
 
 Groups contain direct user members. Nested groups, bulk requests, sorting, password provisioning, enterprise extensions, and ETags are not supported. Flatten nested directory membership before provisioning. The service advertises its capabilities and supported core profile attributes through SCIM discovery endpoints.
