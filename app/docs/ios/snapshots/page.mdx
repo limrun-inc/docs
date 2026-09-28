@@ -1,14 +1,14 @@
 ---
-title: "Xcode snapshots"
-description: "Reuse build state across Xcode instances with snapshot keys and branch fallbacks."
+title: "Disk snapshots"
+description: "Reuse build state across Xcode instances with disk snapshots and branch fallbacks."
 order: 7
 icon: "database"
 ---
-# Xcode snapshots
+# Disk snapshots
 
-Use a snapshot to carry source files, dependencies, and Xcode's DerivedData into your next instance. Snapshots belong to your organization. Without snapshot configuration, a new instance starts without a saved workspace.
+Use a disk snapshot to carry source files, dependencies, and Xcode's DerivedData into your next instance. Snapshots belong to your organization. Without snapshot configuration, a new instance starts without a saved workspace.
 
-## Save and reuse a snapshot
+## Save and reuse a disk snapshot
 
 With the [CLI installed and `LIM_API_KEY` set](/docs/agents/cli#one-time-setup), run these commands from your project directory. Replace `MyApp` with your scheme:
 
@@ -53,7 +53,7 @@ Build on that instance as usual and delete it when finished. It will not publish
 
 Use keys that identify the project and Xcode version, such as `myapp-xcode27-main`. Keep fallbacks within the same Xcode version. For concurrent CI jobs, use separate destination keys to avoid overwriting each other's results.
 
-## Configure snapshots before the build
+## Configure disk snapshots before the build
 
 Set snapshot options on `lim xcode create` for predictable behavior. Restore keys and snapshot paths are fixed when the instance is created. `--reuse-if-exists` keeps the reused instance's original configuration.
 
@@ -88,7 +88,7 @@ const instance = await lim.xcodeInstances.create({
 try {
   const { snapshot, gone } = await lim.xcodeInstances.followSnapshot(instance.metadata.id);
   if (gone || snapshot.restore.phase === 'failed') {
-    throw new Error(snapshot.restore.message ?? 'Snapshot restore did not complete');
+    throw new Error(snapshot.restore.message ?? 'Disk snapshot restore did not complete');
   }
 
   const xcode = await lim.xcodeInstances.createClient({ instance });

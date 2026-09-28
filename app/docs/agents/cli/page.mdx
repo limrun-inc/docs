@@ -122,11 +122,11 @@ lim xcode tools
 
 `lim xcode use xcode@27` selects the workspace Xcode through the existing Xcode selector, just like `lim xcode version set 27`. A major such as `27` binds that major's GA release; a major.minor such as `27.1` pins that exact version, typically a beta. It switches an existing sandbox or saves the preference for the next one, without syncing or writing mise configuration. You can combine it with mise requests, such as `lim xcode use xcode@27 node@24`. `--cwd` applies only to mise tools.
 
-For other tools, `use` saves and syncs project mise preferences. Install missing versions with `lim xcode run -- mise install`. Each run or build resolves the mise environment once and uses it throughout that operation. Project requests override package-manager detection and image defaults. Personal mise configuration on the client is not read or forwarded. Most tools follow the requested major; Ruby, Python, Go, Flutter, Dart and pre-1.0 tools follow `major.minor`. Client patch pins and `mise.lock` do not freeze the image's release. For an exact sandbox override, use `lim xcode run -- mise use --pin node@24.5.0`. Image tools are excluded from workspace snapshots; user installs can be saved after a successful managed build. See [tool selection](/docs/ios/build-with-xcode#select-developer-tools) for the tool list and precedence.
+For other tools, `use` saves and syncs project mise preferences. Install missing versions with `lim xcode run -- mise install`. Each run or build resolves the mise environment once and uses it throughout that operation. Project requests override package-manager detection and image defaults. Personal mise configuration on the client is not read or forwarded. Most tools follow the requested major; Ruby, Python, Go, Flutter, Dart and pre-1.0 tools follow `major.minor`. Client patch pins and `mise.lock` do not freeze the image's release. For an exact sandbox override, use `lim xcode run -- mise use --pin node@24.5.0`. Image tools are excluded from disk snapshots; user installs can be saved after a successful managed build. See [tool selection](/docs/ios/build-with-xcode#select-developer-tools) for the tool list and precedence.
 
-### Workspace snapshots
+### Disk snapshots
 
-Pass `--snapshot-key` when creating an Xcode instance to restore and save its workspace across instances. Add `--snapshot-restore-keys` for ordered fallbacks. After a successful build, `lim xcode delete --wait-snapshot` terminates the instance and waits for publication. See [Xcode snapshots](/docs/ios/snapshots) for examples and existing-instance behavior.
+Pass `--snapshot-key` when creating an Xcode instance to restore and save its workspace across instances. Add `--snapshot-restore-keys` for ordered fallbacks. After a successful build, `lim xcode delete --wait-snapshot` terminates the instance and waits for publication. See [Disk snapshots](/docs/ios/snapshots) for examples and existing-instance behavior.
 
 ### Build flags
 
