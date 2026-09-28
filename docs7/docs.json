@@ -45,7 +45,7 @@
           "ios/run-simulator",
           "ios/pr-previews",
           "ios/in-app-purchases",
-          "ios/build-cache"
+          "ios/snapshots"
         ]
       },
       {
