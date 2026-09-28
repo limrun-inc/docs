@@ -30,12 +30,11 @@ const rootHeaders = [
   { key: "Vary", value: "Accept" },
 ];
 
-// Requests that ask for Markdown, by Accept header or the Web Bot Auth
-// Signature-Agent header, the same signals the framework uses for /docs.
-const wantsMarkdown = [
-  [{ type: "header" as const, key: "accept", value: ".*text/markdown.*" }],
-  [{ type: "header" as const, key: "signature-agent", value: ".+" }],
-];
+// Requests that ask for Markdown in their Accept header. Unlike the
+// framework's /docs rules, the Web Bot Auth Signature-Agent header alone does
+// not switch to Markdown here: signed crawlers send it on every request, and
+// one that asks for text/html must still get the HTML page.
+const wantsMarkdown = [[{ type: "header" as const, key: "accept", value: ".*text/markdown.*" }]];
 
 // The discovery artifacts are public read-only text; the Agent Skills
 // Discovery RFC recommends CORS so browser-based agents can fetch them.
