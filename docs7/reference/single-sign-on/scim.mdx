@@ -17,7 +17,7 @@ SCIM manages who can access your organization. [OIDC SSO](/reference/single-sign
 5. Map each group to **Admin**, **Member**, **Viewer**, or **No access**.
 6. Select **Save mappings** to save your choices, or **Activate SCIM** to save and activate them. Activation makes the directory authoritative for organization membership.
 
-During setup, users and groups synchronize while existing members retain access. Newly provisioned users cannot sign in until activation. Activation is permanent; subsequent directory changes and saved mappings apply immediately. If the directory changes while you edit mappings, refresh before saving.
+During setup, users and groups synchronize while existing members retain access. Newly provisioned users cannot sign in until activation. Activation is permanent; subsequent directory changes and saved mappings apply immediately. Directory syncs and credential rotation preserve unsaved role choices. If another admin changes mappings or activates SCIM, refresh before saving.
 
 For Okta, use a SCIM 2.0 application integration with HTTP bearer authentication. Enable user provisioning and Group Push; setting up an OIDC SSO application alone does not enable SCIM. For Microsoft Entra ID, use a custom SCIM enterprise application's automatic provisioning and enable user and group mappings. Use the generated SCIM credential as its secret token. Test the connection and verify a user and group sync before activation. Limrun supports standard provisioning requests; it does not install an IdP application or configure directory assignments for you.
 
@@ -25,7 +25,7 @@ For Okta, use a SCIM 2.0 application integration with HTTP bearer authentication
 
 Once SCIM is activated, a user has access only when their SCIM record is active and at least one of their groups maps to a Limrun role. Provisioning creates their Limrun account immediately, or reuses their existing account by verified work email. Creating the account alone grants no access. Activation and group assignments create the organization membership before their first SSO sign-in.
 
-When several mapped groups contain a user, the highest role wins: **Admin > Member > Viewer**. Unmapped groups grant no access. Group mappings follow the group's stable SCIM ID, so a group rename preserves its mapping. A deleted and recreated group has a new ID and needs a new mapping.
+When several mapped groups contain a user, the highest role wins: **Admin > Member > Viewer**. Unmapped groups grant no access. Group mappings follow the group's stable SCIM ID, so a group rename preserves its mapping. A deleted and recreated group has a new ID and needs a new mapping. Groups can share a display name; mappings always use their IDs.
 
 Deactivating or deleting a user removes their organization membership. Deactivation takes precedence over any groups that still contain them. Removing a user from a mapped group recalculates access from their remaining groups. Reactivation restores access only if they still have an eligible mapped group.
 
@@ -48,5 +48,7 @@ The base URL serves `/Users`, `/Groups`, `/ServiceProviderConfig`, `/ResourceTyp
 Supported equality filters are `userName eq "alice@example.com"` for users, `displayName eq "Engineering"` for groups, and `externalId` or `id` for either resource. User names and group display names match without regard to case. Use `attributes` or `excludedAttributes` to select or exclude fields, including sub-attributes such as `name.givenName`. These parameters cannot be combined. Unsupported filters return a SCIM `invalidFilter` error.
 
 Requests are limited to 1 MiB. PATCH requests support up to 100 operations and apply atomically. Value filters in PATCH paths support compound expressions, such as `emails[type eq "work" and primary eq true].value`. Requests exceeding the filter evaluation or output limits return HTTP 413.
+
+Send `active` as a JSON boolean. To remove a single group member, use a filtered PATCH path such as `members[value eq "USER_ID"]`. Removing `members` without a filter clears all members. Empty `members` and `groups` attributes may be omitted from responses. Server-assigned attributes such as `id` are ignored in create and replace requests.
 
 Groups contain direct user members. Nested groups, bulk requests, sorting, password provisioning, enterprise extensions, and ETags are not supported. Flatten nested directory membership before provisioning. The service advertises its capabilities and supported core profile attributes through SCIM discovery endpoints.
