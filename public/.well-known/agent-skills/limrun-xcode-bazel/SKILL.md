@@ -10,14 +10,14 @@ effort: high
 Build Bazel Apple projects on Limrun's remote Mac workers — from any environment
 (Linux, Windows, macOS, VM, container), no local Xcode. `lim xcode rbe` brings up
 a remote RBE stack, tunnels it to a local port, and writes a `.limrun/` config so
-`bazelisk build --config=limrun` runs Apple actions remotely. Never fall back to
-local Xcode or build tools.
+`bazelisk build --config=limrun` runs Apple actions remotely. Local Xcode and
+local build tools are not part of this workflow.
 
 ## Auth and CLI
 
 Install if needed: `npm install --global lim`. Auth is `lim login` or
-`LIM_API_KEY` (may be set outside the project — don't ask for it just because
-it's absent). The CLI is the source of truth: the commands in this skill are
+`LIM_API_KEY` (it may already be set in the user's environment even when the
+shell does not show it; check before asking for it). The CLI is the source of truth: the commands in this skill are
 verified, but if a flag errors or you need one not shown here, check
 `lim xcode rbe --help` instead of guessing.
 
@@ -30,9 +30,12 @@ verified, but if a flag errors or you need one not shown here, check
 2. Run the printed command, e.g.
    `bazelisk --digest_function=sha256 build --config=limrun //App`.
 
-Don't hand-write `.limrun/` or the flags — the CLI generates them for the fleet's
-Xcode and your OS. Re-run `lim xcode rbe` (after `--stop`) to refresh after a
-fleet Xcode upgrade.
+Don't hand-write `.limrun/` or the flags — the CLI generates them for the
+sandbox's Xcode and your OS. `lim xcode version set 27` (or the one-off
+`lim xcode rbe --xcode-version 27`) builds with another installed Xcode: a bare
+major binds that major's GA release, a major.minor such as `27.1` pins that
+exact version (the beta). Re-run `lim xcode rbe` (after `--stop`) to refresh
+after a fleet Xcode upgrade or an Xcode switch.
 
 To add your own Bazel flags to the limrun path without editing the generated
 config, put them in **`user.limrun.bazelrc`** at the workspace root. The
