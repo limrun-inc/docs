@@ -16,7 +16,7 @@ This document tells you, an AI agent, how to consume this documentation site pro
 
 The docs are also exposed over MCP (Streamable HTTP) at `https://docs.limrun.com/mcp`. It provides tools to list, read, and search documentation pages. Discovery metadata is at `/.well-known/mcp/server-card.json`.
 
-In a browser that supports [WebMCP](https://webmachinelearning.github.io/webmcp/), every page registers `search_docs`, `read_docs_page`, and `list_docs_pages` tools. An [ARD](https://agenticresourcediscovery.org/) catalog of the Limrun MCP servers and agent skills is at `/.well-known/ai-catalog.json`.
+In a browser that supports [WebMCP](https://webmachinelearning.github.io/webmcp/), every page registers `search_docs`, `read_docs_page`, and `list_docs_pages` tools. An [ARD](https://agenticresourcediscovery.org/) catalog of the Limrun MCP servers and agent skills is at `/.well-known/ard.json` (also served at `/.well-known/ai-catalog.json`).
 
 ## Use Limrun itself
 
