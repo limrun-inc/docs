@@ -43,6 +43,8 @@ const movedPages: Record<string, string> = {
   "/docs/agents/cloud-agents/claude-code-web": "/docs/agents/claude-code-web",
   "/docs/ios/test-with-xctest": "/docs/testing/xctest",
   "/docs/ios/pr-previews": "/docs/ci/pr-previews",
+  "/docs/tutorials": "/docs/guides",
+  "/docs/tutorials/ios-bazel-claude-code-web": "/docs/guides/ios-bazel-claude-code-web",
 };
 
 export default withDocs({
