@@ -19,7 +19,7 @@ Every iOS and Android instance runs its own [Model Context Protocol](https://mod
 | Where it runs | The agent's shell | The agent's MCP client transport |
 | Auth | API key in the environment or config, or a [single pinned instance](/docs/agents/sandboxed-agents) with no key | The instance token as `Authorization: Bearer` |
 | Connection | A background WebSocket that repeated commands reuse (`--daemon`, on by default), or one started explicitly with `lim session start` | A long-lived MCP session |
-| Scope | Everything Limrun does. See the [CLI reference](/docs/reference/cli). | Device control only: the five tools listed below. No builds, no asset uploads. |
+| Scope | Everything Limrun does. See the [CLI reference](/docs/reference/cli). | Device control only: five tools on iOS and three on Android, listed below. No builds, no asset uploads. |
 | Best for | Builds, instance lifecycle, asset management | Tap, screenshot, and element-tree loops where round-trips matter |
 
 Most agents use both: the CLI for provisioning, builds, and assets, and MCP for native tool calls over device control.
@@ -56,7 +56,11 @@ console.log(instance.status.token);   // bearer for the Authorization header
 from limrun_api import Limrun
 
 client = Limrun()
-instance = client.ios_instances.create(wait=True, reuse_if_exists=True)
+instance = client.ios_instances.create(
+    wait=True,
+    reuse_if_exists=True,
+    metadata={"labels": {"name": "agent-session"}},
+)
 print(instance.status.mcp_url)
 print(instance.status.token)   # bearer for the Authorization header
 ```
@@ -66,6 +70,9 @@ client := limrun.NewClient()
 inst, _ := client.IosInstances.New(ctx, limrun.IosInstanceNewParams{
     Wait:          param.NewOpt(true),
     ReuseIfExists: param.NewOpt(true),
+    Metadata: limrun.IosInstanceNewParamsMetadata{
+        Labels: map[string]string{"name": "agent-session"},
+    },
 })
 fmt.Println(inst.Status.McpURL)
 fmt.Println(inst.Status.Token)   // bearer for the Authorization header
@@ -102,7 +109,7 @@ Verify it with `claude mcp list`. The console's connect modal renders the same c
 
 ### Claude Desktop
 
-Claude Desktop adds remote MCP servers as custom connectors in its settings. A per-instance server needs an `Authorization` header, so a client that cannot send custom headers should use the [remote MCP server](/docs/agents/remote-mcp) with OAuth sign-in instead.
+To use Limrun from Claude Desktop, add the [remote MCP server](/docs/agents/remote-mcp) as a custom connector in its settings. The remote server signs in with OAuth, so it needs no custom header. The per-instance server needs an `Authorization` header, so use it only from clients that let you set one.
 
 ### Cursor
 
@@ -118,7 +125,7 @@ Any MCP client that speaks the HTTP transport works. Pass the URL as the endpoin
 
 ## Tools
 
-The server exposes five tools:
+The server's tools depend on the platform. An iOS simulator's server exposes five tools:
 
 | Tool | What it does |
 |---|---|
@@ -127,6 +134,14 @@ The server exposes five tools:
 | `ios-open-url` | Opens a URL or deep link in the simulator, including Safari URLs and custom schemes such as `exp://` for Expo Go. |
 | `ios-app` | Lists installed apps and launches or terminates them. It does not install apps; use the CLI or SDKs for installs. |
 | `ios-logs` | Fetches the last N combined stdout and stderr log lines for a bundle ID. |
+
+An Android emulator's server exposes three:
+
+| Tool | What it does |
+|---|---|
+| `android-screenshot-and-element-tree` | Returns the current screenshot and the UIAutomator element tree in one call. |
+| `android-use` | Performs a batch of actions on the emulator in order. |
+| `android-open-url` | Opens a URL or deep link on the emulator. |
 
 The actions inside `ios-use` map onto methods of the TypeScript SDK's `createInstanceClient`. The server batches them into a few tools instead of one tool per action, so the agent can group related steps into one round-trip.
 

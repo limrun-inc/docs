@@ -1,12 +1,12 @@
 ---
 title: "Xcode and tool versions"
-description: "Xcode version selection, mise tool selection, preinstalled tools, and the persistent build cache."
+description: "Control which Xcode release and which Node, Ruby, and CocoaPods versions your sandbox builds use."
 order: 4
 icon: "layers"
 ---
 # Xcode and developer tool versions
 
-An Xcode sandbox builds with its node's default Xcode and a set of preinstalled developer tools. Select another Xcode per workspace, and select tool versions through [mise](https://mise.jdx.dev), so every build and command in the sandbox uses the versions your project expects.
+By default, an Xcode sandbox builds with its node's default Xcode and a set of preinstalled developer tools. Xcode is selected per workspace, other tools through [mise](https://mise.jdx.dev), and the same page covers the persistent build cache.
 
 ## Choose the Xcode version
 
@@ -140,7 +140,7 @@ Limrun guarantees compatibility lines, so image updates can deliver newer releas
 | `flutter = "3.44.6"`, `dart = "3.12.2"` | `3.44`, `3.12` |
 | `mint = "0.18.0"` | `0.18` |
 
-Ruby, Python, Go, Flutter, Dart, and tools below version 1 keep `major.minor`; other numeric versions keep their major. Client patch pins and `mise.lock` do not freeze the image's release. `latest` keeps its mise meaning and opts out of a fixed line. Use other custom selectors through an explicit sandbox mise command.
+Ruby, Python, Go, Flutter, Dart, and tools below version 1 keep `major.minor`; other numeric versions keep their major. Client patch pins and `mise.lock` do not freeze the image's release. `latest` keeps its mise meaning and opts out of a fixed line. For any other version string, run mise in the sandbox directly; see [Pin an exact version](#pin-an-exact-version).
 
 ### Preinstalled tools
 

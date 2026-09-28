@@ -1,6 +1,6 @@
 ---
 title: "Egress IP addresses"
-description: "The source IP addresses to allowlist when your firewall or a third-party service must accept traffic from Limrun instances."
+description: "Allowlist Limrun instances in a firewall or third-party service that accepts traffic only from known source IPs."
 order: 4
 icon: "globe"
 ---
@@ -12,7 +12,7 @@ These addresses are for outbound traffic from Limrun instances to your systems. 
 
 ## When to use these addresses
 
-Use this list when a system you manage requires source IP allowlisting before it accepts traffic from Limrun. Common examples are internal APIs, package registries, SFTP servers, database proxies, webhook receivers, and third-party services behind firewall or security group rules. To reach a service that only your machine or VPN can resolve, a [tunnel](/docs/ios/local-services) is often simpler than an allowlist.
+Use this list when a system you manage requires source IP allowlisting before it accepts traffic from Limrun. Common examples are internal APIs, package registries, SFTP servers, database proxies, webhook receivers, and third-party services behind firewall or security group rules. To reach a service that only your machine or VPN can resolve, a tunnel ([iOS](/docs/ios/local-services), [Android](/docs/android/local-services)) is often simpler than an allowlist.
 
 ## Treat allowlisting as a network control
 
@@ -29,7 +29,7 @@ The addresses below are shared by Limrun infrastructure in each region. They are
 <Accordion title="us-west2 (1 IP)" defaultOpen id="us-west2">
 
 ```text
-66.160.175.34
+66.160.175.35
 ```
 
 </Accordion>
@@ -189,6 +189,6 @@ The addresses below are shared by Limrun infrastructure in each region. They are
 
 ## Updates
 
-Last updated: August 10, 2026.
+Last updated: September 28, 2026.
 
 When these addresses change, update your allowlists before you depend on the new region or gateway pool. If you need per-organization egress IPs, contact Limrun support.

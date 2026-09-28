@@ -1,12 +1,12 @@
 ---
 title: "PR previews"
-description: "The packaged GitHub Action, a custom workflow you control, and cleanup when a pull request closes."
+description: "Give every pull request an iOS build that reviewers open in the browser from a link on the PR."
 order: 2
 icon: "git-pull-request"
 ---
 # Automatic PR previews with GitHub Actions
 
-PR previews work like web deploy previews, for your iOS app: every pull request gets its own build and a link reviewers open in the browser. Previews cover iOS apps only. The packaged Action runs on GitHub Actions, and the underlying `lim xcode build --upload` pattern works on any CI system.
+PR previews work like web deploy previews for an iOS app. Previews cover iOS apps only. The packaged Action runs on GitHub Actions, and the underlying `lim xcode build --upload` pattern works on any CI system.
 
 ## How a preview link works
 
@@ -74,7 +74,7 @@ The Action posts a comment titled **Limrun Preview** with a table of the platfor
 | `media` | Newline-delimited image or video paths to show in the PR body. Add `#alt text` after an image path. Requires `media-token` and `gh` 2.99.0 or newer on the runner. |
 | `media-token` | User token (personal access token or OAuth) with write access to the repository, used only to upload media. GitHub rejects `github.token` for attachments. |
 
-The Action sets three outputs: `preview-url`, `asset-id`, and `asset-name`.
+The Action sets two outputs: `preview-url` and `asset-name`. Its `action.yml` also declares `asset-id`, but the Action never sets it, so that output is always empty.
 
 ### Bazel projects
 

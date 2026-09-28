@@ -1,12 +1,12 @@
 ---
 title: "SDKs and REST API"
-description: "Install the TypeScript, Python, or Go SDK, authenticate, and call every instance and asset operation."
+description: "Call Limrun from your own code in TypeScript, Python, or Go, or over plain REST."
 order: 2
 icon: "book-open"
 ---
 # SDKs and REST API
 
-Every Limrun operation is a REST call on `api.limrun.com`, and the TypeScript, Python, and Go SDKs wrap those calls with typed clients. Use this page to install an SDK, authenticate, check what each SDK covers, and look up the create, list, get, and delete calls for each resource.
+Every Limrun operation is a REST call on `api.limrun.com`, and the TypeScript, Python, and Go SDKs wrap those calls with typed clients.
 
 The OpenAPI spec is the source of truth, and each SDK repository carries a generated method reference in its `api.md` ([TypeScript](https://github.com/limrun-inc/typescript-sdk/blob/main/api.md), [Python](https://github.com/limrun-inc/python-sdk/blob/main/api.md), [Go](https://github.com/limrun-inc/go-sdk/blob/main/api.md)). The SDKs are generated from the spec, so method names and parameter shapes match across languages once you account for casing: camelCase in TypeScript, snake_case in Python, PascalCase in Go. For the fields inside `spec` and `status`, see [Instance spec and status](/docs/reference/instances).
 
@@ -65,6 +65,7 @@ const lim = new Limrun({
 ```
 
 ```python
+import os
 from limrun_api import Limrun
 
 client = Limrun(
@@ -113,7 +114,7 @@ The registry refuses the token from the next request onwards. Revocation covers 
 
 ## SDK capability matrix
 
-The SDKs are not equivalent. The TypeScript SDK covers every surface. The Python SDK covers the control plane only. The Go column describes the released Go SDK v0.9.0, which covers the control plane, part of iOS device control, and the ADB tunnel. The `lim` CLI covers everything and is the fallback for gaps: shell out to it from your code, or call the REST URLs returned in `instance.status`. Starting a destination tunnel needs the CLI, the TypeScript SDK, or an implementation of its multiplexed WebSocket protocol; raw HTTP is not enough.
+The SDKs are not equivalent. The TypeScript SDK covers every surface. The Python SDK covers iOS, Android, and Xcode instances and assets; use REST or the CLI for the rest. The Go column describes the released Go SDK v0.9.0, which covers the control plane, part of iOS device control, and the ADB tunnel. The `lim` CLI covers everything and is the fallback for gaps: shell out to it from your code, or call the REST URLs returned in `instance.status`. Starting a destination tunnel needs the CLI, the TypeScript SDK, or an implementation of its multiplexed WebSocket protocol; raw HTTP is not enough.
 
 | Capability | TypeScript | Python | Go |
 |---|---|---|---|
@@ -131,7 +132,7 @@ The SDKs are not equivalent. The TypeScript SDK covers every surface. The Python
 | Gradle source sync and remote builds | ✓ (`gradleInstances.createClient`) | `lim gradle build` | `lim gradle build` |
 | Escrowed Android release signing (`--sign`) | pass the signing material yourself | `lim gradle build --sign` | `lim gradle build --sign` |
 | iOS device control (taps, screenshot, element tree, typing, `simctl` streaming) | ✓ | CLI or REST | ✓ (subset, see below) |
-| iOS destination tunnel (`startTunnel`, `getTunnelStatus`, `stopTunnel`) | ✓ | not supported | not supported |
+| Destination tunnel, iOS and Android (`startTunnel`, `getTunnelStatus`, `stopTunnel`; the Android client needs `adbUrl`; see [iOS](/docs/ios/local-services) and [Android](/docs/android/local-services)) | ✓ | not supported | not supported |
 | iOS reverse tunnel (`startReverseTunnel`) | ✓ | not supported | not supported |
 | iOS app-log streaming | ✓ | not supported | not supported |
 | iOS video recording | ✓ | not supported | not supported |
@@ -160,7 +161,7 @@ Errors return JSON with an HTTP status code. The TypeScript and Python SDKs map 
 | `401` | `AuthenticationError` | `AuthenticationError` | Missing or invalid API key. |
 | `403` | `PermissionDeniedError` | `PermissionDeniedError` | The API key lacks the necessary permission. |
 | `404` | `NotFoundError` | `NotFoundError` | The instance, asset, or other resource does not exist. |
-| `409` | `ConflictError` | `ConflictError` | Conflicting state, such as an instance that is already terminated. |
+| `409` | `ConflictError` | `ConflictError` | The request conflicts with the resource's current state. Deleting an instance that is already gone is not a conflict; it returns `200`. |
 | `422` | `UnprocessableEntityError` | `UnprocessableEntityError` | The request shape is valid but semantically rejected. |
 | `429` | `RateLimitError` | `RateLimitError` | Rate limit hit. Retry with backoff. |
 | `≥500` | `InternalServerError` | `InternalServerError` | Server-side issue. The SDKs retry automatically. |
@@ -281,7 +282,7 @@ The CLI equivalent is `lim ios create --reuse-if-exists --model iphone --jurisdi
 
 ### List
 
-List calls filter by label selector and state. The SDK list methods paginate automatically. Over REST:
+List calls filter by label selector and state. The SDK instance list methods page automatically; see [Pagination](#pagination). Over REST:
 
 ```bash
 curl "https://api.limrun.com/v1/ios_instances?labelSelector=session%3Ddemo&state=ready" \
@@ -322,8 +323,6 @@ for iter.Next() {
 }
 ```
 </CodeGroup>
-
-`limit` defaults to 50 and caps at 500; a larger value returns 500 per page.
 
 The CLI equivalent is `lim ios list --label-selector "session=demo" --state ready`.
 
@@ -454,27 +453,9 @@ lim asset delete <id>
 
 ## Pagination
 
-`list` methods in TypeScript, Python, and Go return iterables you can loop over directly; they fetch further pages as needed:
+Instance `list` methods in TypeScript, Python, and Go return iterables that fetch further pages as needed, as the [List](#list) examples show. In TypeScript, a single page also exposes `hasNextPage()` and `getNextPage()` when you want to page by hand. `limit` sets the page size: it defaults to 50 and caps at 500, and a larger value returns 500 per page.
 
-<CodeGroup labels={["TypeScript","Python","Go"]}>
-```ts
-for await (const inst of lim.iosInstances.list()) {
-  console.log(inst.metadata.id);
-}
-```
-
-```python
-for inst in client.ios_instances.list():
-    print(inst.metadata.id)
-```
-
-```go
-iter := client.IosInstances.ListAutoPaging(ctx, limrun.IosInstanceListParams{})
-for iter.Next() {
-    fmt.Println(iter.Current().Metadata.ID)
-}
-```
-</CodeGroup>
+`assets.list` does not page. It returns one array of at most `limit` assets (default 50), so repeat the call until it comes back empty when you need every asset; [Asset Storage](/docs/platform/asset-storage#organize-assets-for-multiple-tenants) shows the pattern.
 
 ## Usage analytics
 

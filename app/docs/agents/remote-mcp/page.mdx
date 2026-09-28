@@ -21,7 +21,7 @@ Every instance also runs [its own MCP server](/docs/agents/mcp). Pick by who hol
 | Endpoint | `https://mcp.limrun.com/mcp` for the whole organization | One URL per instance, from `status.mcpUrl` |
 | Auth | OAuth sign-in, or an API key | That instance's `status.token` |
 | Lifecycle tools | Create, list, inspect, and delete instances | None; the instance must already exist |
-| Blast radius | Everything instance-shaped in the organization | One instance; the token stops working with it |
+| Blast radius | Every iOS simulator and Android emulator in the organization | One instance; the token stops working with it |
 | Best for | An agent that owns the whole loop, from "get me a device" to cleanup | Handing one device to an agent that holds no organization credential |
 
 ## Connect from Claude Code
@@ -53,7 +53,7 @@ The server exposes 16 tools in five groups.
 |---|---|
 | `create-ios-simulator` | Creates a simulator, blocks until it is ready, and returns the instance ID. Optional `apps` pre-installs apps by asset name or public URL, optional `inactivityTimeout` overrides the organization default, and optional `idempotencyKey` makes retries return the same instance. |
 | `create-android-emulator` | Same contract for Android emulators. `apps` entries are asset names or public APK URLs. |
-| `list-instances` | Lists the organization's running instances with their IDs and states. |
+| `list-instances` | Lists the organization's running iOS simulators and Android emulators with their IDs and states. Xcode and Gradle sandboxes are not listed. |
 | `get-instance-status` | Returns the state and error message for one instance ID. |
 | `delete-instance` | Terminates an instance. This is the only destructive tool. |
 | `list-apps` | Lists the app asset names you can pass to the `apps` field of the create tools, per platform. |
@@ -76,7 +76,7 @@ The server's initialize response tells clients that builds and local files belon
 
 - The `get-agent-skill` tool. Pass one of `limrun-xcode`, `limrun-gradle`, `limrun-xcode-bazel`, or `limrun-expo-development`.
 - `skill://` resources with a `skills/list` catalog, for clients that follow the MCP skills extension.
-- The same content installed locally with `npx skills add limrun-inc/skills`.
+- The same content installed locally. Where the `lim` CLI is installed, use [`lim skills install`](/docs/agents/cli#install-the-limrun-skills); before it is, `npx skills add limrun-inc/skills` installs the same skills.
 
 An agent that needs to build something asks for the skill, installs the CLI it describes, and continues in its own shell.
 

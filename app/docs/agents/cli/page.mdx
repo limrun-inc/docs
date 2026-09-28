@@ -1,6 +1,6 @@
 ---
 title: "Set up a coding agent"
-description: "Install the CLI and skills, set the API key, and see the build, run, and review loop your agent follows."
+description: "Set up a coding agent to build, run, and share your mobile app on Limrun by itself."
 order: 1
 icon: "terminal"
 ---
@@ -70,7 +70,7 @@ The skills walk the agent through this loop. Each step links to the page that do
 3. **Share the live view.** The create output includes a signed stream URL, labeled **Signed Stream URL**. Anyone with it can watch and use the simulator in a browser without signing in, so the agent shares it at the start of the task.
 4. **Read the screen, then act.** Before every tap, the agent reads `lim ios element-tree` and picks elements by accessibility ID instead of pixel coordinates. See [Run a simulator](/docs/ios/run-simulator#read-the-screen).
 5. **Record video** for changes that involve motion, and attach it to the pull request. See [Record a video](/docs/ios/run-simulator#record-a-video).
-6. **Share a preview link.** A build with `--upload <asset-name>` lands in Asset Storage, and `https://console.limrun.com/preview?asset=<asset-name>&platform=ios` opens it in any browser. See [PR previews](/docs/ci/pr-previews).
+6. **Share a preview link.** A build with `--upload <asset-name>` lands in Asset Storage, and `https://console.limrun.com/preview?asset=<asset-name>&platform=ios` opens it in the console for members of your organization. See [PR previews](/docs/ci/pr-previews).
 7. **Delete the instances** when the work is done with `lim ios delete` and `lim xcode delete`.
 
 ## Tips for agents

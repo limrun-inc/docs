@@ -27,7 +27,7 @@ The CLI covers the whole build surface. The SDKs cover it as follows:
 | Sync source and run `xcodebuild` | ✓ | ✓ | not in SDK | not in SDK |
 | Run one-shot project commands | ✓ | ✓ | not in SDK | not in SDK |
 
-From Python or Go, provision over REST (`POST /v1/xcode_instances`) or with `lim xcode create`, then drive the build with `lim xcode build`. The [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix) lists every surface by language.
+From Python, provision with `client.xcode_instances.create`; from Go, over REST (`POST /v1/xcode_instances`) or with `lim xcode create`. Then drive the build with `lim xcode build`. The [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix) lists every surface by language.
 
 ## Build your project
 

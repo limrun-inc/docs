@@ -1,12 +1,12 @@
 ---
 title: "Connect to local services"
-description: "Let an app on a cloud iOS simulator or Android emulator reach a mock backend, dev server, or VPN-only API that runs on your side."
+description: "Route an iOS app's connections to a mock backend, dev server, or VPN-only API on your machine."
 order: 6
 icon: "network"
 ---
-# Connect a device to local services
+# Connect an iOS simulator to local services
 
-The device runs remotely, but the app on it often needs a service on your side: a mock backend, a test runner, a local Expo dev server, or an API that only your machine or VPN can resolve. A destination tunnel routes the connections you declare from the device through the machine that runs the tunnel, and the app keeps using the addresses it already has. iOS simulators and Android emulators both support it; the sections below cover iOS first, then [Android](#tunnel-from-an-android-emulator).
+A destination tunnel sends the connections you declare from the simulator through the machine that runs the tunnel, so the app keeps using the addresses it already has, such as `localhost:8000` or `api.corp.example`. This page covers iOS simulators; for Android emulators, see [Connect an Android emulator to local services](/docs/android/local-services), which reuses the selector and inspection rules described here.
 
 <Note>
   This page covers traffic from the device to your service. Reaching a server that runs *inside* the device from outside, such as WebDriverAgent, is the opposite direction and uses `targetHttpPortUrlPrefix`. See [Appium](/docs/testing/appium) for how that works.
@@ -71,7 +71,7 @@ Clients on `@limrun/api` 0.48 or older (`lim` before 0.31) speak an earlier tunn
 
 ## Inspect tunnel traffic
 
-HTTP and HTTPS through a tunnel are inspected by default, on iOS and Android alike. Each completed request is printed as one summary line (in the tunnel log file when detached). On iOS, requests also stream live to the console's network panel. These flags control inspection on `lim ios tunnel` and `lim android tunnel`:
+HTTP and HTTPS through a tunnel are inspected by default. Each completed request is printed as one summary line (in the tunnel log file when detached), and requests also stream live to the console's network panel. These flags control inspection on `lim ios tunnel`, and `lim android tunnel` takes the same flags:
 
 | Flag | What it does |
 |---|---|
@@ -157,24 +157,7 @@ The reverse tunnel has these constraints:
 - **Idle tunnels don't keep the instance alive.** Opening a tunnel counts as activity once; after that, only traffic through it does. A quiet tunnel lets the inactivity timeout fire as usual, so agents that leave tunnels behind stop accruing instance time.
 - **Vanished clients lose their port.** If the tunnel client stops responding without closing (a suspended VM, a frozen process), the server closes the session and frees the remote port within about two minutes. A port held by a live tunnel stays reserved, and a second tunnel on it fails with `already in use`.
 - **TypeScript SDK and CLI only.** The Go and Python SDKs do not have it.
-- **iOS only.** On Android, use [`lim android tunnel`](#tunnel-from-an-android-emulator) or `adb reverse` over the [ADB tunnel](/docs/android/run-emulator#open-an-adb-tunnel).
-
-## Tunnel from an Android emulator
-
-`lim android tunnel` starts the same kind of destination tunnel for an Android emulator. Start it before you launch the app: connections the app opened earlier keep their original route until they close.
-
-```bash
-lim android tunnel --selector localhost:8080 --id <instance-id>
-lim android tunnel --selector "*.corp.example" --detach
-lim android tunnel status --id <instance-id>
-lim android tunnel stop --id <instance-id>
-```
-
-Selectors take the same forms as on iOS: `localhost:port`, `IPv4:port`, `[IPv6]:port`, an exact domain, or a `*.` wildcard domain. On Android, exact selectors need a port of 1024 or higher. Each exact selector becomes a listener on the instance that is also reachable as `10.0.2.2:<port>`, following the emulator convention for the host machine. Domain selectors are intercepted on the instance and dialed from your machine, and apps that resolve DNS over HTTPS bypass that interception. `--detach` keeps the tunnel running after the command returns, and `--verbose` logs every forwarded connection and dial failure.
-
-Traffic through the Android tunnel is inspected the same way as on iOS; see [Inspect tunnel traffic](#inspect-tunnel-traffic).
-
-For exact ports, `adb reverse` over the [ADB tunnel](/docs/android/run-emulator#open-an-adb-tunnel) also works.
+- **iOS only.** On Android, use a [destination tunnel](/docs/android/local-services) or `adb reverse` over the [ADB tunnel](/docs/android/run-emulator#open-an-adb-tunnel).
 
 ## Troubleshooting
 
@@ -195,8 +178,8 @@ For exact ports, `adb reverse` over the [ADB tunnel](/docs/android/run-emulator#
   <Card title="Run a simulator" icon="smartphone" href="/docs/ios/run-simulator">
     Drive the app once it reaches your service: taps, typing, logs, recordings.
   </Card>
-  <Card title="Run an emulator" icon="tablet-smartphone" href="/docs/android/run-emulator">
-    Create Android emulators and drive them over the SDK or ADB.
+  <Card title="Android local services" icon="network" href="/docs/android/local-services">
+    The same destination tunnel for Android emulators.
   </Card>
   <Card title="Appium" icon="flask-conical" href="/docs/testing/appium">
     The opposite direction: reach WebDriverAgent inside the simulator through `targetHttpPortUrlPrefix`.

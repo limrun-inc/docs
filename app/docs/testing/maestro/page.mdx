@@ -1,12 +1,12 @@
 ---
 title: "Maestro"
-description: "The lim ios maestro wrapper, Expo Go flows, differences from local Maestro, and a Linux CI job."
+description: "Run your Maestro flows against a cloud iOS simulator from any machine, including a Linux CI runner."
 order: 2
 icon: "flask-conical"
 ---
 # Run Maestro flows
 
-Run your existing [Maestro](https://docs.maestro.dev) flows against a Limrun iOS simulator with `lim ios maestro`. Your flows and the Maestro CLI stay unmodified: `lim` points Maestro's iOS driver at the remote simulator, and the flow runs as if the simulator were local.
+`lim ios maestro` wraps the stock [Maestro](https://docs.maestro.dev) CLI. Your flows and Maestro itself stay unmodified: `lim` points Maestro's iOS driver at the remote simulator, and the flow runs as if the simulator were local.
 
 Maestro on Limrun covers iOS simulator instances. For Android UI automation, use [Appium over the ADB tunnel](/docs/testing/appium#run-an-android-test).
 
@@ -150,8 +150,8 @@ The job labels the instance with the run ID and deletes it at the end, including
   <Accordion title="`Failed to run maestro --version`">
     The Maestro CLI is not on `PATH`, or its Java runtime is missing. Install it per [Installing Maestro](https://docs.maestro.dev/getting-started/installing-maestro) and re-run; `lim` detects the version automatically.
   </Accordion>
-  <Accordion title="`Only the test subcommand is supported`">
-    `lim ios maestro` wraps `maestro test` only. Run `maestro studio` and the other subcommands against a local simulator, or drive the remote instance directly with the [`lim ios` commands](/docs/ios/run-simulator).
+  <Accordion title="`Provide a maestro test invocation`">
+    The full message ends with "Only the `test` subcommand is supported." `lim ios maestro` wraps `maestro test` only. Run `maestro studio` and the other subcommands against a local simulator, or drive the remote instance directly with the [`lim ios` commands](/docs/ios/run-simulator).
   </Accordion>
   <Accordion title="`--device is set by lim automatically`">
     Remove `--platform`, `--device` or `--udid`, `--no-reinstall-driver`, and `--driver-host-port` from your Maestro arguments. `lim` injects them, and duplicate flags make Maestro's parser fail.

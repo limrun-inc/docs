@@ -1,12 +1,12 @@
 ---
 title: "Asset Storage"
-description: "The asset model, upload paths, expiry, boot and live installs, the curated app catalog, and multi-tenant naming."
+description: "Store your app builds once and install them on any simulator or emulator, at boot or into a running session."
 order: 2
 icon: "database"
 ---
 # Asset Storage
 
-Asset Storage is Limrun's managed store for app binaries. Upload a build once, then install it on any instance: at boot, so the device starts with the app ready, or into a running session when a new build lands. Build commands upload to it, preview links read from it, and platforms use it to hold their users' apps.
+Asset Storage is Limrun's managed store for app binaries. A boot install means the device starts with the app ready, and a live install swaps in a new build without restarting the session. Build commands upload to it, preview links read from it, and platforms use it to hold their users' apps.
 
 ## What an asset is
 
@@ -89,7 +89,7 @@ lim asset push ./build/MyApp.app.tar.gz \
   -n "preview/${OWNER}/${REPO}/pr-${PR_NUMBER}-ios"
 ```
 
-The action itself folds the build and upload into one `lim xcode build --upload "preview/…"` step (see [Build with Xcode](/docs/ios/build-with-xcode)), with the same naming convention.
+The action itself builds and uploads in one step through the TypeScript SDK, using the same naming convention. The CLI equivalent is `lim xcode build --upload "preview/…"`; see [Build with Xcode](/docs/ios/build-with-xcode).
 
 ### Upload from another process or a browser
 
@@ -120,12 +120,26 @@ asset, err := lim.Assets.GetOrNew(ctx, limrun.AssetGetOrNewParams{
 })
 // asset.SignedUploadURL, asset.SignedDownloadURL, asset.Md5 (if exists)
 
+if err != nil {
+    return err
+}
+
 if asset.Md5 == "" {
-    data, _ := os.ReadFile("./build/MyApp.app.tar.gz")
-    req, _ := http.NewRequest("PUT", asset.SignedUploadURL, bytes.NewReader(data))
+    data, err := os.ReadFile("./build/MyApp.app.tar.gz")
+    if err != nil {
+        return err
+    }
+    req, err := http.NewRequest("PUT", asset.SignedUploadURL, bytes.NewReader(data))
+    if err != nil {
+        return err
+    }
     req.Header.Set("Content-Type", "application/octet-stream")
     req.ContentLength = int64(len(data))
-    _, err := http.DefaultClient.Do(req)
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
 }
 ```
 
@@ -330,10 +344,10 @@ Pair the boot install with the [`openUrl` prop](/docs/platform/embed-simulator#c
 
 That is the whole integration: the backend creates the instance with the Expo Go asset, and the frontend renders `<RemoteControl />` with the project URL. No Expo Go upload and no build pipeline.
 
-List the catalog to see what else is available:
+List the catalog to see what else is available. The server fills the result with your own assets first and gives catalog entries only the remaining slots, so filter on the `appstore/` prefix to see the whole catalog:
 
 ```bash
-lim asset list --include-app-store
+lim asset list --include-app-store --name-prefix appstore/
 ```
 
 From the TypeScript SDK:
@@ -346,7 +360,7 @@ const apps = await lim.assets.list({
 ```
 
 <Note>
-The API strips the `appstore/` prefix before it queries the catalog. `nameFilter: 'appstore/Expo-Go-54.0.6.tar.gz'` with `includeAppStore: true` works as expected, but a partial prefix such as `nameFilter: 'appstor'` never matches a catalog entry, because the comparison happens after the prefix is removed.
+The API strips the `appstore/` prefix before it queries the catalog. `nameFilter: 'appstore/Expo-Go-54.0.6.tar.gz'` with `includeAppStore: true` works as expected, but a partial prefix such as `namePrefixFilter: 'appstor'` never matches a catalog entry, because the comparison happens after the prefix is removed.
 </Note>
 
 ## Organize assets for multiple tenants
@@ -373,10 +387,11 @@ const acmeAssets = await lim.assets.list({
   includeDownloadUrl: true,
 });
 
-// Offboarding: drop everything a tenant ever uploaded
-const stale = await lim.assets.list({ namePrefixFilter: 'acme/' });
-for (const a of stale) {
-  await lim.assets.delete(a.id);
+// Offboarding: drop everything a tenant ever uploaded. assets.list returns one
+// batch of at most `limit` items and does not page, so repeat until it is empty.
+let batch;
+while ((batch = await lim.assets.list({ namePrefixFilter: 'acme/', limit: 500 })).length) {
+  for (const a of batch) await lim.assets.delete(a.id);
 }
 ```
 
@@ -461,7 +476,7 @@ client.assets.delete(asset_id)
 | `namePrefixFilter` | TypeScript SDK, CLI (`--name-prefix`), and REST only. Case-sensitive prefix match. LIKE wildcards (`%`, `_`) are treated as literal characters. An empty string is rejected with `400`, so omit the parameter when you do not want filtering. Cannot be combined with `nameFilter`. |
 | `includeDownloadUrl` / `includeUploadUrl` | Set to `true` to include signed URLs on each returned asset. Default `false`, for a smaller response. |
 | `includeAppStore` | Include catalog assets, returned with the `appstore/` name prefix. |
-| `limit` | Maximum number of items returned. Default `50`. |
+| `limit` | Maximum number of items returned. Default `50`. `assets.list` returns a single batch and does not page. |
 
 The CLI maps these to `--name`, `--name-prefix`, `--download-url`, `--upload-url`, and `--include-app-store`, and adds `--kind App|Keychain` to filter by kind. For example, list one tenant's assets:
 

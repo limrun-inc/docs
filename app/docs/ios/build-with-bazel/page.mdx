@@ -1,6 +1,6 @@
 ---
 title: "Build with Bazel"
-description: "Start the remote execution endpoint, attach a simulator, upload builds as assets, and tear down."
+description: "Build a Bazel iOS workspace from any machine without a local Xcode install, then run or share the app."
 order: 3
 icon: "zap"
 ---
@@ -36,7 +36,7 @@ Run it. The tunnel keeps running in the background, so from here on you only bui
 - Opened a tunnel so the endpoint is reachable at `grpc://127.0.0.1:8980`. Change the port with `--port`.
 - Generated a `.limrun/` directory in your workspace with the `--config=limrun` Bazel configuration matched to the sandbox's Xcode version, and wired a `try-import` into your `.bazelrc`.
 
-To build with another installed Xcode, pass `--xcode-version 27` (that major's GA release) or `--xcode-version 27.1` (the beta). See [Xcode and tool versions](/docs/ios/xcode-and-tools#choose-the-xcode-version).
+To build with another installed Xcode, pass `--xcode-version <major>` for the newest GA release of that major, or `--xcode-version <major.minor>` to pin that exact version, which may be a beta. See [Xcode and tool versions](/docs/ios/xcode-and-tools#choose-the-xcode-version).
 
 Do not hand-edit `.limrun/`; the next `lim xcode rbe` regenerates it. To add your own flags to the Limrun build path, put them in `user.limrun.bazelrc` at the workspace root. The generated config imports it last, so your `build:limrun --...` lines win and survive regeneration.
 

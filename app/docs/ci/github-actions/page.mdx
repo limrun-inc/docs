@@ -27,9 +27,11 @@ jobs:
         env:
           LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          P12_BASE64: ${{ secrets.P12_BASE64 }}
+          PROFILE_BASE64: ${{ secrets.PROFILE_BASE64 }}
         run: |
-          echo "${{ secrets.P12_BASE64 }}" | base64 -d > /tmp/dist.p12
-          echo "${{ secrets.PROFILE_BASE64 }}" | base64 -d > /tmp/MyApp.mobileprovision
+          echo "$P12_BASE64" | base64 -d > /tmp/dist.p12
+          echo "$PROFILE_BASE64" | base64 -d > /tmp/MyApp.mobileprovision
           lim xcode create --reuse-if-exists \
             --label repo=${{ github.event.repository.name }} \
             --label pr=${{ github.event.number }}
@@ -55,8 +57,8 @@ What the workflow does:
 
 1. Checks out the PR's code on an Ubuntu runner.
 2. Installs the `lim` CLI with `npm`.
-3. Decodes the signing certificate and provisioning profile from the base64 secrets onto the runner's filesystem.
-4. Creates an Xcode sandbox labelled with the repository and PR number, so a retry within the job lands on the same sandbox instead of creating another.
+3. Decodes the signing certificate and provisioning profile from the base64 secrets onto the runner's filesystem. The secrets reach the script through `env:`, never interpolated into the script body.
+4. Creates an Xcode sandbox labelled with the repository and PR number, so the cleanup step can find it. If you drop the cleanup step, the same labels and `--reuse-if-exists` let later pushes to the PR reuse the warm sandbox.
 5. Runs a signed device build and uploads the IPA under a name tied to the PR number. The CLI prints the artifact download URL to the job log.
 6. Deletes the sandbox by label, even when the build fails. Drop this step if you would rather keep a warm sandbox between pushes and let its inactivity timeout clean it up.
 
@@ -84,10 +86,16 @@ jobs:
           lim xcode rbe
           bazelisk --digest_function=sha256 build --config=limrun //App
           lim xcode rbe upload my-app-pr-${{ github.event.number }}
+      - name: Stop the stack and delete the sandbox
+        if: always()
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+        run: |
           lim xcode rbe --stop
+          lim xcode delete
 ```
 
-`lim xcode rbe upload` publishes the latest successful build before `--stop` tears the stack down. Prefer it over `--auto-upload` in CI: an automatic upload runs after the build returns, and stopping the stack right away can cancel it. Keep `--digest_function=sha256` in front of `build`; [Build with Bazel](/docs/ios/build-with-bazel) explains why and covers the generated `--config=limrun`.
+`lim xcode rbe upload` publishes the latest successful build before the cleanup step runs. `lim xcode rbe --stop` stops only the tunnel and the remote stack, so the step also deletes the Xcode sandbox, even when the build fails. Prefer it over `--auto-upload` in CI: an automatic upload runs after the build returns, and stopping the stack right away can cancel it. Keep `--digest_function=sha256` in front of `build`; [Build with Bazel](/docs/ios/build-with-bazel) explains why and covers the generated `--config=limrun`.
 
 ## Build a signed AAB on every push
 
@@ -106,6 +114,11 @@ jobs:
         env:
           LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
         run: lim gradle build . --sign --upload myapp-${{ github.sha }}.aab
+      - name: Delete the sandbox
+        if: always()
+        env:
+          LIM_API_KEY: ${{ secrets.LIM_API_KEY }}
+        run: lim gradle delete
 ```
 
 What the workflow does:
@@ -113,6 +126,7 @@ What the workflow does:
 1. Checks out the code on an Ubuntu runner.
 2. Installs the `lim` CLI with `npm`.
 3. Runs a signed release build on a Limrun Gradle sandbox and uploads the AAB under a name tied to the commit. The CLI prints the asset name and a signed download URL, which expires after 15 minutes.
+4. Deletes the Gradle sandbox the build used, even when the build fails.
 
 To download the AAB later, ask Asset Storage for a fresh signed URL:
 
@@ -130,7 +144,7 @@ Test and preview workflows live next to the tools they run:
 - [XCTest](/docs/testing/xctest): `lim xcode test .` exits non-zero when any test fails, so it works as a CI step with no output parsing.
 - [Maestro](/docs/testing/maestro#run-from-a-linux-ci-runner) and [Appium](/docs/testing/appium#run-from-a-linux-ci-runner): complete Linux runner workflows for each framework.
 
-Label the instances a job creates, as the IPA recipe does, and delete them by label in an `if: always()` step. Inactivity timeouts clean up after jobs that crash before that step runs.
+Delete the instances a job creates in an `if: always()` step, by label as the IPA recipe does or as the last instance of its type as the other recipes do. Inactivity timeouts clean up after jobs that crash before that step runs.
 
 ## Next steps
 

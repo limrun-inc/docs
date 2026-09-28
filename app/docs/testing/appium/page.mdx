@@ -1,12 +1,12 @@
 ---
 title: "Appium"
-description: "The Limrun XCUITest driver fork, WebDriverAgent setup, capabilities for both platforms, and a Linux CI job."
+description: "Run your existing Appium suite against cloud iOS simulators and Android emulators from any host, including a Linux CI runner."
 order: 3
 icon: "flask-conical"
 ---
 # Run Appium tests
 
-Run your existing Appium suite against a Limrun iOS simulator or Android emulator from any host, including a Linux CI runner. Your test code stays the same; only the driver setup and the capabilities change. iOS needs a Limrun fork of the XCUITest driver, while Android works with any upstream Appium driver over an ADB tunnel.
+Your test code stays the same; only the driver setup and the capabilities change. iOS needs a Limrun fork of the XCUITest driver, while Android works with any upstream Appium driver over an ADB tunnel.
 
 ## Before you start
 
@@ -26,7 +26,7 @@ Each platform takes a different route to the same Appium API.
 
 WebDriverAgent itself is upstream. You install it on the instance as a normal app, and the driver talks to it over an authenticated HTTPS tunnel.
 
-**Android** uses any upstream Appium server (UiAutomator2, Espresso, Flutter) connected through an ADB tunnel opened by the Limrun SDK or CLI. Once `adb devices` shows the remote emulator on `127.0.0.1`, Appium treats it exactly like a USB-attached device.
+**Android** uses any upstream Appium driver (UiAutomator2, Espresso, Flutter) connected through an ADB tunnel opened by the Limrun SDK or CLI. Once `adb devices` shows the remote emulator on `127.0.0.1`, Appium treats it exactly like a USB-attached device.
 
 Test code is portable: the same `webdriverio` or `appium-python-client` script that runs against a local simulator runs against a Limrun instance with only the capabilities changed.
 
@@ -178,7 +178,7 @@ WDA can crash during long runs, and the auto-launch you set up at create time on
 // UDID. The Appium session itself goes through the WDA URL, not this client.
 const ios = await Ios.createInstanceClient({
   apiUrl: instance.status.apiUrl!,
-  token: instance.status.token,
+  token: instance.status.token!, // absent for read-only API keys and viewer seats
 });
 
 // Probe WDA's /status. A healthy WDA returns 200 with a JSON body.
@@ -259,14 +259,26 @@ const driver = await remote({
 ```
 
 ```python
+import json
+import subprocess
+
 from appium import webdriver
 from appium.options.common import AppiumOptions
+
+# `instance` is the create response from the Python SDK above.
+api_url = instance.status.api_url
+token = instance.status.token  # absent for read-only API keys and viewer seats
+wda_url = instance.status.target_http_port_url_prefix.replace('limrun.net', 'limrun.net:443') + '8100'
+# The Python SDK has no device client, so read the simulator UDID through the CLI.
+info = subprocess.run(['lim', 'ios', 'info', '--id', instance.metadata.id, '--json'],
+                      check=True, capture_output=True, text=True)
+udid = json.loads(info.stdout)['udid']
 
 opts = AppiumOptions()
 opts.set_capability('platformName', 'iOS')
 opts.set_capability('browserName', 'safari')            # omit for a native app session
 opts.set_capability('appium:automationName', '@limrun/xcuitest')
-opts.set_capability('appium:udid', udid)                # the simulator UDID (ios.deviceInfo.udid in TypeScript)
+opts.set_capability('appium:udid', udid)
 opts.set_capability('appium:webDriverAgentUrl', wda_url)
 opts.set_capability('appium:wdaLocalPort', 443)
 opts.set_capability('appium:usePreinstalledWDA', True)
@@ -354,7 +366,7 @@ The full runnable example is at [`typescript-sdk/examples/appium-ios`](https://g
 
 ## Run an Android test
 
-Android is simpler: open an ADB tunnel, then use any upstream Appium server. UiAutomator2, Espresso, and Flutter drivers all work unchanged.
+Android is simpler: open an ADB tunnel, then use any upstream Appium driver. UiAutomator2, Espresso, and Flutter drivers all work unchanged.
 
 ### Open the ADB tunnel
 
@@ -382,7 +394,7 @@ const instance = await limrun.androidInstances.create({ wait: true });
 const client = await createInstanceClient({
   apiUrl: instance.status.apiUrl!,
   adbUrl: instance.status.adbWebSocketUrl!,
-  token: instance.status.token,
+  token: instance.status.token!, // absent for read-only API keys and viewer seats
 });
 
 // After this, `adb devices` sees the emulator and Appium can attach.
@@ -522,7 +534,7 @@ For Android, replace the `Install Appium and driver` step above with the upstrea
 The CI runner doesn't need Xcode, the iOS SDK, or a local Android emulator. For iOS it needs Node, Appium, and `LIM_API_KEY`. For Android, add `adb` on the PATH (Appium's UiAutomator2 driver shells out to it, regardless of whether you open the tunnel through the CLI or `startAdbTunnel`).
 
 <Note>
-  Add `--label session=${{ github.run_id }}` when creating instances and tear them down at job end (or on failure). Inactivity timeouts handle the rest if a job crashes. See [Run a simulator](/docs/ios/run-simulator) for listing and deleting by label.
+  The job above creates instances from your test code, so label them there, for example `metadata: { labels: { session: process.env.GITHUB_RUN_ID! } }`, and delete them in your suite's teardown (such as `afterAll`), including on failure. Inactivity timeouts handle the rest if a job crashes. Listing and deleting by label is covered in [Run a simulator](/docs/ios/run-simulator#reuse-and-clean-up) and [Run an emulator](/docs/android/run-emulator#delete-the-emulator).
 </Note>
 
 ## Troubleshooting

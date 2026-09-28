@@ -1,6 +1,6 @@
 ---
 title: "Sign and distribute"
-description: "Manual and cloud signing, entitlements, extensions, App Store Connect uploads, and signing troubleshooting."
+description: "Produce App Store ready IPAs from any machine and get them to testers without a local Mac."
 order: 5
 icon: "key-round"
 ---
@@ -107,7 +107,7 @@ openssl pkcs12 -export -inkey dist.key -in dist.pem -certfile wwdr.pem -out dist
 
 ### Download the signed IPA
 
-When you configure an upload, the build result includes a signed download URL. Store it in your PR comment or pipeline output. Anyone with the URL can download the IPA without a Limrun API key. The signature expires after 15 minutes; fetch a fresh URL later with `lim asset list --name <asset-name> --download-url`.
+When you configure an upload, the build result includes a signed download URL. Anyone with the URL can download the IPA without a Limrun API key, but the signature expires after 15 minutes, so use it right away and fetch a fresh one later with `lim asset list --name <asset-name> --download-url`. For links reviewers open days later, use [PR previews](/docs/ci/pr-previews).
 
 ## Cloud signing
 

@@ -1,12 +1,12 @@
 ---
 title: "Instance spec and status"
-description: "Every field you can set when creating an instance, every field it reports back, and the states it moves through."
+description: "Look up any field you can set when creating an instance, or any field it reports back while it runs."
 order: 3
 icon: "layers"
 ---
 # Instance spec and status
 
-Every create call takes `metadata` and `spec`, and every instance reports its URLs and state in `status`. This page lists the `spec` fields for iOS simulators and Android emulators, and the lifecycle, status, timeout, and placement rules that Xcode and Gradle sandboxes share. Build-specific settings for sandboxes live in [Build with Xcode](/docs/ios/build-with-xcode) and [Build with Gradle](/docs/android/build-with-gradle). For what the fields mean in practice, start with [Concepts](/docs/concepts); for the calls themselves, see [SDKs and REST API](/docs/reference/sdk).
+Every create call takes `metadata` and `spec`, and every instance reports its URLs and state in `status`. The `spec` tables cover iOS simulators and Android emulators; the lifecycle, status, timeout, and placement rules apply to Xcode and Gradle sandboxes too. Build-specific settings for sandboxes live in [Build with Xcode](/docs/ios/build-with-xcode) and [Build with Gradle](/docs/android/build-with-gradle). For what the fields mean in practice, start with [Concepts](/docs/concepts); for the calls themselves, see [SDKs and REST API](/docs/reference/sdk).
 
 ## Lifecycle states
 
@@ -32,7 +32,7 @@ Every iOS, Android, Xcode, and Gradle instance moves through the same lifecycle:
 
 A `ready` instance carries the URLs its data plane needs in `status`. Every URL authenticates with the instance token, never the API key.
 
-| Field | iOS | Android | Xcode | Use |
+| Field | iOS | Android | Xcode and Gradle | Use |
 |---|---|---|---|---|
 | `state` | ✓ | ✓ | ✓ | The [lifecycle state](#lifecycle-states). |
 | `token` | ✓ | ✓ | ✓ | Instance token for `apiUrl`, `endpointWebSocketUrl`, `adbWebSocketUrl`, and `mcpUrl`. Embedded in `signedStreamUrl`. Returned only to a credential that can control the instance; a read-only API key or a viewer seat gets no `token`. |
@@ -48,7 +48,7 @@ A `ready` instance carries the URLs its data plane needs in `status`. Every URL 
 | `errorMessage` | ✓ | ✓ | ✓ | Set when the instance terminated because of an error. |
 | `terminationReason` | ✓ | ✓ | ✓ | Present once `state` is `terminated`, never before. Known values: `UserRequested` (a delete request), `InactivityTimeout`, `HardTimeout`, and `Unknown` (a cause the platform did not attribute, including instances that failed to become ready; see `errorMessage`). New values may be added, so treat unrecognized ones as `Unknown`. |
 
-The iOS and Android `status` blocks otherwise have the same shape. Reaching a server that runs inside the simulator (through `targetHttpPortUrlPrefix`) is the opposite direction from letting the device reach your machine; for that, see [Connect to local services](/docs/ios/local-services).
+The iOS and Android `status` blocks otherwise have the same shape. Reaching a server that runs inside the simulator (through `targetHttpPortUrlPrefix`) is the opposite direction from letting the device reach your machine; for that, see Connect to local services for [iOS](/docs/ios/local-services) or [Android](/docs/android/local-services).
 
 ## Example create response
 
@@ -75,7 +75,8 @@ A successful Android `create` with `wait: true` returns the full instance resour
     "signedStreamUrl":      "https://console.limrun.com/signedStream?url=wss%3A%2F%2Fus-west2-1234567.limrun.net%2F...%2FendpointWebSocket#token=lim_...",
     "mcpUrl":               "https://us-west2-1234567.limrun.net/v1/android_usw1_01krxv.../mcp",
     "targetHttpPortUrlPrefix": "wss://us-west2-1234567.limrun.net/v1/organizations/org_01kr52j.../android.limrun.com/v1/instances/android_usw1_01krxv.../targetHttpPort",
-    "token": "lim_..."
+    "token": "lim_...",
+    "streamToken": "lim_..."
   }
 }
 ```

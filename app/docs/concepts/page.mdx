@@ -1,6 +1,6 @@
 ---
 title: "Concepts"
-description: "Instances, credentials, lifecycle, labels, placement, and assets: the model every Limrun guide builds on."
+description: "Learn the model every Limrun guide builds on: instances, credentials, lifecycle, labels, placement, and assets."
 order: 3
 icon: "layers"
 ---
@@ -71,7 +71,7 @@ Labels are free-form `key=value` pairs you attach at create time. They do three 
 - **Listing.** `--label-selector` (`labelSelector`) filters lists with a comma-separated `key=value` list.
 - **Cleanup.** Delete everything tagged with a pull request number or a user ID in one loop.
 
-Reuse matching runs in the region that handles the create call. Placement follows the caller's location and capacity, so a create from a different network can land in another region, miss the match, and start a fresh instance. Give each task its own label, such as `--label issue=<id>`; without labels, every reuse call in the organization matches the same unlabeled instance.
+Reuse matching runs in the region that handles the create call. Placement follows the caller's location and capacity, so a create from a different network can land in another region, miss the match, and start a fresh instance. Give each task its own label, such as `--label issue=<id>`. Reuse needs at least one label: without labels, `--reuse-if-exists` is ignored and every call creates a new instance.
 
 Useful label keys are `tenant`, `user`, `session`, `pr`, `repo`, `agent`, and `managed_by`.
 

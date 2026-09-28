@@ -1,12 +1,12 @@
 ---
 title: "Run a simulator"
-description: "Creation flags, device clients, and every device action: screen reads, taps, typing, batches, apps, logs, video, camera, files, and keychain."
+description: "Create a cloud iOS simulator, drive its screen and apps, and collect logs, recordings, and files."
 order: 1
 icon: "smartphone"
 ---
 # Run an iOS simulator
 
-Create an iOS simulator in the cloud, read what is on its screen, act on it, and collect logs, screenshots, recordings, and files. Each task shows the `lim` CLI first, for agents, scripts, and CI, then the SDK equivalent for backends.
+Every task below shows the `lim` CLI first, for agents, scripts, and CI, then the SDK equivalent for backends. The loop is always the same: read the screen, act on what is there, and collect the evidence you need.
 
 To install your own build on the simulator, build it with [remote Xcode](/docs/ios/build-with-xcode) or [Bazel](/docs/ios/build-with-bazel) and attach the simulator to the sandbox.
 
@@ -59,7 +59,7 @@ Run `lim ios create --help` for the complete list. The console Playground offers
 
 ### Configure the simulator from the SDK
 
-Pass the same settings as `spec` fields on the create call. This example sets the model, jurisdiction, timeouts, a scheduling clue, and an app to install at boot:
+Pass the same settings as `spec` fields on the create call. The TypeScript example sets the model, jurisdiction, timeouts, a scheduling clue, and an app to install at boot; the comments in the Python and Go examples name the fields those SDKs do not have yet:
 
 <CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
@@ -96,6 +96,8 @@ instance = client.ios_instances.create(
     reuse_if_exists=True,
     metadata={"labels": {"app": "my-app", "session": "demo"}},
     spec={
+        # The Python SDK has no jurisdiction or force_bundle_id field, and its model
+        # type omits iphone-duo; use the CLI, the TypeScript SDK, or REST for those.
         "model": "iphone",                # "iphone" | "ipad" | "watch"
         "inactivity_timeout": "10m",
         "hard_timeout": "0",
@@ -125,8 +127,8 @@ import (
 ctx := context.Background()
 lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
 
-// Go SDK v0.9.0 does not expose `model` on the create params.
-// Instances default to iPhone. To pick another model, use the CLI or REST.
+// Go SDK v0.9.0 has no Model, Jurisdiction, or ForceBundleID field on the create
+// params. Instances default to iPhone; use the CLI or REST for the others.
 instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
     Wait:          param.NewOpt(true),
     ReuseIfExists: param.NewOpt(true),
@@ -136,6 +138,17 @@ instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
     Spec: limrun.IosInstanceNewParamsSpec{
         InactivityTimeout: param.NewOpt("10m"),
         HardTimeout:       param.NewOpt("0"),
+        Clues: []limrun.IosInstanceNewParamsSpecClue{
+            {Kind: "ClientIP", ClientIP: param.NewOpt("203.0.113.42")},
+        },
+        InitialAssets: []limrun.IosInstanceNewParamsSpecInitialAsset{
+            {
+                Kind:       "App",
+                Source:     "AssetName",
+                AssetName:  param.NewOpt("my-app-build.zip"),
+                LaunchMode: "ForegroundIfRunning",
+            },
+        },
     },
 })
 ```
@@ -154,7 +167,7 @@ The CLI opens its own connection for every command, so there is no client step:
 lim ios screenshot ./out.jpg
 ```
 
-From code, open a WebSocket client with the instance's `apiUrl` and instance token. The TypeScript SDK covers every method on this page. Go SDK v0.9.0 covers screenshots, the element tree, taps, element values, typing, key presses, app launch and install, URLs, orientation, `lsof`, and `simctl`; the [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix) has the full comparison. The Python SDK only manages instances, so drive devices from Python through the CLI.
+From code, open a WebSocket client with the instance's `apiUrl` and instance token. `status.token` is returned only to a credential that can control the instance; a read-only API key or a viewer seat gets none, so check for it before connecting. The TypeScript SDK covers every method on this page. Go SDK v0.9.0 covers screenshots, the element tree, taps, element values, typing, key presses, app launch and install, URLs, orientation, `lsof`, and `simctl`; the [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix) has the full comparison. The Python SDK only manages instances, so drive devices from Python through the CLI.
 
 <CodeGroup labels={["TypeScript","Go"]}>
 ```ts
@@ -162,7 +175,7 @@ import { Ios } from '@limrun/api';
 
 const client = await Ios.createInstanceClient({
   apiUrl: instance.status.apiUrl!,
-  token: instance.status.token,
+  token: instance.status.token!,   // absent for read-only keys and viewer seats
   logLevel: 'info',         // 'none' | 'error' | 'warn' | 'info' | 'debug'
 });
 
@@ -187,6 +200,9 @@ lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
 inst, _ := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
     Wait:          param.NewOpt(true),
     ReuseIfExists: param.NewOpt(true),
+    Metadata: limrun.IosInstanceNewParamsMetadata{
+        Labels: map[string]string{"session": "demo"},
+    },
 })
 
 client, err := iosws.NewClient(inst.Status.APIURL, inst.Status.Token)
@@ -376,12 +392,20 @@ await client.scroll('up',   300, { coordinate: [200, 400], momentum: 0.4 });
 
 ## Rotate the device
 
-Switch between portrait and landscape from the TypeScript SDK, or with a `setOrientation` action in [a batch](#run-a-batch-of-actions):
+Switch between portrait and landscape from the SDK, or with a `setOrientation` action in [a batch](#run-a-batch-of-actions):
 
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 await client.setOrientation('Portrait');
 await client.setOrientation('Landscape');
 ```
+
+```go
+err = client.SetOrientation(ctx, iosws.OrientationPortrait)
+err = client.SetOrientation(ctx, iosws.OrientationLandscape)
+```
+
+</CodeGroup>
 
 ## Open URLs and deep links
 
@@ -392,16 +416,24 @@ lim ios open-url "https://apple.com"
 lim ios open-url "myapp://orders/42"
 ```
 
-From the TypeScript SDK:
+From the SDK:
 
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 await client.openUrl('https://apple.com');               // opens in Safari
 await client.openUrl('myapp://orders/42');               // deep link into your app
 ```
 
+```go
+err = client.OpenURL(ctx, "https://apple.com")
+err = client.OpenURL(ctx, "myapp://orders/42")
+```
+
+</CodeGroup>
+
 ## Run a batch of actions
 
-When a sequence should run without a round trip between steps, send it as one batch. The server runs the whole batch next to the simulator, stops at the first failure, and reports a result per action. Agents use this for anything longer than a single tap.
+When a sequence should run without a round trip between steps, send it as one batch. The server runs the whole batch next to the simulator. It stops at the first failing action, and the call fails with that action's error. When every action succeeds, it returns one result per action. Agents use this for anything longer than a single tap.
 
 ```bash
 lim ios perform \
@@ -439,7 +471,7 @@ const result = await client.performActions(
   ],
   { timeoutMs: 10_000 },
 );
-// result.results is per-action
+// result.results has one entry per action; a failing action rejects the call instead
 ```
 
 Action `type` values fall into two groups:
@@ -596,6 +628,12 @@ stream.on('close', () => console.log('stream closed'));
 stream.stop();   // unsubscribe when done
 ```
 
+For low-level debugging beyond one app's stdout and stderr, stream the simulator's syslog until you interrupt it:
+
+```bash
+lim ios syslog --id <instance-id>
+```
+
 ## Record a video
 
 For anything that moves (animations, gestures, games), record a video instead of taking screenshots, and attach it to the pull request. Recording runs on the server. `--quality` accepts integers from `5` (default) to `10`; higher values increase fidelity and file size.
@@ -618,6 +656,25 @@ const downloadUrl = await client.stopRecording({ localPath: '/tmp/demo.mp4' });
 await client.stopRecording({ presignedUrl: '<your-s3-upload-url>' });
 ```
 
+### Keep captures after the session
+
+Captures can also be persisted to Limrun storage, so they outlive the CLI process and the instance. Start them when you create the simulator, or persist a recording when you start it:
+
+```bash
+lim ios create --record --events --app-logs com.example.myapp --persist-ttl 24h
+lim ios record start --persist --persist-ttl 72h
+```
+
+`--record` keeps recording until you stop it or the instance terminates. `--events` captures a log of taps, scrolls, and commands, and `--app-logs <bundle-id>` launches the app and captures its output. Persisted captures are kept for `72h` unless `--persist-ttl` says otherwise. List them afterwards:
+
+```bash
+lim ios recordings --id <instance-id>
+lim ios events --id <instance-id>
+lim ios app-logs --id <instance-id>
+```
+
+Each events and app-logs entry is a timestamped JSONL file.
+
 ## Simulate the camera
 
 Play a video file as the simulator's camera for QR-code scanning, document capture, video-call screens, or any `AVCaptureSession` flow that needs predictable frames. The file uploads to the instance and replaces the live browser camera until you clear it; apps see it through their regular capture pipeline.
@@ -637,6 +694,16 @@ await client.clearCameraVideo();                                       // back t
 ```
 
 Without looping, the feed freezes on the last frame after one pass, so the app keeps receiving frames instead of seeing the camera stall. Anything AVFoundation can decode works, such as H.264 or HEVC in `.mp4` or `.mov`. Portrait recordings play upright.
+
+## Simulate the microphone
+
+Play a local audio file (WAV, MP3, M4A, or AAC) as microphone input. Playback loops until you stop it; `--once` plays a single pass:
+
+```bash
+lim ios microphone play ./fixtures/sample.wav --id <instance-id>
+lim ios microphone play ./fixtures/sample.mp3 --once --id <instance-id>
+lim ios microphone stop --id <instance-id>
+```
 
 ## Transfer files
 

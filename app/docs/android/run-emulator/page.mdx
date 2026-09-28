@@ -1,6 +1,6 @@
 ---
 title: "Run an emulator"
-description: "Create a cloud Android emulator, install your APK, and drive it from the lim CLI, the TypeScript SDK, or any tool that speaks adb."
+description: "Create a cloud Android emulator, install your app on it, and drive it from a script, an agent, or your Android tools."
 order: 1
 icon: "tablet-smartphone"
 ---
@@ -93,8 +93,9 @@ import (
 )
 
 lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
+ctx := context.Background()
 
-inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
+inst, err := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
     Wait:          param.NewOpt(true),
     ReuseIfExists: param.NewOpt(true),
     Metadata: limrun.AndroidInstanceNewParamsMetadata{
@@ -108,6 +109,9 @@ inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
         },
     },
 })
+if err != nil {
+    panic(err)
+}
 ```
 </CodeGroup>
 
@@ -121,18 +125,18 @@ Flags for `lim android create`:
 |---|---|
 | `--jurisdiction us\|eu\|as` | Keep the instance inside one jurisdiction. Hard constraint: creation fails when no region there has capacity. |
 | `--region <name>` | Deprecated. A region preference such as `us-east1`: tried first, overflows to other regions when full. Use `--jurisdiction`. |
-| `--os-version 14\|15` | Android OS major version. |
-| `--model phone\|tablet` | Android device model. |
+| `--os-version 14\|15` | Android OS major version. Defaults to `15`. |
+| `--model phone\|tablet` | Android device model. Defaults to `phone`. |
 | `--display-name <name>` | Human-readable name shown in listings and the console. |
 | `--label key=value` | Attach a metadata label. Repeat for multiple labels. |
 | `--reuse-if-exists` | Return the existing instance with exactly the same labels instead of creating a new one. Looked up in the region that handles the create. |
-| `--inactivity-timeout <duration>` | Inactivity timeout (`1m`, `10m`, `3h`). Without the flag, your organization's Android default applies. |
+| `--inactivity-timeout <duration>` | Inactivity timeout (`1m`, `10m`, `3h`). Without the flag, your organization's Android default applies. The maximum is `24h`. |
 | `--hard-timeout <duration>` | Forced termination after this wall-clock window. Defaults to no cap. |
 | `--install <path>` | Upload a local APK and install it while provisioning. Repeatable. See [Pre-install APKs](#pre-install-apks). |
 | `--asset-ttl <duration>` | Expiry for files uploaded by `--install`, as a Go duration (`24h`, minimum `1m`). Does not affect `--install-asset`. Defaults to no expiry. |
 | `--install-asset <name>` | Install an APK that is already in Asset Storage. Repeatable. |
 | `--install-url <url>` | Install an APK from a signed download URL. Repeatable. |
-| `--rm` | Delete the instance when the CLI process exits. |
+| `--rm` | Keep the command in the foreground with the tunnel and delete the instance when you stop it with `Ctrl+C`. Has no effect with `--no-connect`, which returns right away. |
 | `--connect / --no-connect` | Open the ADB tunnel after the instance is ready. Defaults to on. |
 | `--daemon / --daemon=false` | Run the ADB tunnel in the background, or keep it in the foreground. On by default. With `--rm`, the tunnel stays in the foreground so the instance can be deleted when the CLI exits. |
 | `--adb-path <path>` | Use a non-default `adb` binary. Defaults to `adb` on `PATH`. |
@@ -140,7 +144,7 @@ Flags for `lim android create`:
 | `--record`, `--events`, `--app-logs <package>` | Start a persisted session recording, event log (taps, scrolls, commands), or app log capture as soon as the instance is ready. List them with `lim android recordings`, `lim android events`, and `lim android app-logs`. |
 | `--persist-ttl <duration>` | How long those captures are kept. Defaults to `72h`. |
 
-Split APK groups, Chrome flags, the `ClientIP` and `ClientLocation` clues, and the Playwright sandbox (`spec.sandbox.playwrightAndroid`) are SDK-only. Every SDK field is described in [Android spec](/docs/reference/instances#android-spec). `spec.model` and the `ClientLocation` clue are available in the TypeScript SDK and REST, not in the Python and Go SDKs. An organization inactivity default of `0` means instances are never terminated for inactivity.
+Split APK groups, Chrome flags, the `ClientIP` and `ClientLocation` clues, and the Playwright sandbox (`spec.sandbox.playwrightAndroid`) are SDK-only. Every SDK field is described in [Android spec](/docs/reference/instances#android-spec). `spec.model`, `spec.jurisdiction`, and the `ClientLocation` clue are available in the TypeScript SDK and REST, not in the Python and Go SDKs. An organization inactivity default of `0` means instances are never terminated for inactivity.
 
 ## Choose a connection: SDK client or ADB tunnel
 
@@ -170,21 +174,21 @@ Use the device client for typed results and built-in selectors; it also runs she
 | File push and pull | `client.pushFile(path, destination?)` / `client.pullFile(path, localPath)` | `adb push local /sdcard/...` / `adb pull /sdcard/...` |
 | Run an arbitrary shell command | `client.adbShell(command, args)` returns stdout, stderr, and exit code | `adb shell <anything>` |
 | Mirror the device UI | Open `signedStreamUrl` in a browser or embed `<RemoteControl />` | `scrcpy -s 127.0.0.1:<tunnel-port>` |
-| Attach Android Studio | Not applicable | Pair Device Manager with `127.0.0.1:<tunnel-port>` |
+| Attach Android Studio | Not applicable | Appears in the device selector while the tunnel runs; no pairing |
 | Drive with Appium | Not applicable | Point `appium:udid` at `127.0.0.1:<tunnel-port>` |
 | Connection lifecycle | Typed `getConnectionState` and `onConnectionStateChange` with auto-reconnect | The adb server's built-in retry; `adb reconnect` if it loses the socket |
 | Languages | TypeScript (device control and tunnel); Go: tunnel only; Python: none, use `lim android connect` | Any language that can run `adb` |
 
 ### Open a device client from the TypeScript SDK
 
-`createInstanceClient` opens a WebSocket to the instance. Every method on the returned client is one round trip over that socket. It needs two fields from the create response: `status.apiUrl`, the HTTP base the WebSocket URL is derived from, and `status.token`, the instance token.
+`createInstanceClient` opens a WebSocket to the instance. Every method on the returned client is one round trip over that socket. It needs two fields from the create response: `status.apiUrl`, the HTTP base the WebSocket URL is derived from, and `status.token`, the instance token. `status.token` is returned only to credentials that can control the instance; a read-only API key or a viewer seat gets none.
 
 ```ts
 import { createInstanceClient } from '@limrun/api';
 
 const client = await createInstanceClient({
   apiUrl: instance.status.apiUrl!,
-  token:  instance.status.token,
+  token:  instance.status.token!, // absent for read-only API keys and viewer seats
   logLevel: 'info',
 });
 ```
@@ -192,7 +196,7 @@ const client = await createInstanceClient({
 | Option | What it controls |
 |---|---|
 | `apiUrl` | HTTP base for the instance. The WebSocket endpoint is `apiUrl + /ws`, and recording downloads use the same base. Required. |
-| `token` | Instance token, sent as `Authorization: Bearer <token>` on the WebSocket handshake. Required. |
+| `token` | Instance token. The client sends it as a `token` query parameter on the WebSocket URL, and as `Authorization: Bearer <token>` on the HTTP endpoints for files and recording downloads. Required. |
 | `adbUrl` | The instance's `status.adbWebSocketUrl`. Needed only to open an ADB tunnel with `startAdbTunnel`. |
 | `adbPath` | Path to the local `adb` executable used by tunnel workflows. Defaults to `adb`. |
 | `logLevel` | `'none' \| 'error' \| 'warn' \| 'info' \| 'debug'`. Log lines are prefixed `[Endpoint]`. Defaults to `info`. |
@@ -200,7 +204,7 @@ const client = await createInstanceClient({
 | `reconnectDelay` | Initial backoff between reconnect attempts; each attempt doubles it, up to `maxReconnectDelay`. Defaults to `1000` ms. |
 | `maxReconnectDelay` | Upper bound on the backoff. Defaults to `30000` ms. |
 
-The Go and Python SDKs have no Android device client. From those languages, drive the device through the [ADB tunnel](#open-an-adb-tunnel) or call the REST surface directly.
+The Go and Python SDKs have no Android device client. From those languages, drive the device through the [ADB tunnel](#open-an-adb-tunnel) or the `lim android` CLI.
 
 ### Open an ADB tunnel
 
@@ -230,11 +234,15 @@ adb -s 127.0.0.1:49923 shell getprop ro.build.version.release
 
 Tools that work over the tunnel:
 
-- **Android Studio.** Open **Device Manager**, choose **Pair Device Using Wi-Fi**, and point it at `127.0.0.1:<port>`. The emulator appears in the device picker; run, debug, and Logcat flow through it.
+- **Android Studio.** No pairing is needed: the tunnel already runs `adb connect`, so while `lim android connect` (or `create`) is running, the emulator appears in Android Studio's device selector like any adb-connected device. Run, debug, and Logcat flow through it.
 - **scrcpy.** Run `scrcpy -s 127.0.0.1:<port>` to mirror and control the device.
-- **Appium.** Set `appium:udid` (or `appium:deviceName`) to `127.0.0.1:<port>` on any upstream Appium server. See [Appium](/docs/testing/appium#run-an-android-test).
+- **Appium.** Set `appium:udid` (or `appium:deviceName`) to `127.0.0.1:<port>` with any upstream Appium driver. See [Appium](/docs/testing/appium#run-an-android-test).
 
 To open the tunnel from code, use `client.startAdbTunnel()` in TypeScript or `tunnel.NewADB` in Go; [Appium](/docs/testing/appium#open-the-adb-tunnel) shows both.
+
+### Reach services on your machine
+
+To let the app on the emulator reach a mock backend, dev server, or VPN-only API on your side, start a destination tunnel with `lim android tunnel`. See [Connect to local services](/docs/android/local-services).
 
 ### Run shell commands and move files without a tunnel
 
@@ -886,7 +894,7 @@ The SDK equivalents of `adb-shell`, `push-file`, and `pull-file` are `adbShell(c
 
 ### Simulate the camera, microphone, and network
 
-Play a local video file as the camera feed. Apps see it through their regular Camera2 or CameraX pipeline, and the file's audio track plays through the microphone in sync. The video loops unless you pass `--no-loop`, which plays it once and freezes on the last frame. The SDK throws on Android 14 and older, which don't support camera injection:
+Play a local video file as the camera feed. Apps see it through their regular Camera2 or CameraX pipeline, and the file's audio track plays through the microphone in sync. The video loops unless you pass `--no-loop`, which plays it once and freezes on the last frame. Camera injection needs Android 15, the default `--os-version`; the SDK throws on Android 14 and older:
 
 ```bash
 lim android camera play ./fixtures/qr-scan.mp4
@@ -976,7 +984,7 @@ The inactivity timeout fires when nobody talks to the instance for that long; th
 | A split APK app installs but won't start | The base and config APKs were installed as separate apps. | Put the whole set in one `initialAssets` entry with a plural source. See [Split APKs](#split-apks). |
 | `adb devices` doesn't list the emulator | The tunnel isn't running, or it stopped. | Run `lim android connect --id <instance-id>` and keep it running. |
 | `adb devices` shows the emulator as `offline` | The tunnel's WebSocket closed. | Restart `lim android connect`, or call `adb reconnect`. |
-| The instance is gone when you come back | Its inactivity or hard timeout fired. | Pass a longer `--inactivity-timeout` or `spec.inactivityTimeout`. |
+| The instance is gone when you come back | Its inactivity or hard timeout fired. | Pass a longer `--inactivity-timeout` or `spec.inactivityTimeout`, up to the `24h` maximum. |
 
 ## Next steps
 
@@ -985,10 +993,10 @@ The inactivity timeout fires when nobody talks to the instance for that long; th
     Build the APK remotely and install it on this emulator.
   </Card>
   <Card title="Appium" icon="flask-conical" href="/docs/testing/appium">
-    Point any upstream Appium server at the ADB tunnel for native or hybrid tests.
+    Point any upstream Appium driver at the ADB tunnel for native or hybrid tests.
   </Card>
-  <Card title="Playwright" icon="flask-conical" href="/docs/testing/playwright">
-    Drive Chrome on the emulator through the Playwright Android sandbox.
+  <Card title="Connect to local services" icon="network" href="/docs/android/local-services">
+    Let the app on the emulator reach services on your machine or VPN.
   </Card>
   <Card title="Embed a device" icon="monitor-play" href="/docs/platform/embed-simulator">
     Stream the live emulator into your web app with `<RemoteControl />`.

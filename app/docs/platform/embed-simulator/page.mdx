@@ -1,6 +1,6 @@
 ---
 title: "Embed a device"
-description: "Stream a live iOS or Android device into your web app while your backend keeps the API key."
+description: "Show your users a live iOS simulator or Android emulator inside your own web app."
 order: 1
 icon: "monitor-play"
 ---
@@ -111,6 +111,7 @@ package main
 
 import (
     "encoding/json"
+    "net"
     "net/http"
     "os"
     "strings"
@@ -129,8 +130,18 @@ type startReq struct {
 
 func startHandler(w http.ResponseWriter, r *http.Request) {
     var body startReq
-    json.NewDecoder(r.Body).Decode(&body)
-    clientIP := clientIPFrom(r)
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    spec := limrun.IosInstanceNewParamsSpec{InactivityTimeout: param.NewOpt("15m")}
+    if clientIP := clientIPFrom(r); clientIP != "" {
+        spec.Clues = []limrun.IosInstanceNewParamsSpecClue{{
+            Kind:     "ClientIP",
+            ClientIP: param.NewOpt(clientIP),
+        }}
+    }
 
     inst, err := lim.IosInstances.New(r.Context(), limrun.IosInstanceNewParams{
         Wait:          param.NewOpt(true),
@@ -142,13 +153,7 @@ func startHandler(w http.ResponseWriter, r *http.Request) {
                 "managed_by": "platform-embed",
             },
         },
-        Spec: limrun.IosInstanceNewParamsSpec{
-            InactivityTimeout: param.NewOpt("15m"),
-            Clues: []limrun.IosInstanceNewParamsSpecClue{{
-                Kind:     "ClientIP",
-                ClientIP: param.NewOpt(clientIP),
-            }},
-        },
+        Spec: spec,
     })
     if err != nil { http.Error(w, err.Error(), 500); return }
 
@@ -163,22 +168,42 @@ func clientIPFrom(r *http.Request) string {
     if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
         return strings.TrimSpace(strings.Split(xff, ",")[0])
     }
-    host, _, _ := strings.Cut(r.RemoteAddr, ":")
+    host, _, err := net.SplitHostPort(r.RemoteAddr)
+    if err != nil {
+        return ""
+    }
     return host
+}
+
+func stopHandler(w http.ResponseWriter, r *http.Request) {
+    var body struct {
+        ID string `json:"id"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    if err := lim.IosInstances.Delete(r.Context(), body.ID); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    w.WriteHeader(http.StatusNoContent)
 }
 
 func main() {
     http.HandleFunc("/sessions/start", startHandler)
+    http.HandleFunc("/sessions/stop", stopHandler)
     http.ListenAndServe(":3001", nil)
 }
 ```
 
 ```python title="backend/main.py"
 from fastapi import FastAPI, Request
-from limrun_api import Limrun
+from limrun_api import AsyncLimrun
 import os
 
-lim = Limrun(api_key=os.environ["LIM_API_KEY"])
+# The async client keeps FastAPI's event loop free while an instance boots.
+lim = AsyncLimrun(api_key=os.environ["LIM_API_KEY"])
 app = FastAPI()
 
 @app.post("/sessions/start")
@@ -186,7 +211,7 @@ async def start(req: Request):
     body = await req.json()
     client_ip = (req.headers.get("x-forwarded-for") or req.client.host).split(",")[0].strip()
 
-    instance = lim.ios_instances.create(
+    instance = await lim.ios_instances.create(
         wait=True,
         reuse_if_exists=True,
         metadata={
@@ -211,7 +236,7 @@ async def start(req: Request):
 @app.post("/sessions/stop")
 async def stop(req: Request):
     body = await req.json()
-    lim.ios_instances.delete(body["id"])
+    await lim.ios_instances.delete(body["id"])
     return {"ok": True}
 ```
 </CodeGroup>
@@ -247,6 +272,8 @@ type Session = { id: string; endpointWebSocketUrl: string; token: string };
 
 export function Simulator() {
   const [session, setSession] = useState<Session | null>(null);
+  // One signaling-session ID per mount; a new value on every render would restart the stream.
+  const [tabId] = useState(() => `tab-${crypto.randomUUID()}`);
   const ctrlRef = useRef<RemoteControlHandle>(null);
 
   useEffect(() => {
@@ -285,7 +312,7 @@ export function Simulator() {
       ref={ctrlRef}
       url={session.endpointWebSocketUrl}
       token={session.token}
-      sessionId={`tab-${Date.now()}`}
+      sessionId={tabId}
     />
   );
 }
@@ -301,7 +328,7 @@ These props match `@limrun/ui` 0.16.0, the current `latest` release on npm. The 
 |---|---|---|---|
 | `url` | string | required | WebSocket URL from the instance. Pass `instance.status.endpointWebSocketUrl`. |
 | `token` | string | required | Instance token. Pass `instance.status.token`. The component appends it to the connection URL as `?token=…`. |
-| `sessionId` | string | random | A unique signaling-session identifier. Prevents collisions when several browser tabs resolve to the same reused instance. Use a fresh value per tab, for example `tab-${Date.now()}`. |
+| `sessionId` | string | random | A unique signaling-session identifier. Prevents collisions when several browser tabs resolve to the same reused instance. Create it once per mount, for example with `useState` and `crypto.randomUUID()` as in the example above; a value that changes between renders restarts the stream. |
 | `openUrl` | string | none | A URL or deep link to open on the device once the component is ready, such as `https://example.com`, `myapp://orders/42`, or `exp://…` for Expo Go. |
 | `showFrame` | boolean | `true` | Draw the device frame. See [iPad and Apple Watch](#ipad-and-apple-watch) for models without built-in frames. |
 | `assets` | object | bundled frames | Device frame and boot-logo images. The default entry bundles Limrun's frames; the `@limrun/ui/lite` entry omits them so a frameless embed stays small. |
@@ -414,7 +441,7 @@ ctrlRef.current?.sendKeyEvent({ type: 'keydown', code: 'Enter' });
 ctrlRef.current?.reconnect();
 ```
 
-These are browser-side controls. For richer control from your server, such as taps by accessibility selector, element trees, video recording, tunnels, or app resets, drive the same instance with the device clients in [Run a simulator](/docs/ios/run-simulator) or [Run an emulator](/docs/android/run-emulator). Both paths work on one instance at the same time.
+These are browser-side controls. For richer control from your server, such as taps by accessibility selector, element trees, video recording, or app resets, drive the same instance with the device clients in [Run a simulator](/docs/ios/run-simulator) or [Run an emulator](/docs/android/run-emulator). Both paths work on one instance at the same time.
 
 ## iPad and Apple Watch
 
@@ -511,6 +538,7 @@ type Session = { id: string; endpointWebSocketUrl: string; token: string };
 export function Simulator({ tenant, user }: { tenant: string; user: string }) {
   const [session, setSession] = useState<Session | null>(null);
   const [error,   setError]   = useState<string | null>(null);
+  const [tabId] = useState(() => `tab-${crypto.randomUUID()}`);
   const ctrlRef = useRef<RemoteControlHandle>(null);
 
   useEffect(() => {
@@ -564,7 +592,7 @@ export function Simulator({ tenant, user }: { tenant: string; user: string }) {
         ref={ctrlRef}
         url={session.endpointWebSocketUrl}
         token={session.token}
-        sessionId={`tab-${Date.now()}`}
+        sessionId={tabId}
         autoReconnect
         openUrl="exp://exp.host/@anonymous/my-snack"
       />
@@ -620,9 +648,9 @@ For a custom 3D body, pass `duoModelUrl` with a prepared GLB that you are licens
     Every create field, clue, and status URL your backend can use.
   </Card>
   <Card title="Run a simulator" icon="smartphone" href="/docs/ios/run-simulator">
-    Server-side device control: selectors, element trees, recording, tunnels.
+    Server-side device control: selectors, element trees, recording, app resets.
   </Card>
   <Card title="Run an emulator" icon="tablet-smartphone" href="/docs/android/run-emulator">
-    The same wiring on Android, plus the ADB tunnel and OS-version clues.
+    Android create options, the ADB tunnel, and OS-version clues.
   </Card>
 </Columns>

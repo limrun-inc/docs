@@ -1,6 +1,6 @@
 ---
 title: "Build with Gradle"
-description: "Compile Android apps on a cloud Gradle sandbox from any machine, with no local Android SDK, JDK, or keystore."
+description: "Compile your Android app on a cloud Gradle sandbox from any machine, with no local Android SDK, JDK, or keystore."
 order: 2
 icon: "hammer"
 ---
@@ -10,11 +10,13 @@ The CLI syncs your source to a Gradle sandbox, runs the project's own Gradle wra
 
 The CLI covers the whole surface. The TypeScript SDK provisions and builds too, but its builds pass signing material explicitly because the [escrowed release key](/docs/android/sign-and-publish#sign-with-the-organizations-upload-key) (`--sign`) is CLI-only:
 
-| Surface | TypeScript | Python | Go | CLI |
+| Surface | CLI | TypeScript | Python | Go |
 |---|---|---|---|---|
-| Provision a Gradle sandbox | ✓ | via REST | via REST | ✓ |
-| Sync source and run Gradle | ✓ | not in SDK | not in SDK | ✓ |
-| Escrowed release signing (`--sign`) | pass the material yourself | not in SDK | not in SDK | ✓ |
+| Provision a Gradle sandbox | ✓ | ✓ | via REST | via REST |
+| Sync source and run Gradle | ✓ | ✓ | not in SDK | not in SDK |
+| Escrowed release signing (`--sign`) | ✓ | pass the material yourself | not in SDK | not in SDK |
+
+The [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix) covers every other surface.
 
 ## Build a project
 

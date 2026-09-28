@@ -1,12 +1,12 @@
 ---
 title: "Playwright"
-description: "Provision the Playwright service, connect over CDP, match versions, and fall back to an ADB tunnel."
+description: "Run your Playwright tests against Chrome on a cloud Android emulator from any machine."
 order: 4
 icon: "flask-conical"
 ---
 # Run Playwright tests
 
-Run your Playwright tests against Chrome on a Limrun Android emulator. The CDP connection terminates on the emulator's host, so tests stay responsive even when your test runner is in another region, and your existing Playwright test code keeps working.
+Your existing Playwright test code keeps working against Chrome on the emulator. The CDP connection terminates on the emulator's host, so tests stay responsive even when your test runner is in another region.
 
 ## Before you start
 
@@ -153,10 +153,10 @@ The API lives behind Playwright's internal `_android` export. Pass the CDP URL w
 ```ts
 import { _android as android } from 'playwright';
 
-// Build the CDP URL with the token as a query param.
-const cdpUrl =
-  instance.status.sandbox.playwrightAndroid!.url +
-  `?token=${instance.status.token}`;
+// Build the CDP URL with the instance token as a query param.
+const serviceUrl = instance.status.sandbox?.playwrightAndroid?.url;
+if (!serviceUrl) throw new Error('Playwright Android sandbox URL not found');
+const cdpUrl = `${serviceUrl}?token=${instance.status.token}`;
 
 // Same shape as Playwright's local `android.devices()`, but routed through Limrun.
 const device = await android.connect(cdpUrl);
@@ -214,7 +214,7 @@ This is the path the [Appium](/docs/testing/appium#run-an-android-test) page use
     Your `playwright` package and the service's version differ. Install the client that matches `spec.sandbox.playwrightAndroid.version` (`1.56.1` when you omit it), or recreate the instance with the version your client uses. See [Match the Playwright version](#match-the-playwright-version).
   </Accordion>
   <Accordion title="`Playwright Android sandbox URL not found`">
-    `instance.status.sandbox.playwrightAndroid.url` is undefined. Either `wait: true` wasn't set on `create` (so the status hasn't populated yet), or `spec.sandbox.playwrightAndroid.enabled` wasn't passed. Recreate with both.
+    The guard in the connect snippet above throws this when `instance.status.sandbox.playwrightAndroid.url` is undefined. Either `wait: true` wasn't set on `create` (so the status hasn't populated yet), or `spec.sandbox.playwrightAndroid.enabled` wasn't passed. Recreate with both.
   </Accordion>
   <Accordion title="Chrome refuses to launch with a flag error">
     The `enable-command-line-on-non-rooted-devices` Chrome flag is required for any Playwright Android session. Pass it as a `Configuration` asset at create time as shown above; setting it after boot doesn't work.

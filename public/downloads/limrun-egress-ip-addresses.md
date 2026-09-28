@@ -1,6 +1,6 @@
 # Limrun egress IP addresses
 
-Last updated: August 10, 2026.
+Last updated: September 28, 2026.
 
 These are shared regional egress IP addresses for outbound traffic from Limrun instances to customer-managed systems.
 Allowlist every address for each Limrun region your instances use.

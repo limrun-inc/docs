@@ -1,6 +1,6 @@
 ---
 title: "CLI"
-description: "Every lim command, the flags they share, and the environment variables the CLI reads."
+description: "Look up every lim command, the flags they share, and the environment variables the CLI reads."
 order: 1
 icon: "terminal"
 ---
@@ -34,11 +34,11 @@ Every command that talks to Limrun resolves an API key in this order:
 
 ## Target an instance
 
-Commands that act on an existing instance accept `--id <instance-id>`. Without it, they use the instance of that type you created last in the current workspace. The CLI records these per workspace in `~/.lim/last-instances.json`; a workspace is the current git repository or worktree unless you assign one with `lim set-workspace-dir`, `--workspace`, or `LIM_WORKSPACE`. See [The CLI's default instance](/docs/concepts#the-clis-default-instance).
+Device and build commands accept `--id <instance-id>`; `get` and `delete` take the ID as a positional argument instead (`lim ios delete <instance-id>`). Without an ID, they use the instance of that type you created last in the current workspace. The CLI records these per workspace in `~/.lim/last-instances.json`; a workspace is the current git repository or worktree unless you assign one with `lim set-workspace-dir`, `--workspace`, or `LIM_WORKSPACE`. See [The CLI's default instance](/docs/concepts#the-clis-default-instance).
 
 Pass `--id` explicitly in scripts, CI, and agents that create more than one instance.
 
-When the targeted instance no longer exists, device and build commands create a replacement automatically. Lifecycle commands such as `create`, `delete`, `list`, and `get`, and `logs` and `tools`, never do. Pass `--no-create` to fail instead.
+When the targeted instance no longer exists, device and build commands create a replacement automatically; pass `--no-create` to fail instead. `create`, `delete`, `list`, `get`, `logs`, `tools`, and `version` never create a replacement; they fail with not-found instead.
 
 ## Shared flags
 
@@ -62,6 +62,7 @@ Commands that act on instances share these flags. Account commands such as `lim 
 | `LIM_API_KEY` | Every command | Organization API key. |
 | `LIM_WORKSPACE` | Every command | Workspace for resolving the default instance. |
 | `LIM_DAEMON` | Every command | Set to `false` to disable the background connection daemon. |
+| `LIM_DISABLE_TELEMETRY` | Every command | Set to any value, such as `1`, to disable CLI usage telemetry. |
 | `LIM_IOS_INSTANCE_URL`, `LIM_IOS_INSTANCE_TOKEN` | `lim ios` | Drive one simulator by its API URL and instance token, without an API key. |
 | `LIM_ANDROID_INSTANCE_URL`, `LIM_ANDROID_INSTANCE_TOKEN`, `LIM_ANDROID_INSTANCE_ADB_URL` | `lim android` | The same for an emulator; the ADB URL enables `lim android connect`. |
 | `LIM_XCODE_INSTANCE_URL`, `LIM_XCODE_INSTANCE_TOKEN` | `lim xcode` | The same for an Xcode sandbox. |
@@ -80,14 +81,14 @@ The Guide column links to the page that explains a command in context. Commands 
 | Command | What it does | Guide |
 |---|---|---|
 | `lim ios app-log` | Stream or tail app logs from a running iOS instance | [Run a simulator](/docs/ios/run-simulator#read-app-logs) |
-| `lim ios app-logs` | List persisted app log captures of an iOS instance |  |
+| `lim ios app-logs` | List persisted app log captures of an iOS instance | [Run a simulator](/docs/ios/run-simulator#keep-captures-after-the-session) |
 | `lim ios attach-xcode` | Attach an Xcode instance to an iOS simulator |  |
 | `lim ios camera` | Control the simulated camera of a running iOS instance | [Run a simulator](/docs/ios/run-simulator#simulate-the-camera) |
 | `lim ios create` | Create a new iOS instance | [Run a simulator](/docs/ios/run-simulator#create-a-simulator) |
 | `lim ios delete` | Delete an iOS instance | [Run a simulator](/docs/ios/run-simulator#reuse-and-clean-up) |
 | `lim ios delete-file` | Delete a file or folder on the iOS simulator | [Run a simulator](/docs/ios/run-simulator#transfer-files) |
 | `lim ios element-tree` | Get the UI element tree from a running iOS instance | [Run a simulator](/docs/ios/run-simulator#read-the-screen) |
-| `lim ios events` | List persisted event log captures of an iOS instance |  |
+| `lim ios events` | List persisted event log captures of an iOS instance | [Run a simulator](/docs/ios/run-simulator#keep-captures-after-the-session) |
 | `lim ios fold` | Read or change the native iPhone Duo fold state | [Run a simulator](/docs/ios/run-simulator#fold-an-iphone-duo) |
 | `lim ios get` | Get details for a specific iOS instance | [Per-instance MCP server](/docs/agents/mcp#get-the-mcp-url-and-token) |
 | `lim ios info` | Get device information from a running iOS instance |  |
@@ -101,14 +102,14 @@ The Guide column links to the page that explains a command in context. Commands 
 | `lim ios ls` | List files in the iOS simulator or an app container | [Run a simulator](/docs/ios/run-simulator#transfer-files) |
 | `lim ios lsof` | List open files on a running iOS instance | [Run a simulator](/docs/ios/run-simulator#use-macos-dev-tools) |
 | `lim ios maestro` | Run Maestro flows against a running iOS instance | [Maestro](/docs/testing/maestro) |
-| `lim ios microphone` | Control the simulated microphone of a running iOS instance |  |
+| `lim ios microphone` | Control the simulated microphone of a running iOS instance | [Run a simulator](/docs/ios/run-simulator#simulate-the-microphone) |
 | `lim ios open-url` | Open a URL on a running iOS instance | [Run a simulator](/docs/ios/run-simulator#open-urls-and-deep-links) |
 | `lim ios perform` | Perform multiple iOS actions in a single batch | [Run a simulator](/docs/ios/run-simulator#run-a-batch-of-actions) |
 | `lim ios press-key` | Press a key on a running iOS instance | [Run a simulator](/docs/ios/run-simulator#type-and-press-keys) |
 | `lim ios pull-file` | Pull a file from the iOS simulator | [Run a simulator](/docs/ios/run-simulator#transfer-files) |
 | `lim ios push-file` | Push a local file to the iOS simulator | [Run a simulator](/docs/ios/run-simulator#transfer-files) |
 | `lim ios record` | Start or stop video recording on a running iOS instance | [Run a simulator](/docs/ios/run-simulator#record-a-video) |
-| `lim ios recordings` | List persisted session recordings of an iOS instance |  |
+| `lim ios recordings` | List persisted session recordings of an iOS instance | [Run a simulator](/docs/ios/run-simulator#keep-captures-after-the-session) |
 | `lim ios reverse` | Expose a local client-first service to the simulator | [Connect to local services](/docs/ios/local-services#use-the-legacy-fixed-port-reverse-tunnel) |
 | `lim ios screenshot` | Capture a screenshot from a running iOS instance | [Run a simulator](/docs/ios/run-simulator#connect-a-device-client) |
 | `lim ios scroll` | Scroll on a running iOS instance | [Run a simulator](/docs/ios/run-simulator#scroll-and-swipe) |
@@ -117,7 +118,7 @@ The Guide column links to the page that explains a command in context. Commands 
 | `lim ios simctl` | Run simctl on a running iOS instance | [Run a simulator](/docs/ios/run-simulator#use-macos-dev-tools) |
 | `lim ios swipe` | Swipe between two points on a running iOS instance | [Run a simulator](/docs/ios/run-simulator#scroll-and-swipe) |
 | `lim ios sync` | Sync a built app bundle to a running iOS instance |  |
-| `lim ios syslog` | Stream syslog from a running iOS instance |  |
+| `lim ios syslog` | Stream syslog from a running iOS instance | [Run a simulator](/docs/ios/run-simulator#read-app-logs) |
 | `lim ios tap` | Tap at coordinates on a running iOS instance | [Run a simulator](/docs/ios/run-simulator#tap-an-element) |
 | `lim ios tap-element` | Tap an iOS element by accessibility selector | [Run a simulator](/docs/ios/run-simulator#tap-an-element) |
 | `lim ios terminate-app` | Terminate an app on a running iOS instance | [Run a simulator](/docs/ios/run-simulator#manage-apps) |
@@ -163,9 +164,9 @@ The Guide column links to the page that explains a command in context. Commands 
 | `lim android tap` | Tap at coordinates on a running Android instance | [Run an emulator](/docs/android/run-emulator#tap-type-and-press-keys) |
 | `lim android tap-element` | Tap an Android element by selector | [Run an emulator](/docs/android/run-emulator#tap-type-and-press-keys) |
 | `lim android terminate-app` | Terminate an app on a running Android instance | [Run an emulator](/docs/android/run-emulator#launch-and-stop-apps) |
-| `lim android tunnel` | Send selected Android TCP destinations through this machine | [Connect to local services](/docs/ios/local-services#tunnel-from-an-android-emulator) |
-| `lim android tunnel status` | Show the active destination tunnel | [Connect to local services](/docs/ios/local-services#tunnel-from-an-android-emulator) |
-| `lim android tunnel stop` | Stop the active destination tunnel | [Connect to local services](/docs/ios/local-services#tunnel-from-an-android-emulator) |
+| `lim android tunnel` | Send selected Android TCP destinations through this machine | [Connect to local services](/docs/android/local-services) |
+| `lim android tunnel status` | Show the active destination tunnel | [Connect to local services](/docs/android/local-services#start-a-tunnel) |
+| `lim android tunnel stop` | Stop the active destination tunnel | [Connect to local services](/docs/android/local-services#start-a-tunnel) |
 | `lim android type` | Type text into an Android input field | [Run an emulator](/docs/android/run-emulator#tap-type-and-press-keys) |
 
 ### Xcode sandboxes
@@ -175,7 +176,7 @@ The Guide column links to the page that explains a command in context. Commands 
 | `lim xcode attach-simulator` | Attach an iOS simulator to an Xcode instance | [Build with Xcode](/docs/ios/build-with-xcode#install-on-a-simulator) |
 | `lim xcode build` | Run xcodebuild on an Xcode sandbox | [Build with Xcode](/docs/ios/build-with-xcode) |
 | `lim xcode create` | Create a new Xcode instance | [Build with Xcode](/docs/ios/build-with-xcode#pick-your-interface) |
-| `lim xcode delete` | Delete an Xcode instance | [PR previews](/docs/ci/pr-previews#clean-up-when-a-pr-closes) |
+| `lim xcode delete` | Delete an Xcode instance | [GitHub Actions recipes](/docs/ci/github-actions#build-a-signed-ipa-on-every-pull-request) |
 | `lim xcode get` | Get details for a specific Xcode instance |  |
 | `lim xcode list` | List Xcode instances | [PR previews](/docs/ci/pr-previews#clean-up-when-a-pr-closes) |
 | `lim xcode logs` | Fetch logs for an active, recent, or specific Xcode build | [Build logs and webhooks](/docs/ci/build-logs-and-webhooks#read-build-logs) |
@@ -199,7 +200,7 @@ The Guide column links to the page that explains a command in context. Commands 
 |---|---|---|
 | `lim gradle build` | Build an Android project on a gradle instance | [Build with Gradle](/docs/android/build-with-gradle#build-a-project) |
 | `lim gradle create` | Create a new gradle instance | [Build with Gradle](/docs/android/build-with-gradle#build-a-project) |
-| `lim gradle delete` | Delete a gradle instance |  |
+| `lim gradle delete` | Delete a gradle instance | [GitHub Actions recipes](/docs/ci/github-actions#build-a-signed-aab-on-every-push) |
 | `lim gradle get` | Get a gradle instance |  |
 | `lim gradle list` | List gradle instances |  |
 | `lim gradle logs` | Fetch logs for an active, recent, or specific Gradle build | [Build logs and webhooks](/docs/ci/build-logs-and-webhooks#read-build-logs) |
@@ -233,3 +234,4 @@ The Guide column links to the page that explains a command in context. Commands 
 | `lim set-api-key` | Set the stored Limrun API key |  |
 | `lim set-workspace-dir` | Assign a directory to an isolated lim workspace |  |
 | `lim skills install` | Install Limrun skills for AI coding agents | [Set up a coding agent](/docs/agents/cli#install-the-limrun-skills) |
+| `lim version` | Print the installed CLI version |  |

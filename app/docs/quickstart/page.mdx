@@ -88,13 +88,12 @@ The [console](https://console.limrun.com) has a **Playground** that creates and 
 Read the screen and act on it with `lim ios` commands. Without `--id`, each command targets the instance you created last in this git repository:
 
 ```bash
-lim ios screenshot ./screen.png
+lim ios screenshot ./screen.jpg
 lim ios element-tree
-lim ios tap-element --ax-label "Continue"
-lim ios type "Hello"
+lim ios tap-element --ax-label "Mountains and sun"
 ```
 
-The element tree lists every label, accessibility identifier, type, and frame on screen. Read it before each action and select elements from it; selectors keep working when the layout changes, pixel coordinates do not.
+The element tree lists every label, accessibility identifier, type, and frame on screen. The sample app shows only an image labelled `Mountains and sun` and the text `Hello, world!`, which is why the tap selects that label. Read the tree before each action and select elements from it; selectors keep working when the layout changes, pixel coordinates do not. In your own app, tap a text field first, then type into it with `lim ios type "Hello"`; typing fails when no field has focus.
 
 Change some code and run `lim xcode build .` again. The new build replaces the app on the attached simulator.
 

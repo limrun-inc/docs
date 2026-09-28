@@ -6,7 +6,7 @@ icon: "webhook"
 ---
 # Build logs, webhooks, and detached builds
 
-A CI job, coding agent, or backend often should not hold a build stream open for minutes. Detach from the build once it is accepted, read its logs whenever you need them, and let a webhook deliver the terminal result. Xcode builds (`lim xcode build`) and Gradle builds (`lim gradle build`) share the same model; every command on this page has an `xcode` and a `gradle` form.
+A CI job, coding agent, or backend often should not hold a build stream open for minutes. Builds keep running on the sandbox after the caller detaches, and their logs persist after the instance is gone. Xcode builds (`lim xcode build`) and Gradle builds (`lim gradle build`) share the same model; every command on this page has an `xcode` and a `gradle` form.
 
 ## Detach from a build
 
@@ -48,7 +48,7 @@ lim xcode build . --detach --inactivity-timeout 3s
 lim gradle build . --detach --inactivity-timeout 3s
 ```
 
-The flag makes the build create a fresh instance with that lifecycle instead of reusing the remembered one, so it cannot be combined with `--id`. The timeout is measured from the last activity the server reports, and active builds and uploads count as activity, so even `3s` never interrupts the build. For Xcode builds, the inactivity controller checks about every 15 seconds, so a `3s` timeout usually tears the instance down 3 to 18 seconds after its last activity rather than at exactly three seconds.
+The flag makes the build create a fresh instance with that lifecycle instead of reusing the remembered one, so it cannot be combined with `--id`. The timeout is measured from the last activity the server reports, and active builds and uploads count as activity, so even `3s` never interrupts the build. The inactivity controller checks about every 15 seconds, so a `3s` timeout usually tears the instance down 3 to 18 seconds after its last activity rather than at exactly three seconds.
 
 ## Read build logs
 

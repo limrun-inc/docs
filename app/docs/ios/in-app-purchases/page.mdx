@@ -6,7 +6,7 @@ icon: "credit-card"
 ---
 # Test in-app purchases
 
-StoreKit can serve in-app purchase products from a local `.storekit` configuration file instead of App Store Connect. Limrun iOS instances expose this [local test environment](https://developer.apple.com/documentation/storekit/setting-up-storekit-testing-in-xcode) through three SDK calls: register a config, generate one from your sandbox products, or clear it. Your app makes the same StoreKit calls it makes in production, and the simulator answers them from the config.
+StoreKit can serve in-app purchase products from a local `.storekit` configuration file instead of App Store Connect. Limrun iOS instances expose this [local test environment](https://developer.apple.com/documentation/storekit/setting-up-storekit-testing-in-xcode) through three TypeScript SDK calls: register a config, generate one from your sandbox products, or clear it. The CLI has no StoreKit command, so CLI users and coding agents run these steps from a short Node script. Your app makes the same StoreKit calls it makes in production, and the simulator answers them from the config.
 
 ## Before you start
 
@@ -20,7 +20,7 @@ StoreKit can serve in-app purchase products from a local `.storekit` configurati
 
 This has two consequences:
 
-- The simulator must accept a local config. That means [attaching it to an Xcode sandbox](/docs/ios/build-with-xcode#install-on-a-simulator) and ad-hoc signing the build, so the simulator runs it without an Apple Developer account.
+- The app must be an ad-hoc signed simulator build, so the simulator runs it without an Apple Developer account. [Attaching the simulator to an Xcode sandbox](/docs/ios/build-with-xcode#install-on-a-simulator) is the easiest way to build and install one, but any install path works.
 - The config is keyed by bundle ID. Setting it for `com.example.MyApp` does not affect other apps on the same simulator, and clearing it returns only that bundle to real sandbox behavior.
 
 ## Create an Xcode sandbox and an attached simulator
@@ -114,7 +114,7 @@ if (exitCode !== 0) throw new Error(`xcodebuild failed (${exitCode})`);
 
 The Python and Go SDKs do not sync or build. From those languages, run `lim xcode build` as a subprocess. [Build with Xcode](/docs/ios/build-with-xcode) covers workspaces, schemes, log streaming, and artifact upload.
 
-## Pick a flow
+## Connect a device client
 
 The three StoreKit helpers live on the iOS device client:
 
@@ -123,13 +123,15 @@ import { Ios } from '@limrun/api';
 
 const ios = await Ios.createInstanceClient({
   apiUrl: instance.status.apiUrl!,
-  token: instance.status.token,
+  token: instance.status.token!,
 });
 ```
 
 <Note>
-  `setStoreKitConfig`, `clearStoreKitConfig`, `discoverStoreKitConfig`, and `softReset` are in the TypeScript SDK only. The released Go SDK (v0.9.0) iOS client, `github.com/limrun-inc/go-sdk/websocket/ios`, covers taps, the element tree, and screenshots but not these helpers, and the Python SDK only manages instances. From Go or Python, run the StoreKit and soft-reset steps from a Node subprocess or call the underlying HTTP endpoints; the create, build, launch, and tap steps still work in your primary language.
+  `setStoreKitConfig`, `clearStoreKitConfig`, and `discoverStoreKitConfig` are in the TypeScript SDK only. The released Go SDK (v0.9.0) iOS client, `github.com/limrun-inc/go-sdk/websocket/ios`, covers taps, the element tree, and screenshots but not these helpers, and the Python SDK only manages instances. From Go or Python, run the StoreKit steps from a Node subprocess or call the underlying HTTP endpoints; the create, build, launch, and tap steps still work in your primary language.
 </Note>
+
+## Pick a flow
 
 You can populate the local config in two ways: register a file you already have, or generate one from App Store Connect.
 
@@ -212,17 +214,7 @@ await ios.tapElement({ AXLabel: 'Confirm' });
 
 **Server-side receipt validation fails.** If your backend verifies receipts through Apple's production or sandbox `verifyReceipt` or the App Store Server API, those calls reject local-environment transactions because the signing certificate is not Apple's production one. Stub the validation server in your test environment, or skip it when the build is ad-hoc signed.
 
-**Purchases persist across relaunches.** The simulator remembers a purchase while the local config is active. To clear purchases between test cases without dropping the config, soft-reset the app:
-
-```ts
-// 'data' (default): terminate the app + wipe its data container. No reinstall.
-await ios.softReset(bundleId);
-
-// 'full': terminate + uninstall + clear keychain + clear privacy grants
-// + drop NSUserDefaults + wipe shared App Group containers + reinstall
-// from the cached source .app.
-await ios.softReset(bundleId, { strategy: 'full' });
-```
+**Purchases persist across relaunches.** The simulator remembers a purchase while the local config is active. `softReset` wipes the app's own data container, but the StoreKit test state lives outside it, so it is not a documented way to clear purchases. For a clean purchase state between test cases, create a fresh simulator, for example with `--rm` or a new label per test run.
 
 ## Clear or replace the config
 
