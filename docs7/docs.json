@@ -83,10 +83,10 @@
         ]
       },
       {
-        "group": "Tutorials",
+        "group": "Guides",
         "icon": "graduation-cap",
         "pages": [
-          "tutorials/ios-bazel-claude-code-web"
+          "guides/ios-bazel-claude-code-web"
         ]
       },
       {
