@@ -66,6 +66,10 @@ The **Go SDK doesn't yet have a standalone Xcode resource.** From Go, POST to `/
 
 When you already know you'll test on a simulator right after the build, the CLI can create both instances and attach them in one call: `lim ios create --xcode` (or `lim xcode create --ios`). The two instances are still separate; the flag just saves you the attach step described in [Auto-install on the simulator](#auto-install-on-the-simulator).
 
+## Reuse builds across instances
+
+Create the sandbox with `--snapshot-key myapp-main` to restore and later save its build workspace. After building, run `lim xcode delete --wait-snapshot` to publish the snapshot for the next instance. See [Disk snapshots](/docs/ios/snapshots) for the full workflow, branch fallbacks, and SDK usage.
+
 ## Choose the Xcode version
 
 A sandbox builds with its node's default Xcode (26.4 today) unless you select another installed version. The fleet carries one released (GA) Xcode per major and, while Apple is seeding one, one beta: today 26.4 GA, 27.0 GA, and 27.1 beta. Two selectors cover them:
@@ -105,7 +109,7 @@ if (bound.channel !== 'ga') throw new Error('App Store uploads need a released X
 
 The sandbox itself has one Xcode selected at a time, and the workspace preference wins: when a build finds the sandbox on another Xcode (a colleague switched it, or a fresh sandbox came up on the node default), it says so and switches before building. Every build prints the Xcode it runs with (`Building with Xcode 27.1 (27A9269)`).
 
-- Switching Xcode invalidates the build cache produced with the other version, so the next build starts cold. For the persistent build cache (`--cache-key`), use a separate key per Xcode lane, for example `myapp-27` and `myapp-27.1`: archives are stored per key, and a restore under a different Xcode is wiped.
+- Switching Xcode invalidates build state produced with the other version, so the next build starts cold. For persistent disk snapshots (`--snapshot-key`), use a separate key per Xcode lane, for example `myapp-27` and `myapp-27.1`: archives are stored per key, and a restore under a different Xcode is wiped.
 - The switch is refused while a build, command, sync, or `lim xcode rbe` stack is running; stop them first (`lim xcode rbe --stop`). `lim xcode use xcode@<version>` keeps the preference in that case and the next command retries the switch.
 - Asking for a version the node does not have fails with the available list, and `lim xcode use xcode@<version>` does not record a preference for it.
 - A major.minor pin lasts until the fleet retires that version. Then `lim xcode build` fails with the daemon's message plus a hint to run `lim xcode version set 27` or `lim xcode version unset`.
@@ -302,7 +306,7 @@ lim xcode tools
 
 `mise install` adds a version without changing the selection. `mise use` installs and records an explicit sandbox override for later operations in `.limrun-runtime-mise.toml`; it takes precedence over project tool requests. `lim xcode use node@24` replaces that override with a Node 24 selection. A running operation keeps its environment snapshot. The next run or build picks up a version change; use `mise exec` explicitly when a child command in the same operation needs the new version immediately.
 
-Image installations stay outside the workspace cache. Mise selects among compatible image and user installations, including restored user versions. User-installed mise tools live under `.limbuild-sandbox/home/.mise/` and are included when your cache paths cover that directory. Existing cache publication rules still apply: running a command alone does not make a workspace eligible; a successful managed build is required. Dependency installs rerun when the resolved tool versions change. Switching Xcode still invalidates the workspace cache. Mise gem wrappers contain absolute paths: after a cache restore moves the sandbox home, reinstall an affected user gem explicitly, for example `lim xcode run -- mise install --force bundler`. Image gem wrappers are packaged to support relocation.
+Image installations stay outside disk snapshots. Mise selects among compatible image and user installations, including restored user versions. User-installed mise tools live under `.limbuild-sandbox/home/.mise/` and are included when your snapshot paths cover that directory. Snapshot publication rules still apply: running a command alone does not make a workspace eligible; a successful managed build is required. Dependency installs rerun when the resolved tool versions change. Switching Xcode still invalidates restored build state. Mise gem wrappers contain absolute paths: after a snapshot restore moves the sandbox home, reinstall an affected user gem explicitly, for example `lim xcode run -- mise install --force bundler`. Image gem wrappers are packaged to support relocation.
 
 ## Run project commands
 
