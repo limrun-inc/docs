@@ -79,6 +79,10 @@ const xcode = await lim.xcodeInstances.createClient({ apiUrl, token });
 
 When you know you will test on a simulator right after the build, create both instances and attach them in one call with `lim ios create --xcode` or `lim xcode create --ios`. They stay separate instances; the flag saves the attach step described in [Install on a simulator](#install-on-a-simulator).
 
+### Reuse builds across instances
+
+Create the sandbox with `--snapshot-key myapp-main` to restore and later save its build workspace, and run `lim xcode delete --wait-snapshot` after building to publish it for the next instance. See [Disk snapshots](/docs/ios/snapshots) for the full workflow, branch fallbacks, and SDK usage.
+
 ## Install on a simulator
 
 Attach a simulator to the Xcode sandbox at any time. The attach installs the latest successful build immediately, and every later successful build installs and launches on it. `lim ios create --attach` creates a simulator and attaches it in one step; `lim xcode attach-simulator` attaches one that already exists:
@@ -443,7 +447,7 @@ These are the `lim xcode build` flags. The flags every command shares (`--api-ke
 | `--upload-option key=value` | App metadata to record on the uploaded asset (`displayName`, `bundleIdentifier`, `shortVersion`, `buildVersion`, `deeplink`). Values read from the built bundle take precedence. Repeatable. |
 | `--artifact-name <App.app>` | Filename of the built `.app` to upload, skipping artifact discovery. |
 | `--signed-upload-url <url>` | Upload the artifact to your own presigned URL. Defaults to `LIM_SIGNED_UPLOAD_URL`. |
-| `--cache-key`, `--cache-restore-keys`, `--cache-paths` | Publish and restore the sandbox workspace as a persistent build cache. |
+| `--snapshot-key`, `--snapshot-restore-keys`, `--snapshot-paths` | Save and restore the sandbox workspace as a [disk snapshot](/docs/ios/snapshots). The older `--cache-*` names still work. |
 | `--expo-app-dir <path>` | Path to the Expo app inside a monorepo or ambiguous React Native workspace. |
 | `--expo-force-prebuild` | Run `expo prebuild` on the server even when the workspace already has an `ios/` directory. |
 | `--dev-server-url <url>` | URL a Debug React Native or Expo build opens on the attached simulator after install. |

@@ -1,7 +1,7 @@
 ---
 title: "Disk snapshots"
 description: "Reuse build state across Xcode instances with disk snapshots and branch fallbacks."
-order: 7
+order: 5
 icon: "database"
 ---
 # Disk snapshots
@@ -10,7 +10,7 @@ Use a disk snapshot to carry source files, dependencies, and Xcode's DerivedData
 
 ## Save and reuse a disk snapshot
 
-With the [CLI installed and `LIM_API_KEY` set](/docs/agents/cli#one-time-setup), run these commands from your project directory. Replace `MyApp` with your scheme:
+With the [CLI installed and `LIM_API_KEY` set](/docs/quickstart), run these commands from your project directory. Replace `MyApp` with your scheme:
 
 ```bash
 XCODE_ID=$(lim xcode create --snapshot-key myapp-main --quiet)

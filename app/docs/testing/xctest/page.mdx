@@ -19,7 +19,7 @@ lim xcode test .
 lim xcode test ./MyProject --scheme MyApp
 ```
 
-The command reuses your last simulator-backed Xcode target, or creates and attaches the sandbox and simulator it needs, so repeat runs skip provisioning and start with a warm build cache. The scheme must have a test action configured; shared schemes exported by Xcode have one whenever the project has test targets.
+The command reuses your last simulator-backed Xcode target, or creates and attaches the sandbox and simulator it needs, so repeat runs skip provisioning and start with warm build state. The scheme must have a test action configured; shared schemes exported by Xcode have one whenever the project has test targets.
 
 `--xcode-version 27` builds the test targets with another installed Xcode (`27` selects that major's newest GA release, `27.1` selects that exact version). The simulator keeps the fleet's default runtime, so the run warns that runtime-dependent failures are possible and then proceeds. See [Xcode and tool versions](/docs/ios/xcode-and-tools).
 

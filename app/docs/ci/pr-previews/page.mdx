@@ -67,7 +67,7 @@ The Action posts a comment titled **Limrun Preview** with a table of the platfor
 | `scheme` | Scheme to build. Derived from the project file when omitted. |
 | `sdk` | SDK to build. Defaults to `iphonesimulator`. |
 | `model` | Simulator model for previews: `iphone` (default) or `ipad`. |
-| `xcode-version` | Xcode major to build with, such as `27`. Switching majors invalidates the other version's build cache, so the next build starts cold. Defaults to the sandbox default. |
+| `xcode-version` | Xcode major to build with, such as `27`. Switching majors invalidates the other version's build state, so the next build starts cold. Defaults to the sandbox default. |
 | `build-settings` | Newline-delimited `KEY=VALUE` Xcode build settings. Keys follow the same rules as `--build-setting`; see [Pass build settings](/docs/ios/build-with-xcode#pass-build-settings). Use `$(inherited)` to append. |
 | `bazel-target` | Bazel label of the app target, such as `//App`. Inferred for single-app workspaces. |
 | `github-token` | Token for posting the PR comment. Defaults to `github.token`. |

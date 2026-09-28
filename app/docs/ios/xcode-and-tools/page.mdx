@@ -6,7 +6,7 @@ icon: "layers"
 ---
 # Xcode and developer tool versions
 
-By default, an Xcode sandbox builds with its node's default Xcode and a set of preinstalled developer tools. Xcode is selected per workspace, other tools through [mise](https://mise.jdx.dev), and the same page covers the persistent build cache.
+By default, an Xcode sandbox builds with its node's default Xcode and a set of preinstalled developer tools. Xcode is selected per workspace, other tools through [mise](https://mise.jdx.dev). To carry the workspace itself across sandboxes, use [disk snapshots](/docs/ios/snapshots).
 
 ## Choose the Xcode version
 
@@ -79,7 +79,7 @@ if (bound.channel !== 'ga') throw new Error('App Store uploads need a released X
 
 The sandbox has one Xcode selected at a time, and the workspace preference wins. When a build finds the sandbox on another Xcode, because a colleague switched it or a fresh sandbox came up on the node default, it says so and switches before building. Every build prints the Xcode it runs with, such as `Building with Xcode 27.1 (27A9269)`.
 
-- Switching Xcode invalidates the build cache produced with the other version, so the next build starts cold. For the [persistent build cache](#keep-a-persistent-build-cache), use a separate key per Xcode lane, such as `myapp-27` and `myapp-27.1`: archives are stored per key, and a restore under a different Xcode is wiped.
+- Switching Xcode invalidates build state produced with the other version, so the next build starts cold. For [disk snapshots](/docs/ios/snapshots), use a separate key per Xcode lane, such as `myapp-27` and `myapp-27.1`: archives are stored per key, and a restore under a different Xcode is wiped.
 - The switch is refused while a build, command, sync, or `lim xcode rbe` stack is running. Stop them first (`lim xcode rbe --stop`). `lim xcode use xcode@<version>` keeps the preference in that case, and the next command retries the switch.
 - Asking for a version the node does not have fails with the available list, and `lim xcode use xcode@<version>` records no preference for it.
 - A major.minor pin lasts until the fleet retires that version. Then `lim xcode build` fails with the daemon's message plus a hint to run `lim xcode version set 27` or `lim xcode version unset`.
@@ -87,22 +87,9 @@ The sandbox has one Xcode selected at a time, and the workspace preference wins.
 - Simulators keep running the fleet's default runtime. `lim xcode test` with a non-default Xcode warns and proceeds: XCTest bundles built by the selected Xcode run against the frameworks of the simulator's default runtime, which works for most suites but is not guaranteed.
 - Apple rejects App Store uploads built with a beta Xcode. Keep `--upload-to-appstore` on a bare-major pin (`27`, not `27.1`), which only ever binds a released Xcode. In the SDK, gate the publish on `channel === 'ga'`, not on `betaSeed`: Apple's 27.1 seed ships without a seed number.
 
-## Keep a persistent build cache
+## Reuse the workspace across sandboxes
 
-A sandbox's workspace, including dependency installs and build products, is lost when the instance terminates. A persistent build cache publishes it under a key when the sandbox terminates, and restores it into a later sandbox, so the next build starts warm. Pass the cache flags to `lim xcode create` or `lim xcode build`:
-
-```bash
-lim xcode create --cache-key myapp-pr51 --cache-paths "Pods,.build"
-lim xcode create --cache-restore-keys "myapp-features,myapp-main"
-```
-
-| Flag | What it does |
-|---|---|
-| `--cache-key <key>` | The key this sandbox publishes its workspace under when it terminates. Reusing a key replaces its archive. Also the restore key when `--cache-restore-keys` is omitted. |
-| `--cache-restore-keys <keys>` | Comma-separated keys to restore from, tried in order: exact match first, then keys starting with the given prefix, newest archive first. |
-| `--cache-paths <paths>` | Comma-separated project-root-relative paths to cache, such as `Pods,.build`. Defaults to the whole workspace. The first publication under a key fixes its path set. |
-
-A workspace is published only after a successful `lim xcode build` on the sandbox; running commands alone does not make it eligible. Use a separate key per Xcode lane, because a restore under a different Xcode is wiped.
+A sandbox's workspace, including dependency installs and build products, is lost when the instance terminates. A disk snapshot saves it under a key and restores it into a later sandbox, so the next build starts warm. Create the sandbox with `--snapshot-key`, and delete it with `--wait-snapshot` after a successful build. [Disk snapshots](/docs/ios/snapshots) covers keys, branch fallbacks, and the SDK. Use a separate key per Xcode version, because a restore under a different Xcode is wiped.
 
 ## Select developer tools
 
@@ -189,13 +176,13 @@ lim xcode tools
 
 A running operation keeps its environment snapshot. The next run or build picks up a version change. Use `mise exec` when a child command in the same operation needs the new version immediately.
 
-### Tools and the persistent build cache
+### Tools and disk snapshots
 
-Tools preinstalled in the image are never part of the [persistent build cache](#keep-a-persistent-build-cache). Tools you install with mise live under `.limbuild-sandbox/home/.mise/` and are cached when your `--cache-paths` cover that directory; mise then selects among compatible image installations and restored user installations.
+Tools preinstalled in the image are never part of a [disk snapshot](/docs/ios/snapshots). Tools you install with mise live under `.limbuild-sandbox/home/.mise/` and are saved when your `--snapshot-paths` cover that directory (the whole workspace by default); mise then selects among compatible image installations and restored user installations.
 
-The publication rule above still applies: a successful `lim xcode build` is required. Dependency installs rerun when the resolved tool versions change, and switching Xcode still invalidates the cache.
+The publication rule above still applies: a successful `lim xcode build` is required. Dependency installs rerun when the resolved tool versions change, and switching Xcode still invalidates restored build state.
 
-Mise gem wrappers contain absolute paths. After a cache restore moves the sandbox home, reinstall an affected user gem explicitly, for example `lim xcode run -- mise install --force bundler`. Image gem wrappers are packaged to support relocation.
+Mise gem wrappers contain absolute paths. After a snapshot restore moves the sandbox home, reinstall an affected user gem explicitly, for example `lim xcode run -- mise install --force bundler`. Image gem wrappers are packaged to support relocation.
 
 ## Next steps
 
