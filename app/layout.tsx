@@ -47,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="describedby" href="/llms.txt" />
         <link rel="ai-catalog" href="/.well-known/ai-catalog.json" />
         {/* Tells is-agentic.com to score this as a documentation site. */}
         <meta name="is-agentic-site-type" content="docs" />

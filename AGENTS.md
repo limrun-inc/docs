@@ -6,9 +6,9 @@ This document tells you, an AI agent, how to consume this documentation site pro
 
 ## Read the docs
 
-- `/llms.txt` is a compact index of every page with a one-line description.
+- `/llms.txt` is a compact index of entry pages and section indexes. Section indexes such as `/docs/ios/llms.txt` link to individual Markdown pages with descriptions.
 - `/llms-full.txt` is the full documentation as one markdown file.
-- Every page is available as markdown at `/docs/{slug}.md`, for example `/docs/quickstart.md`. Requesting a page URL with `Accept: text/markdown` returns the same content. The site root works the same way, and unknown paths requested as Markdown return a Markdown 404 with links to the index.
+- Every page is available as markdown at `/docs/{slug}.md`, for example `/docs/quickstart.md`. Requesting a page URL with `Accept: text/markdown` returns the same content. Directory aliases such as `/docs/quickstart/index.md` also work. Responses include canonical source URLs, discovery links, and approximate token counts. Accept quality weights and explicit exclusions are respected; HTML is the default. The site root works the same way, and unknown paths requested as Markdown return a Markdown 404 with links to the index.
 - `/sitemap.xml` and `/sitemap.md` list canonical page URLs.
 - Search: `GET /api/docs?query={query}` returns matching pages as JSON.
 

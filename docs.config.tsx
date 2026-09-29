@@ -31,7 +31,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { SidebarThemeToggle } from "@/components/sidebar-theme-toggle";
-import { MCP_NAME, MCP_VERSION, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { DOC_SECTIONS, MCP_NAME, MCP_VERSION, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 export default defineDocs({
   entry: "docs",
@@ -60,7 +60,7 @@ export default defineDocs({
         contentWidth: 768,
         sidebarWidth: 280,
         tocWidth: 300,
-        toc: { enabled: true, depth: 3, style: "directional" },
+        toc: { enabled: true, depth: 3, style: "default" },
         header: { height: 56, sticky: true },
       },
     },
@@ -272,7 +272,7 @@ export default defineDocs({
   },
 
   github: {
-    url: "https://github.com/maniculehq/lim-run-docs",
+    url: "https://github.com/limrun-inc/docs",
     branch: "main",
   },
 
@@ -286,6 +286,7 @@ export default defineDocs({
     baseUrl: SITE_URL,
     siteTitle: SITE_NAME,
     siteDescription: SITE_DESCRIPTION,
+    sections: DOC_SECTIONS.map(({ title, slug }) => ({ title, match: `/docs/${slug}/**` })),
   },
 
   mcp: {

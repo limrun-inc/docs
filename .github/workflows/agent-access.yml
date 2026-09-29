@@ -1,0 +1,30 @@
+name: Agent access
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build
+      - name: Check the production HTTP responses
+        run: |
+          pnpm start --port 8800 > /tmp/docs-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"; cat /tmp/docs-server.log' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:8800/llms.txt > /dev/null; then break; fi
+            sleep 1
+          done
+          pnpm check:agent-http
