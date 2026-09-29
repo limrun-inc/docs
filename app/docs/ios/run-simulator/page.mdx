@@ -885,7 +885,9 @@ await client.scroll('down', 300, { display: 'inner' });
 const active = (await client.getFoldState())?.displays.find(display => display.active);
 ```
 
-Omitting `display` keeps coordinate input on the primary display. `tapElement`, including scroll search and batched element taps, follows the active display. The element-tree root uses the same upright point dimensions as its children and the active display's screenshot. The default screenshot and recordings still capture the primary display.
+Omitting `display` keeps coordinate input on the primary display. `tapElement`, including scroll search and batched element taps, follows the active display. The default screenshot and recordings still capture the primary display.
+
+`elementTree()` preserves the accessibility frames reported by iOS. On the open Duo, the application root can report native portrait bounds of 669 × 951 while child frames match the upright inner screenshot at 951 × 669. Use `screenshotDisplay` dimensions for your capture canvas; do not scale or rotate the child frames using the root's size. Treating the root as the capture bounds is a client-side workaround, not a guarantee that every accessibility root fills the display.
 
 `getFoldState()` reports an `active` flag for each display from the simulator's current display state. Read it after a fold transition; the hinge angle alone cannot identify the active panel. The flag is absent on older servers and on hinge, orientation, and unsolicited fold-state responses.
 
