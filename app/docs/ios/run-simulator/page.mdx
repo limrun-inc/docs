@@ -872,7 +872,22 @@ This drives the native simulator hinge, so apps receive Apple's hinge and layout
 
 `setDuoOrientation` accepts `portrait`, `landscape-left`, `landscape-right`, and `pud`. Display screenshots are upright, report dimensions in points, and contain JPEG data, including when saved with `lim ios screenshot --display`; `tapDisplay` uses those coordinates. These calls do not activate a display, so fold or unfold first; a display that is not ready reports an error.
 
-Use the display-specific methods for Duo automation. The element tree, the default screenshot, and recordings do not follow the inner display automatically.
+Use `display` to target gestures and scrolls. Coordinates use the selected display's upright screenshot points:
+
+```ts
+await client.performActions([
+  { type: 'touchDown', x: 700, y: 400 },
+  { type: 'wait', durationMs: 600 },
+  { type: 'touchMove', x: 700, y: 200 },
+  { type: 'touchUp', x: 700, y: 200 },
+], { display: 'inner' });
+await client.scroll('down', 300, { display: 'inner' });
+const active = (await client.getFoldState())?.displays.find(display => display.active);
+```
+
+Omitting `display` keeps coordinate input on the primary display. `tapElement`, including scroll search and batched element taps, follows the active display. The element-tree root uses the same upright point dimensions as its children and the active display's screenshot. The default screenshot and recordings still capture the primary display.
+
+`getFoldState()` reports an `active` flag for each display from the simulator's current display state. Read it after a fold transition; the hinge angle alone cannot identify the active panel. The flag is absent on older servers and on hinge, orientation, and unsolicited fold-state responses.
 
 In the browser stream, the Duo starts in a 2D frame and offers a lazy-loaded 3D frame. Both modes provide hinge and rotation controls, touch input on the cover and inner display, and single-finger touch and drag, but not multi-touch. Click or hold the frame's Sleep/Wake and volume buttons to control iOS. In 3D, the position starts unlocked; **Lock position** stops camera rotation while the screen and buttons stay active. Rotating the view moves the camera, while **Rotate device** changes the native orientation. **Laptop view** sets the hinge and orientation; it does not enable Apple's separate Table Mode. To embed the Duo frame in your own app, see [iPhone Duo frame](/docs/platform/embed-simulator#iphone-duo-frame).
 
