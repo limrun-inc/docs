@@ -705,6 +705,48 @@ lim ios microphone play ./fixtures/sample.mp3 --once --id <instance-id>
 lim ios microphone stop --id <instance-id>
 ```
 
+## Set the clipboard, language, and Face ID
+
+Put text on the simulator clipboard, for example a one-time code, and read it back. Apps paste it like text copied inside the simulator, so the edit menu's Paste shows no permission prompt:
+
+```bash
+lim ios clipboard set "123456"
+echo "123456" | lim ios clipboard set
+lim ios clipboard get
+```
+
+Change the device language and region without UI automation. Pass the `defaults` arguments after `--`. Apps launched afterwards use the new language, so relaunch the app under test:
+
+```bash
+lim ios defaults -- write -g AppleLanguages -array fr-FR
+lim ios defaults -- write -g AppleLocale -string fr_FR
+lim ios defaults -- read -g AppleLanguages
+```
+
+Simulate Face ID: enroll once, then answer each Face ID prompt with a match or a non-match. Touch ID devices use `fingerTouch` in place of `pearl`:
+
+```bash
+lim ios notify set com.apple.BiometricKit.enrollmentChanged 1
+lim ios notify post com.apple.BiometricKit.enrollmentChanged
+lim ios notify post com.apple.BiometricKit_Sim.pearl.match     # the next scan succeeds
+lim ios notify post com.apple.BiometricKit_Sim.pearl.nomatch   # the next scan fails
+```
+
+From the TypeScript SDK, these are `simctl` commands. `pbcopy` reads its text from the `stdin` option:
+
+```ts
+await client.simctl(['pbcopy', 'booted'], { stdin: '123456' }).wait();
+const { stdout: clipboard } = await client.simctl(['pbpaste', 'booted']).wait();
+
+await client.simctl(['spawn', 'booted', 'defaults', 'write', '-g', 'AppleLanguages', '-array', 'fr-FR']).wait();
+
+const enrolled = 'com.apple.BiometricKit.enrollmentChanged';
+await client.simctl(['spawn', 'booted', 'notifyutil', '-s', enrolled, '1', '-p', enrolled]).wait();
+await client.simctl(['spawn', 'booted', 'notifyutil', '-p', 'com.apple.BiometricKit_Sim.pearl.match']).wait();
+```
+
+`spawn` accepts only `defaults read`, `write`, and `delete`, and `notifyutil -p`, `-s`, and `-g`.
+
 ## Transfer files
 
 List a directory to find the exact relative path, then pull, push, or delete files with the same container flags:
