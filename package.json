@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "refresh-agent-skills": "node scripts/refresh-agent-skills.mjs",
-    "build-docs7": "node scripts/build-docs7.mjs"
+    "build-docs7": "node scripts/build-docs7.mjs",
+    "test": "node --experimental-strip-types --test scripts/*.test.mjs",
+    "check:agent-http": "node scripts/check-agent-http.mjs"
   },
   "dependencies": {
     "@farming-labs/docs": "0.1.108",
@@ -16,13 +18,15 @@
     "@farming-labs/theme": "0.1.108",
     "fumadocs-ui": "^16.7.16",
     "lucide-react": "^0.564.0",
-    "next": "16.3.3",
+    "negotiator": "^1.1.0",
+    "next": "16.3.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/mdx": "^2.0.14",
+    "@types/negotiator": "^0.6.5",
     "@types/node": "^22.20.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
@@ -41,6 +45,10 @@
       "fast-uri@<3.1.6": "^3.1.7",
       "qs@<6.16.0": "^6.16.0",
       "toml@<4.2.0": "^4.2.0"
+    },
+    "patchedDependencies": {
+      "next@16.3.7": "patches/next@16.3.7.patch"
     }
-  }
+  },
+  "packageManager": "pnpm@10.34.6"
 }

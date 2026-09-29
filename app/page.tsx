@@ -1,13 +1,13 @@
 // The site root. Browsers move on to /docs through the meta refresh; agents
 // and crawlers that do not follow it still get a readable summary and links
 // instead of an empty redirect. Markdown requests never reach this page:
-// next.config.ts rewrites them to the Introduction as Markdown.
+// proxy.ts rewrites them to the Introduction as Markdown.
 
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Limrun documentation",
-  alternates: { canonical: "/docs" },
+  alternates: { canonical: "https://docs.limrun.com/docs", types: { "text/markdown": "/docs.md" } },
 };
 
 const entryPoints = [

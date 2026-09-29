@@ -9,26 +9,32 @@
 
 import docsConfig from "@/docs.config";
 import { createDocsAPI } from "@farming-labs/next/api";
+import { canonicalRequest, agentResponse } from "@/lib/agent-http";
 import { SITE_URL } from "@/lib/site";
 
 const api = createDocsAPI(docsConfig);
 
-function withCanonicalOrigin(request: Request): Request {
-  const url = new URL(request.url);
-  const canonical = new URL(SITE_URL);
-  url.protocol = canonical.protocol;
-  url.host = canonical.host;
-  url.port = canonical.port;
-  // next.config.ts rewrites a Markdown request for the site root here, but
-  // the handler sees the original URL ("/"), not the rewrite's query. Ask the
-  // framework for the index page as Markdown explicitly.
-  if (url.pathname === "/" && !url.searchParams.has("format")) {
-    url.searchParams.set("format", "markdown");
-  }
-  return new Request(url, request);
+export async function GET(request: Request) {
+  return agentResponse(await api.GET(canonicalRequest(request) as never));
 }
 
-export const GET = (request: Request) => api.GET(withCanonicalOrigin(request) as never);
-export const POST = (request: Request) => api.POST(withCanonicalOrigin(request) as never);
+export async function HEAD(request: Request) {
+  return agentResponse(
+    await api.GET(
+      canonicalRequest(new Request(request, { method: "GET" })) as never,
+    ),
+    "HEAD",
+  );
+}
+
+// Preserve bodies on the framework's existing search/feedback API.
+export const POST = (request: Request) => {
+  const url = new URL(request.url);
+  const origin = new URL(SITE_URL);
+  url.protocol = origin.protocol;
+  url.host = origin.host;
+  url.port = origin.port;
+  return api.POST(new Request(url, request) as never);
+};
 
 export const dynamic = "force-dynamic";

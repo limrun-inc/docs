@@ -48,7 +48,7 @@ export const webMcpScript = `
     },
     {
       name: "list_docs_pages",
-      description: "List every Limrun documentation page with a one-line description (the llms.txt index).",
+      description: "List Limrun documentation sections and entry pages. Follow the section llms.txt links for individual pages and descriptions.",
       inputSchema: { type: "object", properties: {} },
       annotations: { readOnlyHint: true },
       execute: function (input, options) {
