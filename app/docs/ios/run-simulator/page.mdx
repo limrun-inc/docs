@@ -876,16 +876,16 @@ Use `display` to target gestures and scrolls. Coordinates use the selected displ
 
 ```ts
 await client.performActions([
-  { type: 'touchDown', x: 700, y: 400 },
+  { type: 'touchDown', x: 650, y: 400, x2: 750, y2: 400 },
   { type: 'wait', durationMs: 600 },
-  { type: 'touchMove', x: 700, y: 200 },
-  { type: 'touchUp', x: 700, y: 200 },
+  { type: 'touchMove', x: 600, y: 400, x2: 800, y2: 400 },
+  { type: 'touchUp', x: 600, y: 400, x2: 800, y2: 400 },
 ], { display: 'inner' });
 await client.scroll('down', 300, { display: 'inner' });
 const activeDisplays = (await client.getFoldState())?.displays.filter(display => display.active);
 ```
 
-Omitting `display` keeps coordinate input on the primary display. `tapElement`, including scroll search and batched element taps, follows the active display. The default screenshot and recordings still capture the primary display.
+For two-finger gestures, supply `x2` and `y2` together and keep both contacts through down, move, and up. Omitting `display` keeps coordinate input on the primary display. `tapElement`, including scroll search and batched element taps, follows the active display. The default screenshot and recordings still capture the primary display.
 
 `elementTree()` preserves the accessibility frames reported by iOS. The application root does not define the capture canvas. On the iOS 27.1 Duo simulator, we observed an application root of 669 × 951 while its window and descendant frames used the upright inner display's 951 × 669 coordinate space. Use the `width` and `height` returned by `screenshotDisplay` for the capture canvas. In that full-screen window, descendant coordinates already matched the capture; do not scale or rotate them using the root's size. An app in iPhone compatibility mode can instead report app-local frames inside a centered window, so this observation is not a universal coordinate transform. If your renderer needs a full-canvas root, apply that size to a separate presentation copy of the tree.
 
