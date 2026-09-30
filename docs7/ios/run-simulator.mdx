@@ -888,7 +888,7 @@ const active = (await client.getFoldState())?.displays.find(display => display.a
 
 Omitting `display` keeps coordinate input on the primary display. `tapElement`, including scroll search and batched element taps, follows the active display. The default screenshot and recordings still capture the primary display.
 
-`elementTree()` preserves the accessibility frames reported by iOS. On the open Duo, the application root can report native portrait bounds of 669 × 951 while child frames match the upright inner screenshot at 951 × 669. Use `screenshotDisplay` dimensions for your capture canvas; do not scale or rotate the child frames using the root's size. Treating the root as the capture bounds is a client-side workaround, not a guarantee that every accessibility root fills the display.
+`elementTree()` preserves the accessibility frames reported by iOS. The application root does not define the capture canvas. On the iOS 27.1 Duo simulator, we observed an application root of 669 × 951 while its window and descendant frames used the upright inner display's 951 × 669 coordinate space. Use the `width` and `height` returned by `screenshotDisplay` for capture overlays, and use descendant coordinates directly. Do not scale or rotate them using the root's size. If your renderer needs a full-canvas root, apply that size to a separate presentation copy of the tree.
 
 `getFoldState()` reports an `active` flag for each display from the simulator's current display state. Read it after a fold transition; the hinge angle alone cannot identify the active panel. The flag is absent on older servers and on hinge, orientation, and unsolicited fold-state responses.
 
