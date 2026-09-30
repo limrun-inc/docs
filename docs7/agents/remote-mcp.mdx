@@ -32,7 +32,7 @@ Add the server:
 claude mcp add --transport http limrun https://mcp.limrun.com/mcp
 ```
 
-Then open a Claude Code session, run `/mcp`, select **limrun**, and choose **Authenticate**. After you approve access in the browser, `/mcp` shows the server as connected with its 16 tools. Access tokens rotate automatically from then on, and you are not asked to sign in again unless you revoke access.
+Then open a Claude Code session, run `/mcp`, select **limrun**, and choose **Authenticate**. After you approve access in the browser, `/mcp` shows the server as connected with its tools. Access tokens rotate automatically from then on, and you are not asked to sign in again unless you revoke access.
 
 ## Connect from other MCP clients
 
@@ -45,7 +45,7 @@ The server is listed in the [official MCP registry](https://registry.modelcontex
 
 ## Tools
 
-The server exposes 16 tools in five groups.
+The server exposes tools for lifecycle, live views, device control, and build guidance.
 
 **Lifecycle and assets.** These take no `instanceId`; they operate on the organization.
 
@@ -68,7 +68,40 @@ Each device-control tool, like `stream-device`, takes the `instanceId` a create 
 
 **Skills.** `get-agent-skill` is covered in [Skills for builds and local files](#skills-for-builds-and-local-files).
 
-Apps install at creation time through the `apps` field. There is no install tool for a running instance: MCP gives the server no access to the client's filesystem, so anything that moves local bytes (an APK, a simulator build, an Xcode project) belongs to the CLI and SDKs. Upload builds to [Asset Storage](/platform/asset-storage) first and they show up in `list-apps`. Instances created through this server carry a `created-by: mcp` label.
+Apps install at creation time through the `apps` field. The live device extension can install an existing app asset onto a running instance. Anything that moves local bytes (an APK, a simulator build, an Xcode project) belongs to the CLI and SDKs. Upload builds to [Asset Storage](/platform/asset-storage) first and they show up in `list-apps`. Instances created through this server carry a `created-by: mcp` label.
+
+## Live device extension (preview)
+
+In hosts that support Limrun's plugin extension, **Limrun** opens the global view
+and **Live device** opens a thread panel. Opening a panel reuses the newest ready
+iOS simulator by default. When none is ready, the panel offers **Create iOS
+simulator**, **Create Android emulator**, and **Choose a running device**. Opening
+the panel itself does not create a device. The same choices appear after its
+device terminates; **Choose device** is also available from the options menu.
+
+The panel shares its device ID and API endpoint with the conversation. For an
+extension-driven build, the MCP connection creates or selects the device and
+the CLI builds and installs onto that exact device in the same environment.
+If a replacement is needed, the agent passes the panel's `panelId` to
+`create-ios-simulator` or `create-android-emulator`, and the existing panel follows
+that replacement. Other conversations' devices do not take over the panel.
+
+The CLI must authenticate to the API endpoint supplied by the panel before
+looking up or creating a builder. A saved production CLI login does not grant
+access to a staging plugin's devices. The build should stop on an environment
+or credential mismatch. Use `--no-open` on commands that open a browser; there
+is no need to open a separate console tab for an app already shown in the panel.
+For iOS, attach the panel's simulator to the Xcode builder before rebuilding.
+The [Xcode skill](https://github.com/limrun-inc/skills/tree/main/skills/limrun-xcode)
+describes that procedure. Source edits and builds require a code execution
+environment with the project and an authenticated `lim` CLI.
+
+Where the host supports image context, **Ask about area** attaches a selected
+part of the screen and available accessibility details; **Share screen** attaches
+the full screen. **Capture flow** collects up to six screenshots after interactions,
+with action descriptions and timestamps, stopping after 45 seconds. Choose
+**Attach flow** to share the capture with the conversation. These are historical
+screenshots, not continuous video. An area and a flow can be attached together.
 
 ## Skills for builds and local files
 
