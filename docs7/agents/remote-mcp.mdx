@@ -74,10 +74,10 @@ Apps install at creation time through the `apps` field. The live device extensio
 
 In hosts that support Limrun's plugin extension, **Limrun** opens the global view
 and **Live device** opens a thread panel. Opening a panel reuses the newest ready
-iOS simulator by default. When none is ready, the panel offers **Create iOS
-simulator**, **Create Android emulator**, and **Choose a running device**. Opening
+iOS simulator by default. When none is ready, choose **iOS** or **Android** and select **Create device**, or choose
+**Use a running device**. Opening
 the panel itself does not create a device. The same choices appear after its
-device terminates; **Choose device** is also available from the options menu.
+device terminates; **Switch device** is also available from the options menu.
 
 The panel shares its device ID and API endpoint with the conversation. For an
 extension-driven build, the MCP connection creates or selects the device and
@@ -96,12 +96,15 @@ The [Xcode skill](https://github.com/limrun-inc/skills/tree/main/skills/limrun-x
 describes that procedure. Source edits and builds require a code execution
 environment with the project and an authenticated `lim` CLI.
 
-Where the host supports image context, **Ask about area** attaches a selected
-part of the screen and available accessibility details; **Share screen** attaches
-the full screen. **Capture flow** collects up to six screenshots after interactions,
+Choose **Annotate**, drag over an area, and write a comment beside the selection.
+The selected frame stays frozen while you type. In hosts that support image
+messages, submit sends the comment and cropped image together; other hosts attach
+them to your next message. Press Escape to cancel. Option-drag also selects an area.
+
+The overflow menu contains **Share screen**, **Capture flow**, installation, and
+display options. Capture flow collects up to six screenshots after interactions,
 with action descriptions and timestamps, stopping after 45 seconds. Choose
-**Attach flow** to share the capture with the conversation. These are historical
-screenshots, not continuous video. An area and a flow can be attached together.
+**Attach flow** to share the capture. Screenshots are historical, not continuous video.
 
 ## Skills for builds and local files
 
