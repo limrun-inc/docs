@@ -988,8 +988,12 @@ for await (const inst of stale) {
 ```python Python
 client.ios_instances.delete(instance.metadata.id)
 
-for inst in client.ios_instances.list(label_selector=f"user={user_id}", state="ready"):
-    client.ios_instances.delete(inst.metadata.id)
+params = {"label_selector": f"user={user_id}", "state": "ready"}
+while page := client.ios_instances.list(**params).items:
+    for inst in page:
+        client.ios_instances.delete(inst.metadata.id)
+    # Page by hand: the iterator stops after the first page.
+    params["starting_after"] = page[-1].metadata.id
 ```
 
 ```go Go
@@ -997,18 +1001,25 @@ if err := lim.IosInstances.Delete(ctx, instance.Metadata.ID); err != nil {
     panic(err)
 }
 
-// List returns one page (up to 50 instances by default).
-page, err := lim.IosInstances.List(ctx, limrun.IosInstanceListParams{
+// Page by hand: ListAutoPaging panics on instance lists.
+params := limrun.IosInstanceListParams{
     LabelSelector: param.NewOpt("user=" + userID),
     State:         param.NewOpt("ready"),
-})
-if err != nil {
-    panic(err)
 }
-for _, inst := range page.Items {
-    if err := lim.IosInstances.Delete(ctx, inst.Metadata.ID); err != nil {
+for {
+    page, err := lim.IosInstances.List(ctx, params)
+    if err != nil {
         panic(err)
     }
+    if len(page.Items) == 0 {
+        break
+    }
+    for _, inst := range page.Items {
+        if err := lim.IosInstances.Delete(ctx, inst.Metadata.ID); err != nil {
+            panic(err)
+        }
+    }
+    params.StartingAfter = param.NewOpt(page.Items[len(page.Items)-1].Metadata.ID)
 }
 ```
 
