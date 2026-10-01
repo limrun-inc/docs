@@ -91,13 +91,10 @@ const config = withDocs({
     };
   },
   async redirects() {
-    return [
-      { source: "/", missing: [markdownAccept], destination: "/docs", permanent: false },
-      ...Object.entries(movedPages).flatMap(([source, destination]) => [
-        { source, destination, permanent: true },
-        { source: `${source}.md`, destination: `${destination}.md`, permanent: true },
-      ]),
-    ];
+    return Object.entries(movedPages).flatMap(([source, destination]) => [
+      { source, destination, permanent: true },
+      { source: `${source}.md`, destination: `${destination}.md`, permanent: true },
+    ]);
   },
   async headers() {
     return [
