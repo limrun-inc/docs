@@ -917,23 +917,15 @@ The TypeScript SDK methods are `setCameraVideo(path, { loop })`, `clearCameraVid
 
 ### Trust a CA certificate
 
-Add a CA certificate to the emulator's trust stores, for example the CA of an intercepting proxy that records app traffic. The file holds one PEM-encoded CA certificate; anything else is rejected:
+Add a CA certificate to the emulator's trust stores, for example the root of a private CA that signs your test servers. The file holds one PEM-encoded CA certificate; anything else is rejected:
 
 ```bash
-lim android ca add ./proxy-ca.pem
+lim android ca add ./my-ca.pem
 ```
 
 The CLI prints the certificate's file name in the system store and its SHA-256 fingerprint. Apps, WebViews, and the Chrome browser trust the CA on their next connection, without a restart, and it stays trusted for the life of the instance. Apps that pin their own certificates still reject it.
 
-To record traffic with a proxy on your machine, trust its CA, forward a port on the emulator to it with a [destination tunnel](/docs/android/local-services), and point the emulator's HTTP proxy at that port. `--no-inspect` passes the proxy's traffic through unchanged:
-
-```bash
-lim android ca add ./proxy-ca.pem
-lim android tunnel --selector localhost:8888 --no-inspect --detach
-lim android adb-shell -- settings put global http_proxy 127.0.0.1:8888
-```
-
-Start the tunnel before you set the proxy. Apps that honor the system proxy then send their HTTP and HTTPS requests through it.
+To see the HTTP and HTTPS traffic an app sends to the destinations you tunnel, use [tunnel inspection](/docs/android/local-services#inspect-tunnel-traffic) instead. It decodes HTTPS with a CA the emulator already trusts, so you need no CA of your own.
 
 In the TypeScript SDK, `addCaCertificate(pem)` takes the PEM text and resolves to `{ filename, sha256 }`. It needs a device client opened with `adbUrl`.
 
