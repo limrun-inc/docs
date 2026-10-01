@@ -1,6 +1,6 @@
 ---
 name: limrun-gradle
-description: "Build an Android app on a remote Gradle sandbox with `lim gradle build` instead of local Gradle or Android Studio, from any environment (Linux, Windows, macOS, VM, container). Use when the user wants to build an APK or AAB, sign a release with an upload key, or prepare a Play Store publish, for native Android projects, React Native, and Expo. To run, tap, screenshot, or otherwise interact with the built APK on an emulator, use limrun-android-emulator. For iOS builds, use limrun-xcode or limrun-expo-development."
+description: "Build an Android app on a remote Gradle sandbox with `lim gradle build` instead of local Gradle or Android Studio, from any environment (Linux, Windows, macOS, VM, container). Use when the user wants to build an APK or AAB, sign a release with an upload key, prepare a Play Store publish, inspect build logs, or select sandbox tools and run shell commands, for native Android projects, React Native, and Expo. To run, tap, screenshot, or otherwise interact with the built APK on an emulator, use limrun-android-emulator. For iOS builds, use limrun-xcode or limrun-expo-development."
 user-invocable: true
 effort: high
 ---
@@ -10,10 +10,9 @@ effort: high
 Build Android projects on Limrun's remote Gradle sandboxes, from any
 environment (Linux, Windows, macOS, VM, container). `lim gradle build` syncs
 your sources to a remote instance, runs the project's own Gradle wrapper
-there, and streams the build output. Never fall back to local Gradle, a local
-Android SDK, or a local emulator. Your job doesn't end at a green build: get
-the app running or the artifact delivered, and iterate until the user is
-satisfied.
+there, and streams the build output. This workflow builds on the remote instance; local Gradle, a local Android
+SDK, and local emulators are not part of it. A finished run has the app
+running on a Limrun emulator or the artifact delivered.
 
 For iOS builds, use **`limrun-xcode`** instead of this skill. For the Expo
 dev-client loop (Metro, hot reload) on either platform, use
@@ -23,8 +22,7 @@ build.
 ## Auth and CLI
 
 Install if needed: `npm install --global lim`. Auth is `lim login` or
-`LIM_API_KEY` (it may be set outside the project, so don't ask for it just
-because it's missing from `.env` or the shell). The CLI is the source of truth:
+`LIM_API_KEY` (it may already be set in the user's environment even when `.env` and the shell do not show it; check before asking for it). The CLI is the source of truth:
 the commands in this skill are verified, but if a flag errors or you need one
 not shown here, check `--help` instead of guessing:
 
@@ -68,6 +66,33 @@ lim gradle build ./my-monorepo --expo-app-dir apps/mobile
 
 For iterating on an Expo app with Metro and hot reload rather than plain
 builds, use **`limrun-expo-development`**.
+
+## Detached builds and logs
+
+Use `--detach` to return once the build is accepted; a webhook is optional.
+`logs` reads the latest build without an exec ID, including persisted logs after
+instance deletion; add `--follow` to wait for completion.
+
+```bash
+lim gradle build . --detach
+lim gradle logs
+lim gradle logs --follow
+```
+
+## Tool versions and shell commands
+
+After syncing, `lim gradle use` selects tools in the sandbox and installs missing versions.
+Run `lim gradle tools install` for synced project tool selections ([details](https://docs.limrun.com/docs/android/build-with-gradle)). Builds keep the project's `gradlew`; Android SDK/NDK/CMake use `sdkmanager`.
+
+```bash
+lim gradle tools
+# Node includes npm/npx.
+lim gradle use node@24 pnpm@10 yarn@4 bun@1 java@temurin-17 bundletool@1
+lim gradle tools install
+lim gradle run -- mise use --pin node@24.5.0
+lim gradle run --env APP_ENV=staging -- npm run generate
+lim gradle build . --env APP_ENV=staging
+```
 
 ## Run it on an emulator
 
@@ -124,27 +149,20 @@ Expect one of these lines before the build starts and relay its meaning:
 ## Bring your own upload key
 
 When the app already has a registered upload key (an existing Play listing),
-sign with the user's keystore instead:
-
-```bash
-lim gradle build . \
-  --keystore upload.jks --keystore-password "$KS_PASS" \
-  --key-alias upload --key-password "$KEY_PASS" \
-  --upload myapp.aab
-```
-
-All four flags travel together; the passwords can come from
-`LIM_KEYSTORE_PASSWORD` and `LIM_KEY_PASSWORD` instead of argv. Add
+the user can sign with their own keystore instead. The keystore path, key alias
+and both passwords are supplied by the user on their own machine, as the
+`--keystore`, `--key-alias`, `--keystore-password` and `--key-password` flags or
+the `LIM_KEYSTORE_PASSWORD` and `LIM_KEY_PASSWORD` environment variables
+(`lim gradle build --help` lists them). Never ask for or handle these values in
+the conversation; if one is missing, name the flag or variable to set. All four
+travel together. Add
 `--save-key` to escrow the provided key so later builds can drop the flags and
 use plain `--sign`. `--save-key` refuses to overwrite: if a DIFFERENT key is
 already escrowed for the app it fails before any instance is created.
 
-Collect from the user:
-
-- the keystore file path (`.jks` or `.p12`); never commit it or paste its
-  bytes into files,
-- the keystore password and the key password (often the same value),
-- the key alias (`keytool -list -keystore <file>` shows it if unknown).
+The keystore file itself stays on the user's machine: never commit it or paste
+its bytes into files. `keytool -list -keystore <file>` shows the alias when the
+user does not know it.
 
 Failure strings to recognize on the bring-your-own path:
 
@@ -161,10 +179,11 @@ Failure strings to recognize on the bring-your-own path:
 
 ## Publish to Play Store
 
-With Play credentials (a service-account JSON via
-`--playstore-service-account`, or an access token via
-`--playstore-access-token`), the build publishes the signed release AAB
-directly, no browser involved:
+When the user has Play credentials configured on their own machine (a
+service-account JSON file or an access token, passed through the
+`--playstore-service-account` or `--playstore-access-token` flag), the build
+publishes the signed release AAB directly, no browser involved. Never ask for
+these credentials in the conversation:
 
 ```bash
 lim gradle build . --sign --upload-to-playstore --playstore-service-account sa.json --auto-version-code
@@ -208,8 +227,7 @@ Failure strings to recognize on the `--sign` path:
 
 ## Gotchas
 
-- **Build errors are your job to fix.** If a build fails, read the error
-  output, fix the code, and rebuild. Don't ask the user to fix build errors.
+- **Build errors are part of the job.** If a build fails, read the error output, fix the code, and rebuild before reporting back.
 - **Instance reuse is per git worktree.** Commands resolve the remembered
   instance from the worktree of your cwd; pass `--id <gradle-instance-id>`
   (from `lim gradle list`) to target a specific one.
