@@ -18,23 +18,27 @@ const agentDiscoveryHeaders = [
   },
 ];
 
-// The root is a short summary page that sends browsers on to /docs (see
-// app/page.tsx), so agents fetching the bare domain get content. It names
-// /docs as canonical, and varies on Accept because Markdown requests are
-// rewritten to the Introduction as Markdown.
-const rootHeaders = [
-  {
-    key: "Link",
-    value: `${agentDiscoveryHeaders[0].value}, <https://docs.limrun.com/docs>; rel="canonical"`,
-  },
-  { key: "Vary", value: "Accept" },
-];
+// Markdown is negotiated by the Accept header alone. The framework also
+// serves Markdown when a request carries a Signature-Agent header (Web Bot
+// Auth), but signed agents send it on every request, including real browsers
+// that ask for text/html; those must get the HTML page and its scripts.
+const markdownAccept = { type: "header" as const, key: "accept", value: ".*text/markdown.*" };
 
-// Requests that ask for Markdown in their Accept header. Unlike the
-// framework's /docs rules, the Web Bot Auth Signature-Agent header alone does
-// not switch to Markdown here: signed crawlers send it on every request, and
-// one that asks for text/html must still get the HTML page.
-const wantsMarkdown = [[{ type: "header" as const, key: "accept", value: ".*text/markdown.*" }]];
+type Rewrite = { has?: { type: string; key?: string }[] };
+type Rewrites = Rewrite[] | { beforeFiles?: Rewrite[]; afterFiles?: Rewrite[]; fallback?: Rewrite[] };
+
+// Drops framework rewrites that switch to Markdown on any header but Accept.
+function acceptOnly<T extends Rewrites>(rewrites: T): T {
+  const keep = (rule: Rewrite) =>
+    !rule.has?.some((condition) => condition.type === "header" && condition.key !== "accept");
+  if (Array.isArray(rewrites)) return rewrites.filter(keep) as T;
+  return {
+    ...rewrites,
+    beforeFiles: rewrites.beforeFiles?.filter(keep),
+    afterFiles: rewrites.afterFiles?.filter(keep),
+    fallback: rewrites.fallback?.filter(keep),
+  };
+}
 
 // The discovery artifacts are public read-only text; the Agent Skills
 // Discovery RFC recommends CORS so browser-based agents can fetch them.
@@ -65,32 +69,33 @@ const movedPages: Record<string, string> = {
   "/docs/tutorials/ios-bazel-claude-code-web": "/docs/guides/ios-bazel-claude-code-web",
 };
 
-export default withDocs({
+const config = withDocs({
   async rewrites() {
     return {
       beforeFiles: [
-        ...wantsMarkdown.map((has) => ({ source: "/", has, destination: "/api/docs?format=markdown" })),
+        { source: "/", has: [markdownAccept], destination: "/api/docs?format=markdown" },
       ],
       afterFiles: [],
       // Only paths no page or route matched reach this: a Markdown 404 for
       // agents, while browsers keep the HTML not-found page.
-      fallback: wantsMarkdown.map((has) => ({
-        source: "/:path*",
-        has,
-        destination: "/api/not-found?path=:path*",
-      })),
+      fallback: [
+        { source: "/:path*", has: [markdownAccept], destination: "/api/not-found?path=:path*" },
+      ],
     };
   },
   async redirects() {
-    return Object.entries(movedPages).flatMap(([source, destination]) => [
-      { source, destination, permanent: true },
-      { source: `${source}.md`, destination: `${destination}.md`, permanent: true },
-    ]);
+    return [
+      { source: "/", missing: [markdownAccept], destination: "/docs", permanent: false },
+      ...Object.entries(movedPages).flatMap(([source, destination]) => [
+        { source, destination, permanent: true },
+        { source: `${source}.md`, destination: `${destination}.md`, permanent: true },
+      ]),
+    ];
   },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
-      { source: "/", headers: rootHeaders },
+      { source: "/", headers: agentDiscoveryHeaders },
       { source: "/docs", headers: agentDiscoveryHeaders },
       { source: "/.well-known/:path*", headers: corsHeaders },
       { source: "/auth.md", headers: corsHeaders },
@@ -101,3 +106,8 @@ export default withDocs({
     ];
   },
 });
+
+const docsRewrites = config.rewrites!;
+config.rewrites = async () => acceptOnly(await docsRewrites());
+
+export default config;
