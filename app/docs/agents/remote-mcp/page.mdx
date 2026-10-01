@@ -15,13 +15,14 @@ icon: "plug"
 ## Use the same login for CLI builds
 
 For an agent with a local shell, including on Windows, the MCP connection can
-pair the CLI without another browser login:
+pair the CLI without another browser login. The connection supplies separate
+API and authentication endpoints because regional APIs do not serve login routes:
 
 1. Call `get-cli-auth-context` to obtain the API endpoint, console endpoint, and organization ID.
 2. In the project directory, run:
 
    ```shell
-   lim login --mcp --api-endpoint <apiEndpoint> --console-endpoint <consoleEndpoint> --organization-id <organizationId>
+   lim login --mcp --api-endpoint <apiEndpoint> --auth-endpoint <authEndpoint> --console-endpoint <consoleEndpoint> --organization-id <organizationId>
    ```
 
 3. Call `approve-cli-login` with the command's `sessionId` and `phrase`.
