@@ -10,7 +10,46 @@ icon: "plug"
 
 - **One endpoint, signed in with your Limrun account.** OAuth is the default: the client opens a browser, you approve access, and tokens refresh on their own afterwards. For headless setups, an API key in an `Authorization: Bearer` header works too.
 - **Stateless.** Every tool that touches a device takes an explicit `instanceId`, so there is no session to lose. Reconnects and long gaps are fine.
-- **Instances only.** An OAuth connection can create, inspect, drive, and delete instances and list your app assets. It cannot reach billing or the rest of the API. Builds and file uploads stay on the [`lim` CLI](/agents/cli).
+- **Devices, assets, and cloud builds.** An OAuth connection controls devices and can pair the [`lim` CLI](/agents/cli) for Xcode and Gradle builds using the same account and environment. Builds still run through the CLI. The connection and paired CLI can upload, download, and delete assets in that organization. Access does not include billing or account administration.
+
+## Use the same login for CLI builds
+
+For an agent with a local shell, including on Windows, the MCP connection can
+pair the CLI without another browser login. The connection supplies separate
+API and authentication endpoints because regional APIs do not serve login routes:
+
+1. Call `get-cli-auth-context` to obtain the API endpoint, console endpoint, and organization ID.
+2. In the project directory, run:
+
+   ```shell
+   lim login --mcp --api-endpoint <apiEndpoint> --auth-endpoint <authEndpoint> --console-endpoint <consoleEndpoint> --organization-id <organizationId>
+   ```
+
+3. Call `approve-cli-login` with the command's `sessionId` and `phrase`.
+4. Complete the connection in the same project directory:
+
+   ```shell
+   lim login --complete <sessionId>
+   ```
+
+The CLI collects its credential directly from Limrun and saves it with both
+endpoints for this workspace. Credentials do not appear in tool results or chat.
+The same commands work in PowerShell, macOS, and Linux shells. Use a CLI version
+that supports `lim login --mcp`.
+
+Access lasts up to one hour and stops working if its approving MCP token is
+revoked or the approving member loses the required permissions. Repeat pairing
+when it expires. Existing MCP connections must reconnect once to authorize cloud
+builds and asset writes; refreshing an old token does not grant additional access.
+If an upload fails with `403` requiring `asset:*:all`, reconnect Limrun, approve
+asset access, and repeat CLI pairing. Existing credentials retain their original
+permissions.
+
+The workspace rejects conflicting environment credentials or endpoints and does
+not fall back to a saved production login. Remove conflicting `LIM_API_KEY`,
+`LIM_API_ENDPOINT`, or `LIM_CONSOLE_ENDPOINT` overrides from the build shell.
+Changing the paired account or API environment clears remembered devices in that
+workspace. Other workspaces retain their own configuration.
 
 ## Choose the remote or per-instance server
 
@@ -21,7 +60,7 @@ Every instance also runs [its own MCP server](/agents/mcp). Pick by who holds th
 | Endpoint | `https://mcp.limrun.com/mcp` for the whole organization | One URL per instance, from `status.mcpUrl` |
 | Auth | OAuth sign-in, or an API key | That instance's `status.token` |
 | Lifecycle tools | Create, list, inspect, and delete instances | None; the instance must already exist |
-| Blast radius | Every iOS simulator and Android emulator in the organization | One instance; the token stops working with it |
+| Access | Organization devices, assets, and paired Xcode and Gradle builds, limited by the approving member’s permissions | One instance; the token stops working with it |
 | Best for | An agent that owns the whole loop, from "get me a device" to cleanup | Handing one device to an agent that holds no organization credential |
 
 ## Connect from Claude Code
@@ -32,7 +71,7 @@ Add the server:
 claude mcp add --transport http limrun https://mcp.limrun.com/mcp
 ```
 
-Then open a Claude Code session, run `/mcp`, select **limrun**, and choose **Authenticate**. After you approve access in the browser, `/mcp` shows the server as connected with its 16 tools. Access tokens rotate automatically from then on, and you are not asked to sign in again unless you revoke access.
+Then open a Claude Code session, run `/mcp`, select **limrun**, and choose **Authenticate**. After you approve access in the browser, `/mcp` shows the server as connected with its tools. Access tokens rotate automatically from then on, and you are not asked to sign in again unless you revoke access.
 
 ## Connect from other MCP clients
 
@@ -45,7 +84,7 @@ The server is listed in the [official MCP registry](https://registry.modelcontex
 
 ## Tools
 
-The server exposes 16 tools in five groups.
+The server exposes tools for lifecycle, live views, device control, and build guidance.
 
 **Lifecycle and assets.** These take no `instanceId`; they operate on the organization.
 
@@ -68,7 +107,56 @@ Each device-control tool, like `stream-device`, takes the `instanceId` a create 
 
 **Skills.** `get-agent-skill` is covered in [Skills for builds and local files](#skills-for-builds-and-local-files).
 
-Apps install at creation time through the `apps` field. There is no install tool for a running instance: MCP gives the server no access to the client's filesystem, so anything that moves local bytes (an APK, a simulator build, an Xcode project) belongs to the CLI and SDKs. Upload builds to [Asset Storage](/platform/asset-storage) first and they show up in `list-apps`. Instances created through this server carry a `created-by: mcp` label.
+Apps install at creation time through the `apps` field. The live device extension can install an existing app asset onto a running instance. Anything that moves local bytes (an APK, a simulator build, an Xcode project) belongs to the CLI and SDKs. Upload builds to [Asset Storage](/platform/asset-storage) first and they show up in `list-apps`. Instances created through this server carry a `created-by: mcp` label.
+
+## Live device extension (preview)
+
+In hosts that support Limrun's plugin extension, **Limrun** opens the global view
+and **Live device** opens a thread panel. Opening a panel reuses the newest ready
+iOS simulator by default. When none is ready, choose **iOS** or **Android** and select **Create device**, or choose
+**Use a running device**. Opening
+the panel itself does not create a device. The same choices appear after its
+device terminates; **Switch device** is also available from the options menu.
+
+The panel shares its device ID and API endpoint with the conversation. For an
+extension-driven build, the MCP connection creates or selects the device and
+the CLI builds and installs onto that exact device in the same environment.
+If a replacement is needed, the agent passes the panel's `panelId` to
+`create-ios-simulator` or `create-android-emulator`, and the existing panel follows
+that replacement. Other conversations' devices do not take over the panel.
+
+The CLI must authenticate to the API endpoint supplied by the panel before
+looking up or creating a builder. A saved production CLI login does not grant
+access to a staging plugin's devices. The build should stop on an environment
+or credential mismatch. Use `--no-open` on commands that open a browser; there
+is no need to open a separate console tab for an app already shown in the panel.
+For iOS, attach the panel's simulator to the Xcode builder before rebuilding.
+The [Xcode skill](https://github.com/limrun-inc/skills/tree/main/skills/limrun-xcode)
+describes that procedure. Source edits and builds require a code execution
+environment with the project and an authenticated `lim` CLI.
+
+Choose **Annotate**, drag over an area, and write a comment beside the selection.
+The selected frame stays frozen while you type. The checkmark saves the comment
+locally without sending it. Add more areas, including areas on other screens,
+then open the annotation count to review, edit, or remove comments. Choose
+**Send all** to send the numbered comments and cropped images together; device
+details stay in background context. Other hosts offer **Attach all** to attach
+the batch to your next message. Unsent comments last until the panel reloads.
+Press Escape to cancel the current selection. Option-drag also selects an area.
+
+Choose **Close simulator** (iOS) or **Close emulator** (Android) in the overflow
+menu to end the current cloud device session. The panel then lets you create or
+choose another device. Closing ends the device itself, not just the preview.
+
+The overflow menu also contains **Share screen**, **Capture flow**, installation, and
+display options. Close the app picker with its close button, Escape, or a click
+outside it; it also closes when an installation starts. Capture flow collects up to six screenshots after interactions,
+with action descriptions and timestamps, stopping after 45 seconds. Choose
+**Attach flow** to share the capture. Screenshots are historical, not continuous video.
+
+The remote server keeps screenshot and element-tree inspection in background
+context. Routine inspection does not add another preview card; the live panel
+remains the place to watch the device.
 
 ## Skills for builds and local files
 
