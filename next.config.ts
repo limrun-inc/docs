@@ -1,4 +1,5 @@
 import { withDocs } from "@farming-labs/next/config";
+import { SITE_URL } from "./lib/site";
 
 // RFC 8288 Link header pointing agents at the machine-readable surfaces.
 // Served on / and /docs only: a wildcard /docs/:path* source would replace the
@@ -16,6 +17,12 @@ const agentDiscoveryHeaders = [
       '</.well-known/mcp/server-card.json>; rel="service-desc"',
     ].join(", "),
   },
+];
+
+// The config Link header replaces the one the Markdown handler sets, so / and
+// /docs restate the canonical URL of the Introduction the handler would send.
+const introductionHeaders = [
+  { key: "Link", value: `${agentDiscoveryHeaders[0].value}, <${SITE_URL}/docs>; rel="canonical"` },
 ];
 
 // Markdown is negotiated by the Accept header alone. The framework also
@@ -95,8 +102,8 @@ const config = withDocs({
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
-      { source: "/", headers: agentDiscoveryHeaders },
-      { source: "/docs", headers: agentDiscoveryHeaders },
+      { source: "/", headers: introductionHeaders },
+      { source: "/docs", headers: introductionHeaders },
       { source: "/.well-known/:path*", headers: corsHeaders },
       { source: "/auth.md", headers: corsHeaders },
       { source: "/AGENTS.md", headers: corsHeaders },
