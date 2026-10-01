@@ -6,7 +6,9 @@ import { NextResponse, type NextRequest } from "next/server";
 // redirects so it can carry Vary: Accept, which config headers never reach.
 export function proxy(request: NextRequest) {
   if (request.headers.get("accept")?.includes("text/markdown")) return;
-  const response = NextResponse.redirect(new URL("/docs", request.url), 307);
+  const url = request.nextUrl.clone();
+  url.pathname = "/docs";
+  const response = NextResponse.redirect(url, 307);
   response.headers.set("Vary", "Accept");
   return response;
 }
