@@ -10,7 +10,7 @@ icon: "plug"
 
 - **One endpoint, signed in with your Limrun account.** OAuth is the default: the client opens a browser, you approve access, and tokens refresh on their own afterwards. For headless setups, an API key in an `Authorization: Bearer` header works too.
 - **Stateless.** Every tool that touches a device takes an explicit `instanceId`, so there is no session to lose. Reconnects and long gaps are fine.
-- **Devices and cloud builds.** An OAuth connection controls devices and can pair the [`lim` CLI](/docs/agents/cli) for Xcode builds using the same account and environment. Builds still run through the CLI. Paired access does not include billing, account administration, or general asset uploads.
+- **Devices and cloud builds.** An OAuth connection controls devices and can pair the [`lim` CLI](/docs/agents/cli) for Xcode and Gradle builds using the same account and environment. Builds still run through the CLI. Paired access does not include billing, account administration, or general asset uploads.
 
 ## Use the same login for CLI builds
 
@@ -56,7 +56,7 @@ Every instance also runs [its own MCP server](/docs/agents/mcp). Pick by who hol
 | Endpoint | `https://mcp.limrun.com/mcp` for the whole organization | One URL per instance, from `status.mcpUrl` |
 | Auth | OAuth sign-in, or an API key | That instance's `status.token` |
 | Lifecycle tools | Create, list, inspect, and delete instances | None; the instance must already exist |
-| Access | Organization devices and paired Xcode builds, limited by the approving member’s permissions | One instance; the token stops working with it |
+| Access | Organization devices and paired Xcode and Gradle builds, limited by the approving member’s permissions | One instance; the token stops working with it |
 | Best for | An agent that owns the whole loop, from "get me a device" to cleanup | Handing one device to an agent that holds no organization credential |
 
 ## Connect from Claude Code
