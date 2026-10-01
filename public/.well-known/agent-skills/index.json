@@ -2,7 +2,7 @@
   "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
   "source": {
     "repository": "https://github.com/limrun-inc/skills",
-    "commit": "876a62a19906f15b0138632e64bbbf4edefbb214"
+    "commit": "468e3717b2da83c45e966a1552fd4ccf87276ceb"
   },
   "skills": [
     {
@@ -59,7 +59,7 @@
       "type": "skill-md",
       "description": "Drive an app running on a Limrun cloud Android emulator: install an APK, launch and terminate apps with crash reports, tap, type, read the UI element tree, screenshot, record video, inject microphone audio, shape network bandwidth, read app logs, run shell commands, transfer files, tunnel the app's network destinations through your machine with HTTP inspection and HAR capture, trust a custom CA certificate, and use adb over the CLI's tunnel for full logcat and interactive tools. Use after a build (from limrun-gradle or any builder) when the user wants to see, test, or interact with their app on an emulator, or says 'show me a screenshot', 'tap', 'run it on the emulator', 'check logcat', 'record a video', 'inspect network traffic', or 'reach my local server from the emulator'. To build the APK or AAB first, use limrun-gradle.",
       "url": "/.well-known/agent-skills/limrun-android-emulator/SKILL.md",
-      "digest": "sha256:ac68a17efadf3bf2be37fe57b0f6e36c10648b658a4c30f1de6724d28f410c2e"
+      "digest": "sha256:657e6948bd3d73071b582a543e96e11c40843e58c111036c8c721243286b59d5"
     }
   ]
 }
