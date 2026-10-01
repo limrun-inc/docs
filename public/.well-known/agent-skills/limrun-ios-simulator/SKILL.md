@@ -1,6 +1,6 @@
 ---
 name: limrun-ios-simulator
-description: "Drive an app running on a Limrun cloud iOS simulator: launch, tap, type, read the accessibility element tree, screenshot, record video, connect the app to local services, play a video file as the camera, and run timed action chains. Use after a build (from any builder) when the user wants to see, test, or interact with their app on a simulator, or says 'show me a screenshot', 'tap', 'run the UI test', 'record a video', 'connect localhost', 'mock the camera', or 'launch on simulator'. To build the app first, use limrun-xcode-bazel (Bazel workspaces) or limrun-xcode (xcodebuild projects)."
+description: "Drive an app running on a Limrun cloud iOS simulator: launch, tap, type, read the accessibility element tree, read app logs and simulator syslog, screenshot, record video, connect the app to local services, play a video file as the camera, set the clipboard, read and write user defaults, post notifications, and run timed action chains. Use after a build (from any builder) when the user wants to see, test, or interact with their app on a simulator, or says 'show me a screenshot', 'tap', 'run the UI test', 'record a video', 'read the logs', 'connect localhost', 'reach my local server from the simulator', 'mock the camera', 'paste into the app', 'change the language', 'simulate Face ID', or 'launch on simulator'. To build the app first, use limrun-xcode-bazel (Bazel workspaces) or limrun-xcode (xcodebuild projects)."
 user-invocable: true
 effort: high
 ---
@@ -18,8 +18,7 @@ Never use local Xcode, local simulators, or local macOS tools.
 ## Auth and CLI
 
 Install if needed: `npm install --global lim`. Auth is `lim login` or
-`LIM_API_KEY` (it may be set outside the project, so don't ask for it just
-because it's missing from `.env` or the shell). The CLI is the source of truth:
+`LIM_API_KEY` (it may already be set in the user's environment even when `.env` and the shell do not show it; check before asking for it). The CLI is the source of truth:
 the commands in this skill are verified, but if a flag errors or you need one
 not shown here, check `lim ios <subcommand> --help` instead of guessing.
 
@@ -78,6 +77,54 @@ lim ios sync <path to .ipa file or .app folder>
 You can run the same command every time you need to install a new version of the
 bundle. It will patch with the difference and reload it in the simulator.
 
+## Fold an iPhone Duo
+
+Create a Duo instance in a region that offers it:
+
+```bash
+lim ios create --model iphone-duo
+lim ios fold --json --id <instance-ID>
+lim ios fold 90 --orientation landscape-left --id <instance-ID>
+lim ios fold 90 --id <instance-ID>
+lim ios fold 180 --id <instance-ID>
+lim ios screenshot ./inner.png --display inner --id <instance-ID>
+lim ios tap 300 200 --display inner --id <instance-ID>
+```
+
+The hinge accepts fractional angles from **0° (closed)** to **180° (flat)**.
+Omit the angle to read fold state. `--orientation` accepts `portrait`, `pud`
+(portrait upside down), `landscape-left`, or `landscape-right`; it can change
+independently of the hinge angle.
+This changes the native simulator hinge, so apps receive Apple's hinge and
+layout updates. The browser stream starts in 2D and offers a lazy-loaded 3D
+frame. Both modes provide hinge and rotation controls, with touch input on the
+cover and inner display. The frame's
+Sleep/Wake and volume buttons accept clicks and holds even when position is locked.
+For automation, pair `buttonDown` and `buttonUp` actions with `button` set to
+`side`, `volumeUp`, or `volumeDown` in `client.performActions`.
+
+With an already connected TypeScript device client:
+
+```ts
+const fold = await client.getFoldState(); // null on an ordinary simulator
+await client.setHingeAngle(110);
+await client.setDuoOrientation('landscape-left');
+const inner = await client.screenshotDisplay('inner');
+await client.tapDisplay('inner', inner.width / 2, inner.height / 2);
+```
+
+`setDuoOrientation` accepts `portrait`, `landscape-left`, `landscape-right`,
+and `pud` (upside down). Display screenshots are upright and report dimensions
+in points; `tapDisplay` uses those coordinates. Use `outer` for the cover or
+`inner` for the unfolding display. A display that iOS has turned off returns a
+black image.
+
+Use these display-specific methods for Duo automation. Existing screenshot,
+recording, and accessibility commands do not automatically follow the inner
+display. The 3D viewer supports single-finger touch and drag. Rotating the view
+changes the camera; **Rotate device** changes native orientation. **Laptop view**
+sets the hinge and orientation; it does not enable Apple's separate Table Mode.
+
 ## Targeting the right instance
 
 Most `lim ios` commands default to the last created instance and resolve the
@@ -102,27 +149,35 @@ resolves on its own. When controlling multiple instances, always pass `--id`.
 
 ## Reaching services on the local machine
 
-Destination tunnels let an iPhone simulator app keep calling exact localhost
-or literal-IP TCP destinations while the CLI connects those destinations from
-the machine running `lim`:
+Destination tunnels let an iPhone simulator app keep calling its normal
+destinations while the CLI dials them from the machine running `lim`. Select
+exact `localhost:port` or literal `IP:port` destinations, or domains that only
+your machine or VPN can reach:
 
 ```bash
 lim ios tunnel \
   --id <ios-instance-id> \
-  --route localhost:3000 \
-  --route localhost:8081 \
+  --selector localhost:3000 \
+  --selector localhost:8081 \
+  --selector "*.staging.example" \
   --detach
 ```
 
 Use the app's normal URLs, such as `http://localhost:3000`. Declaring
 `localhost:3000` also captures loopback forms such as `127.0.0.1:3000` and
-`[::1]:3000`, plus `[::ffff:127.0.0.1]:3000`. This release supports TCP and up
-to ten exact routes. Port 53, hostnames other than `localhost`, CIDRs, and UDP
-are not supported.
+`[::1]:3000`, plus `[::ffff:127.0.0.1]:3000`. Domain selectors (exact
+`api.corp.example` or label-bound wildcard `"*.staging.example"`) are
+intercepted on the simulator and dialed from your machine whether or not the
+name resolves on public DNS, so your DNS and VPN apply. Apps that resolve DNS
+themselves over HTTPS bypass domain interception.
+A tunnel carries TCP only: up to ten exact selectors and 64 domain selectors,
+ports 1-65535 except 53; CIDRs and UDP are not supported. Start the tunnel
+before launching the app or opening the page: connections opened earlier keep
+their original route, so relaunch the app if it connected first.
 
-One instance accepts one active destination tunnel, and its route set is
+One instance accepts one active destination tunnel, and its selector set is
 immutable. To add or remove a destination, stop the tunnel and start it again
-with the complete route list:
+with the complete selector list:
 
 ```bash
 lim ios tunnel status --id <ios-instance-id> --json
@@ -132,6 +187,25 @@ lim ios tunnel stop --id <ios-instance-id>
 If the simulator attempts a route while its local service is stopped, the
 tunnel remains active and reports `connection_refused`; restart the service
 without recreating the simulator or tunnel.
+
+### Inspect HTTP traffic, capture HAR, persist a network log
+
+Inspection is on by default: every HTTP and HTTPS request through the tunnel
+is decoded, printed as one summary line per request (in the tunnel log file
+when detached), and shown live in the console's network panel.
+
+```bash
+lim ios tunnel --selector "*.api.example" --har ./traffic.har --detach   # write HAR 1.2 with bodies
+lim ios tunnel --selector "*.api.example" --persist --detach             # network log survives the instance
+```
+
+`--persist` uploads a body-inclusive network log as a session artifact when
+the tunnel stops or the instance terminates; it appears on the instance's
+session page in the console with a HAR download (default lifetime 3 days,
+`--ttl <seconds>` up to 30 days). HTTPS is decoded with a simulator-trusted
+CA, so **apps with certificate pinning fail through inspected selectors**:
+leave the pinned host out of the selectors or pass `--no-inspect` to keep TLS
+end to end (no summaries, HAR, or persistence).
 
 ## Launching the app
 
@@ -147,8 +221,26 @@ lim ios terminate-app <bundle-id>                         # stop it, e.g. to res
 
 If you don't know the bundle ID, run `lim ios list-apps`.
 
-The `lim ios launch-app` will stream the logs from the app in realtime for you
-to debug. If you'd like to launch and forget, you can use `--detach` flag.
+`launch-app` streams the app's logs and returns when the app exits or the
+command is interrupted. Pass `--detach` to launch and return immediately.
+
+## App logs
+
+Log commands print recent lines and exit. Pass `--follow` only to keep
+streaming until interrupted.
+
+```bash
+lim ios launch-app <bundle-id> --detach   # launch and return, no log stream
+lim ios app-log <bundle-id>               # last 100 lines, then exit
+lim ios app-log <bundle-id> --tail 100    # last N lines
+lim ios app-log <bundle-id> --follow      # stream until interrupted
+lim ios syslog                            # up to 100 captured syslog lines, then exit
+lim ios syslog --follow                   # stream simulator syslog
+```
+
+Syslog snapshots read the buffer filled by the current or an earlier syslog
+stream. An empty buffer returns no lines. Snapshot reads need a runtime with
+`syslogTail` support.
 
 ## Testing changes
 
@@ -294,6 +386,59 @@ lim ios camera clear                                  # restore the default came
 Any AVFoundation-decodable file works (H.264/HEVC in `.mp4`/`.mov`). Use
 `--no-loop` when the app must observe the end of the clip exactly once (the
 feed freezes on the last frame rather than stalling).
+
+## Clipboard
+
+Set or read the simulator clipboard. Apps paste it like text copied inside the
+simulator, so the edit menu's Paste shows no permission prompt. For example, to
+paste a one-time code into a login form:
+
+```bash
+lim ios clipboard set "123456"                  # or pipe it: echo 123456 | lim ios clipboard set
+lim ios clipboard get
+```
+
+`lim ios simctl -- pbcopy booted` and `pbpaste booted` do the same.
+
+## User defaults
+
+Read, write, or delete the simulator's user defaults with its `defaults` tool.
+Pass the arguments after `--`. Apps read defaults at launch, so relaunch the app
+under test after a change. For example, to switch the device language and
+region without UI automation:
+
+```bash
+lim ios defaults -- write -g AppleLanguages -array fr-FR
+lim ios defaults -- write -g AppleLocale -string fr_FR
+lim ios defaults -- read -g AppleLanguages
+```
+
+`lim ios simctl -- spawn booted defaults ...` does the same. Only `read`,
+`write`, and `delete` are available.
+
+## Darwin notifications
+
+Post a notification, or set and read a notification's state, inside the
+simulator with its `notifyutil` tool:
+
+```bash
+lim ios notify post <name>
+lim ios notify set <name> <state>
+lim ios notify get <name>
+```
+
+For example, the simulator drives Face ID through these notifications. Enroll
+once, then answer each Face ID prompt with a match or a non-match (Touch ID
+devices use `fingerTouch` in place of `pearl`):
+
+```bash
+lim ios notify set com.apple.BiometricKit.enrollmentChanged 1
+lim ios notify post com.apple.BiometricKit.enrollmentChanged
+lim ios notify post com.apple.BiometricKit_Sim.pearl.match      # the next scan succeeds
+lim ios notify post com.apple.BiometricKit_Sim.pearl.nomatch    # the next scan fails
+```
+
+`lim ios simctl -- spawn booted notifyutil -p|-s|-g ...` does the same.
 
 ## Preview URL for humans
 

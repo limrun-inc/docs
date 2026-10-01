@@ -31,13 +31,13 @@ Derive:
 
 ## Ensure Dev Client
 
-Expo development builds require `expo-dev-client`. If it is missing from `package.json`, install it automatically:
+Expo development builds require `expo-dev-client`. If it is missing from `package.json`, add it:
 
 ```bash
 npx expo install expo-dev-client
 ```
 
-Installing `expo-dev-client`, adding/removing/updating native dependencies, or changing native app config means the uploaded Debug asset is stale. Build a fresh Debug app before starting the dev loop. Do not merely warn the user that a rebuild may be needed; perform the rebuild.
+Installing `expo-dev-client`, adding/removing/updating native dependencies, or changing native app config means the uploaded Debug asset is stale. Build a fresh Debug app before starting the dev loop. A changed native dependency makes the uploaded Debug asset stale, so the rebuild comes before the dev loop.
 
 ## Debug Build Asset
 
@@ -113,6 +113,10 @@ lim xcode build . \
   --upload "$ASSET_NAME"
 ```
 
+Run `lim xcode version set <major|major.minor>` once in the repo when the
+project needs a specific Xcode (`27` for the Xcode 27 GA, `27.1` for the beta);
+see `limrun-xcode` for the rules.
+
 Use `--expo-app-dir`, `--scheme`, or `--workspace` when the project layout requires it.
 
 Then create the simulator attached to that Xcode target; the attach installs
@@ -147,7 +151,7 @@ its normal local port; Expo advertises localhost:
 ```bash
 METRO_PORT=8081
 lim ios tunnel \
-  --route "localhost:${METRO_PORT}" \
+  --selector "localhost:${METRO_PORT}" \
   --detach \
   --id <ios-instance-id>
 TUNNEL_URL="http://localhost:${METRO_PORT}"
@@ -164,9 +168,9 @@ Run Metro as a managed background process, or copy the printed `TUNNEL_URL` into
 a second terminal before launching the app.
 
 If port 8081 is already occupied, choose another explicit port and use the same
-value for the tunnel route, `TUNNEL_URL`, and Expo's `--port`. Route sets are
-immutable: stop and recreate the tunnel with the complete route list when the
-port changes.
+value for the tunnel selector, `TUNNEL_URL`, and Expo's `--port`. Selector sets
+are immutable: stop and recreate the tunnel with the complete selector list
+when the port changes.
 
 Only add `--offline` in a genuinely network-isolated environment after
 dependencies are installed. Offline mode disables network checks and dependency
