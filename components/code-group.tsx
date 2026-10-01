@@ -1,12 +1,8 @@
 "use client";
 
 import * as React from "react";
-import {
-  Tab,
-  Tabs as FumadocsTabs,
-  TabsList,
-  TabsTrigger,
-} from "fumadocs-ui/components/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "fumadocs-ui/components/tabs";
+import { Tabs as TabsRoot } from "fumadocs-ui/components/ui/tabs";
 
 interface CodeGroupProps {
   children: React.ReactNode;
@@ -121,7 +117,31 @@ function CodeTabIcon({ label }: { label: string }) {
   );
 }
 
+// The reader's language choice is shared by every group on the site and kept in
+// localStorage. A group without that language shows its first tab instead.
+const LANGUAGE_KEY = "limrun-docs-lang";
+const languageListeners = new Set<() => void>();
+
+function subscribeLanguage(onChange: () => void) {
+  languageListeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    languageListeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function readLanguage(): string | null {
+  return localStorage.getItem(LANGUAGE_KEY);
+}
+
+function writeLanguage(value: string) {
+  localStorage.setItem(LANGUAGE_KEY, value);
+  for (const listener of languageListeners) listener();
+}
+
 export function CodeGroup({ children, labels }: CodeGroupProps) {
+  const language = React.useSyncExternalStore(subscribeLanguage, readLanguage, () => null);
   const validChildren = React.Children.toArray(children).filter(
     React.isValidElement,
   ) as React.ReactElement[];
@@ -143,12 +163,17 @@ export function CodeGroup({ children, labels }: CodeGroupProps) {
     return {
       child,
       label: displayLabel,
-      value: `${displayLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${index}`,
+      value: displayLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     };
   });
+  const value = tabs.some((tab) => tab.value === language) ? language! : tabs[0].value;
 
   return (
-    <FumadocsTabs defaultValue={tabs[0].value} className="docs-code-tabs">
+    <TabsRoot
+      value={value}
+      onValueChange={writeLanguage}
+      className="docs-code-tabs flex flex-col overflow-hidden rounded-xl border bg-fd-secondary my-4"
+    >
       <TabsList>
         {tabs.map(({ label, value }) => (
           <TabsTrigger key={value} value={value}>
@@ -158,10 +183,10 @@ export function CodeGroup({ children, labels }: CodeGroupProps) {
         ))}
       </TabsList>
       {tabs.map(({ child, value }) => (
-        <Tab key={value} value={value}>
+        <TabsContent key={value} value={value}>
           {child}
-        </Tab>
+        </TabsContent>
       ))}
-    </FumadocsTabs>
+    </TabsRoot>
   );
 }

@@ -18,14 +18,15 @@ You need the `lim` CLI or an SDK and an API key in `LIM_API_KEY`; the [Quickstar
 
 To use the ADB tunnel, install `adb`. It ships with the Android SDK Platform-Tools, which the Android Studio command-line tools install. The CLI's shell, log, and file commands work without it.
 
-The three SDKs cover different parts of the Android surface. TypeScript has the full device-control client; from Python and Go, create instances with the SDK and drive the device over the ADB tunnel. The [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix) lists every capability per language.
+The three SDKs cover different parts of the Android surface. TypeScript has the full device-control client. Python and Go create and manage instances, and drive the device over the ADB tunnel. The [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix) lists every capability per language.
 
 ## Create an emulator
 
-The CLI boots an instance and opens an ADB tunnel to it by default:
+Create an instance and set its labels and Android OS version:
 
+<CodeGroup labels={["CLI","TypeScript","Python","Go"]}>
 ```bash
-# Boot an instance and open an ADB tunnel.
+# Boot an instance and open an ADB tunnel (on by default).
 lim android create
 
 # Delete the instance when this CLI process exits, keep it in the US, and label it.
@@ -41,11 +42,6 @@ lim android create --install ./build.apk
 lim android create --install-asset chrome-stable
 ```
 
-The output includes the instance ID and a console URL that opens the live device stream in your browser.
-
-From the SDK, `wait: true` returns once the instance is `ready`, and `reuseIfExists: true` returns an existing instance with the same labels instead of creating a new one (see [Labels and reuse](/docs/concepts#labels-and-reuse)):
-
-<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 import { Limrun } from '@limrun/api';
 
@@ -114,6 +110,8 @@ if err != nil {
 }
 ```
 </CodeGroup>
+
+The CLI output includes the instance ID and a console URL that opens the live device stream in your browser. In the SDKs, `wait: true` returns once the instance is `ready`, and `reuseIfExists: true` (CLI: `--reuse-if-exists`) returns an existing instance with the same labels instead of creating a new one (see [Labels and reuse](/docs/concepts#labels-and-reuse)).
 
 To watch the emulator, open the instance's signed stream URL (`status.signedStreamUrl`) in any browser; it carries its own token, so no sign-in or API key is needed. To show the device inside your own web app, see [Embed a device](/docs/platform/embed-simulator). Every field the create call returns is described in [Instance spec and status](/docs/reference/instances).
 
@@ -278,8 +276,9 @@ Set `initialAssets` at create time to install one or more APKs while the instanc
 
 For local files, the CLI's `--install` and the TypeScript and Go SDKs' `assets.getOrUpload({ path })` upload to Asset Storage first and hand the instance a signed URL. The Python SDK has no such helper: call `assets.get_or_create`, PUT the file to the returned upload URL, then create the instance. See [Upload an asset](/docs/platform/asset-storage#upload-an-asset).
 
-The CLI installs each `--install` or `--install-asset` as its own app:
+Pre-install from a local file, an Asset Storage name, an asset ID, or a URL:
 
+<CodeGroup labels={["CLI","TypeScript","Python","Go"]}>
 ```bash
 # Local APK uploaded to Asset Storage on the fly, then installed.
 lim android create --install ./build.apk
@@ -291,9 +290,6 @@ lim android create --install ./app-a.apk --install ./app-b.apk
 lim android create --install-asset chrome-stable
 ```
 
-From the SDK, each `initialAssets` entry picks a source: an asset name, an asset ID, or a URL:
-
-<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 const instance = await lim.androidInstances.create({
   wait: true,
@@ -376,7 +372,7 @@ inst, _ := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
 ```
 </CodeGroup>
 
-The Android `initialAssets` entry has no `launchMode` field; the full entry shape is in [Instance spec and status](/docs/reference/instances). Anything you upload once and reuse goes through [Asset Storage](/docs/platform/asset-storage). To push a build to an instance that is already running, see [Install an APK](#install-on-a-running-instance).
+The CLI installs each `--install` or `--install-asset` as its own app. In the SDKs, each `initialAssets` entry picks one source: an asset name, an asset ID, or a URL. The Android `initialAssets` entry has no `launchMode` field; the full entry shape is in [Instance spec and status](/docs/reference/instances). Anything you upload once and reuse goes through [Asset Storage](/docs/platform/asset-storage). To push a build to an instance that is already running, see [Install an APK](#install-on-a-running-instance).
 
 #### Supported ABIs
 
@@ -522,8 +518,9 @@ Pass `--id <instance-id>` to target a specific instance, and `--watch` to keep w
 
 ### Install on a running instance
 
-`lim android install-app` accepts a path or a URL. Paths are uploaded to Asset Storage first (MD5-deduplicated; `--asset-ttl` sets their expiry), and URLs go straight to the instance:
+Install a local APK or one from a URL. Local files are uploaded to [Asset Storage](/docs/platform/asset-storage) first, and the instance downloads URLs itself, so a URL must be publicly reachable (a GitHub release asset, an S3 presigned URL) or come from Asset Storage:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 # Local path: uploaded to Asset Storage first, then installed.
 lim android install-app ./build.apk
@@ -531,8 +528,6 @@ lim android install-app ./build.apk
 # Remote URL: the instance downloads it.
 lim android install-app https://example.com/build.apk --id <instance-id>
 ```
-
-In the TypeScript SDK, `sendAsset(url)` tells the instance to download an APK and install it. The URL must be publicly reachable (a GitHub release asset, an S3 presigned URL) or come from [Asset Storage](/docs/platform/asset-storage). Upload local files with `assets.getOrUpload({ path })` and pass the returned `signedDownloadUrl`:
 
 ```ts
 // Local file: upload once, then install with the returned signed URL.
@@ -545,23 +540,25 @@ await client.sendAsset('https://example.com/build.apk');
 // The default request timeout is 120 s. Pass a longer one for large APKs.
 await client.sendAsset(asset.signedDownloadUrl, 180_000);
 ```
+</CodeGroup>
+
+CLI only: `install-app` uploads local paths MD5-deduplicated, and `--asset-ttl` sets their expiry. In TypeScript, `sendAsset(url)` tells the instance to download an APK and install it; for a local file, upload it with `assets.getOrUpload({ path })` and pass the returned `signedDownloadUrl`.
 
 `sendAsset` is TypeScript-only. The Go SDK uploads with `Assets.GetOrUpload`; from Go and Python, install with `lim android install-app` or `adb install` over the tunnel. Python has no upload helper: call `assets.get_or_create` and PUT the file to the upload URL first.
 
 ## Read the screen
 
-Inspect the device with screenshots and the element tree. The SDK examples assume a `client` from [`createInstanceClient`](#open-a-device-client-from-the-typescript-sdk).
+Inspect the device with screenshots and the element tree. The TypeScript examples assume a `client` from [`createInstanceClient`](#open-a-device-client-from-the-typescript-sdk).
 
 ### Take a screenshot
 
-`screenshot` captures the current frame as a PNG. The CLI writes the image to the path you give it:
+`screenshot` captures the current frame as a PNG and saves it to `screen.png`:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim android screenshot screen.png
 lim android screenshot screen.png --id <instance-id>
 ```
-
-The SDK returns a base64 data URI that you decode yourself:
 
 ```ts
 import { writeFileSync } from 'node:fs';
@@ -572,11 +569,15 @@ const shot = await client.screenshot();
 const png = Buffer.from(shot.dataUri.replace(/^data:image\/\w+;base64,/, ''), 'base64');
 writeFileSync('screen.png', png);
 ```
+</CodeGroup>
+
+The CLI writes the image to the path you give it. In TypeScript, `screenshot()` returns a base64 data URI that you decode yourself.
 
 ### Get the element tree
 
-The CLI prints the raw UIAutomator XML, or parsed nodes with `--json`:
+Read the UI hierarchy as raw UIAutomator XML or as parsed nodes:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 # Print the raw XML.
 lim android element-tree
@@ -585,13 +586,12 @@ lim android element-tree
 lim android element-tree --json
 ```
 
-From the TypeScript SDK:
-
 ```ts
 const tree = await client.getElementTree();
 // tree.xml    raw UIAutomator XML
 // tree.nodes  flattened AndroidElementNode[]
 ```
+</CodeGroup>
 
 A node in the raw `tree.xml` looks like this:
 
@@ -647,6 +647,7 @@ The same node in `tree.nodes` carries parsed bounds with a center point you can 
 
 Recording runs on the instance and writes H.264 in an MP4 container. Start a recording, drive the UI, then stop it:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim android record start --quality 5
 
@@ -659,8 +660,6 @@ lim android record stop -o demo.mp4
 lim android record stop --presigned-url https://example.com/upload
 ```
 
-From the TypeScript SDK:
-
 ```ts
 await client.startRecording({ quality: 5 });
 
@@ -669,8 +668,9 @@ await client.startRecording({ quality: 5 });
 const url = await client.stopRecording({ localPath: '/tmp/demo.mp4' });
 // The download URL is also returned so you can fetch it again later.
 ```
+</CodeGroup>
 
-`quality` accepts the integers `5` through `10`; the default is `5`, and higher values increase bitrate and file size. On the SDK, pick the sink that matches where the file should live:
+`quality` accepts the integers `5` through `10`; the default is `5`, and higher values increase bitrate and file size. In TypeScript, pick the sink that matches where the file should live:
 
 - **Local file.** `stopRecording({ localPath })`. The SDK streams the file to `localPath` before resolving.
 - **Your bucket.** `stopRecording({ presignedUrl })`. The instance PUTs directly to your URL; the SDK only waits for that upload.
@@ -694,6 +694,7 @@ Prefer selectors. Layouts shift between OS versions, and coordinates don't survi
 
 `findElement` queries the tree so you don't have to parse it. Every non-empty selector field must match:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 # Find by text and return up to 5 matches as JSON.
 lim android find-element --text "Sign In" --limit 5 --json
@@ -705,12 +706,11 @@ lim android find-element --resource-id com.example:id/submit
 lim android find-element --class-name android.widget.Button --clickable --enabled
 ```
 
-From the TypeScript SDK:
-
 ```ts
 const r = await client.findElement({ text: 'Chrome' }, 5);
 // { count: 1, elements: [ { ... AndroidElementNode } ] }
 ```
+</CodeGroup>
 
 The same selector fields work for `find-element`, `tap-element`, `type`, and `scroll`:
 
@@ -731,6 +731,7 @@ The same selector fields work for `find-element`, `tap-element`, `type`, and `sc
 
 Tap by selector first and fall back to coordinates. `type` writes into the focused field unless you target an input by selector or coordinates. `press-key` sends hardware and IME keys, with `--modifier` repeatable:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 # Tap by selector (preferred). Any selector flag from the table above works.
 lim android tap-element --resource-id com.example.app:id/login
@@ -750,8 +751,6 @@ lim android press-key BACK
 lim android press-key enter
 lim android press-key a --modifier shift
 ```
-
-From the TypeScript SDK:
 
 ```ts
 // Tap by selector (preferred)
@@ -774,6 +773,7 @@ await client.pressKey('BACK');
 await client.pressKey('ENTER');
 await client.pressKey('a', ['shift']);         // modifiers: shift, ctrl/control, alt/option, meta/command/cmd, sym, fn
 ```
+</CodeGroup>
 
 `pressKey` accepts plain names (`BACK`, `ENTER`, `A`, `TAB`), digit strings (`'4'`), or full `KEYCODE_*` constants. The response echoes the resolved keycode so you can confirm what fired.
 
@@ -781,6 +781,7 @@ await client.pressKey('a', ['shift']);         // modifiers: shift, ctrl/control
 
 `scrollScreen` swipes from the center of the screen. `scrollElement` scrolls inside a specific scrollable node such as a list, ViewPager, or ScrollView; on the CLI, pass selector flags or coordinates to `lim android scroll`. Both take a direction (`up`, `down`, `left`, `right`) and an `amount` in Android scroll units.
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 # Scroll the screen. --amount defaults to 300 in the CLI.
 lim android scroll down --amount 500
@@ -790,8 +791,6 @@ lim android scroll up
 lim android scroll down --resource-id com.example:id/list --amount 500
 lim android scroll up --x 120 --y 500 --amount 250
 ```
-
-From the TypeScript SDK:
 
 ```ts
 // The SDK amount defaults to 6.
@@ -804,8 +803,9 @@ await client.scrollElement(
   3,
 );
 ```
+</CodeGroup>
 
-The SDK call resolves with the gesture's start and end points, so you can check what was sent:
+The TypeScript call resolves with the gesture's start and end points, so you can check what was sent:
 
 ```json
 { "direction": "down", "startX": 360, "startY": 808, "endX": 360, "endY": 1108 }
@@ -817,32 +817,31 @@ The SDK defaults `amount` to `6` (a small flick) and the CLI to `300` (a long sc
 
 `openUrl` resolves the intent the way `am start -a android.intent.action.VIEW -d <url>` would. It works for web URLs and registered deep-link schemes:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim android open-url https://example.com
 lim android open-url myapp://orders/42 --id <instance-id>
 ```
 
-From the TypeScript SDK:
-
 ```ts
 await client.openUrl('https://example.com');           // opens in the default browser
 await client.openUrl('myapp://orders/42');             // routes to your app's deep-link handler
 ```
+</CodeGroup>
 
 If no installed activity matches the intent, the call fails with `startActivity returned code -91` (Android's `ActivityManager.START_INTENT_NOT_RESOLVED`). That covers unregistered custom schemes (`myapp://...`) and standard schemes whose handler isn't on the base image: on the stock image `mailto:` fails because there is no mail app, while `tel:` and `https://` succeed because the dialer and Chrome are present. Install the missing handler with [Pre-install APKs](#pre-install-apks) at boot, or [install it on the running instance](#install-on-a-running-instance).
 
 ### Launch and stop apps
 
-`launch-app` starts an installed app by package name and watches it until it exits. When the app crashes, stops responding (ANR), or stops, the CLI prints the exit reason, crash details, and a recent log tail. `--detach` returns right after the launch. `--mode ForegroundIfRunning` (the default) brings a running app to the front; `RelaunchIfRunning` restarts it:
+Launch an installed app by package name, then stop it. Mode `ForegroundIfRunning` (the default) brings a running app to the front; `RelaunchIfRunning` restarts it:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim android launch-app com.example.app
 lim android launch-app com.example.app --detach
 lim android launch-app com.example.app --mode RelaunchIfRunning --id <instance-id>
 lim android terminate-app com.example.app
 ```
-
-From the TypeScript SDK, `onExit` receives the app's recent logcat lines and exit details, including the crash stack trace when the app crashed. `watchApp` attaches the same callback to an app you didn't launch through the client, for example one opened by a deep link:
 
 ```ts
 const apps = await client.listApps();
@@ -861,8 +860,11 @@ await watch.stop();
 
 await client.terminateApp('com.example.app');   // force-stop; fires onExit with reason 'terminated'
 ```
+</CodeGroup>
 
-`listApps` returns the package name as `bundleId` so the shape matches iOS.
+CLI only: `launch-app` watches the app until it exits. When the app crashes, stops responding (ANR), or stops, the CLI prints the exit reason, crash details, and a recent log tail; `--detach` returns right after the launch.
+
+TypeScript only: `onExit` receives the app's recent logcat lines and exit details, including the crash stack trace when the app crashed. `watchApp` attaches the same callback to an app you didn't launch through the client, for example one opened by a deep link. `listApps` returns the package name as `bundleId` so the shape matches iOS.
 
 ### Read logs
 
@@ -873,15 +875,15 @@ lim android app-log com.example.app --tail 50
 lim android app-log com.example.app --follow
 ```
 
-`lim android logcat` runs logcat itself with no local `adb`. Arguments after `--` go to logcat verbatim: `-d` or `-t 50` dumps and exits, `-T 50` follows, and no arguments dumps the buffer and follows. The CLI exits with logcat's exit code:
+`logcat` runs logcat on the instance with no local `adb`. Arguments go to logcat verbatim: `-d` or `-t 50` dumps and exits, `-T 50` follows, and no arguments dumps the buffer and follows:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
+# Arguments after -- go to logcat.
 lim android logcat -- -t 50
 lim android logcat -- -T 50 *:E
 lim android logcat --id <instance-id> -- -s MyTag
 ```
-
-From the TypeScript SDK, `logcat` returns a process that emits `line` (and batched `lines`) events and an `exit` event with the exit code, or `-1` when stopped:
 
 ```ts
 const proc = client.logcat(['-T', '50']);
@@ -889,6 +891,9 @@ proc.on('line', (line) => console.log(line));
 // ...
 proc.stop();
 ```
+</CodeGroup>
+
+The CLI exits with logcat's exit code. In TypeScript, `logcat` returns a process that emits `line` (and batched `lines`) events and an `exit` event with the exit code, or `-1` when stopped.
 
 The SDK equivalents of `adb-shell`, `push-file`, and `pull-file` are `adbShell(command, args, { timeoutMs })`, `pushFile(path, destination?)`, and `pullFile(path, localPath)`. `adbShell` quotes each argument, so run pipes through an explicit shell: `client.adbShell('sh', ['-c', 'dumpsys battery | grep level'])`. A non-zero exit code is returned in the result, not thrown.
 
@@ -955,8 +960,11 @@ unsubscribe();         // drop the state callback if you no longer need it
 
 ## Delete the emulator
 
-Each Android instance is single-tenant: only one client should drive it at a time. Scope instances per user, per PR, or per session with labels, let `reuseIfExists` return the same warm instance on the next call, and delete instances explicitly when you're done:
+Each Android instance is single-tenant: only one client should drive it at a time. Scope instances per user, per PR, or per session with labels, let `reuseIfExists` return the same warm instance on the next call, and delete instances explicitly when you're done.
 
+List instances, then delete one, or every instance that matches a label:
+
+<CodeGroup labels={["CLI","TypeScript","Python","Go"]}>
 ```bash
 lim android list                       # ready instances (--all for every state)
 lim android list --label-selector user=alice
@@ -964,9 +972,6 @@ lim android delete <instance-id>       # delete a specific instance
 lim android delete                     # delete the last-created instance
 ```
 
-From the SDK, delete one instance, or every instance that matches a label:
-
-<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 // One instance
 await lim.androidInstances.delete(instance.metadata.id);
@@ -980,9 +985,34 @@ for await (const inst of lim.androidInstances.list({
 }
 ```
 
+```python
+# One instance
+lim.android_instances.delete(instance.metadata.id)
+
+# Every ready instance matching a label
+for inst in lim.android_instances.list(label_selector=f"user={user_id}", state="ready"):
+    lim.android_instances.delete(inst.metadata.id)
+```
+
 ```go
 // One instance
-_ = lim.AndroidInstances.Delete(ctx, inst.Metadata.ID)
+if err := lim.AndroidInstances.Delete(ctx, inst.Metadata.ID); err != nil {
+    panic(err)
+}
+
+// Every ready instance matching a label. List returns one page (up to 50 instances by default).
+page, err := lim.AndroidInstances.List(ctx, limrun.AndroidInstanceListParams{
+    LabelSelector: param.NewOpt("user=" + userID),
+    State:         param.NewOpt("ready"),
+})
+if err != nil {
+    panic(err)
+}
+for _, inst := range page.Items {
+    if err := lim.AndroidInstances.Delete(ctx, inst.Metadata.ID); err != nil {
+        panic(err)
+    }
+}
 ```
 </CodeGroup>
 

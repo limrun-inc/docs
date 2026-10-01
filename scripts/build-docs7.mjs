@@ -102,6 +102,17 @@ function rewriteLinks(line, name) {
   return { line: rewritten, targets };
 }
 
+// Code tabs follow one order site-wide so a reader finds the same surface in
+// the same place. Labels outside this list (an Appium client) are not ranked.
+const LABEL_ORDER = ["CLI", "TypeScript", "Python", "Go", "cURL"];
+
+function checkLabelOrder(labels, name) {
+  const ranks = labels.map((label) => LABEL_ORDER.indexOf(label)).filter((rank) => rank >= 0);
+  if (ranks.some((rank, i) => i > 0 && rank <= ranks[i - 1])) {
+    throw new Error(`${name}: CodeGroup labels ${labels.join(", ")} are not in the order ${LABEL_ORDER.join(", ")}`);
+  }
+}
+
 // Transforms one page body. Line-based on purpose: fences can be indented
 // (Step bodies) and must pass through untouched, so every rule checks the
 // fence state first.
@@ -162,6 +173,7 @@ function transformBody(body, name) {
     if (groupOpen) {
       if (group) throw new Error(`${name}: nested CodeGroup`);
       group = { labels: groupOpen[2] === undefined ? null : parseLabels(groupOpen[2]), next: 0 };
+      checkLabelOrder(group.labels ?? [], name);
       line = `${groupOpen[1]}<CodeGroup>`;
     } else if (/^\s*<\/CodeGroup>\s*$/.test(line)) {
       if (!group) throw new Error(`${name}: </CodeGroup> without opener`);

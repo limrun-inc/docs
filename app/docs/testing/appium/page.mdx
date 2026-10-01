@@ -53,7 +53,7 @@ The fork registers itself as `@limrun/xcuitest` (both `driverName` and `automati
 
 WebDriverAgent isn't on a fresh instance by default. Hand the platform a download URL for the WDA build when you create the instance, and the platform will install it and auto-launch it before `create` returns:
 
-<CodeGroup labels={["TypeScript", "Python", "Go"]}>
+<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 import { Limrun, Ios } from '@limrun/api';
 
@@ -129,7 +129,6 @@ instance, err := lim.IosInstances.New(context.TODO(), limrun.IosInstanceNewParam
     },
 })
 ```
-
 </CodeGroup>
 
 The Python SDK covers instance operations (create, list, get, delete) but has no device client, so the WDA health check below is in TypeScript and Go. The Appium session itself runs in whatever language your test code is in.
@@ -150,7 +149,7 @@ Appium drives iOS by sending HTTP requests to WebDriverAgent. When WDA runs on y
 
 `targetHttpPortUrlPrefix` from the previous section is exactly that. To reach a specific port on the simulator, append the port number directly to the prefix, with **no slash**. WDA at port `8100` lives at `<prefix>8100`. There's one more quirk: Appium's URL parser needs an explicit port on the hostname, otherwise it builds invalid URLs when it makes follow-up requests. Insert `:443` (the HTTPS port) into the hostname:
 
-<CodeGroup labels={["TypeScript", "Go"]}>
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 // Before: https://<host>.limrun.net/v1/ios_usea_01.../targetHttpPort
 // After:  https://<host>.limrun.net:443/v1/ios_usea_01.../targetHttpPort8100
@@ -165,14 +164,13 @@ import "strings"
 // After:  https://<host>.limrun.net:443/v1/ios_usea_01.../targetHttpPort8100
 wdaURL := strings.Replace(instance.Status.TargetHTTPPortURLPrefix, "limrun.net", "limrun.net:443", 1) + "8100"
 ```
-
 </CodeGroup>
 
 Pass `wdaUrl` to the driver as the `appium:webDriverAgentUrl` capability, and set `appium:wdaLocalPort: 443` so the two agree.
 
 WDA can crash during long runs, and the auto-launch you set up at create time only fires on first install. Before each session, ping WDA's `/status` endpoint with the instance token. If it doesn't answer cleanly, relaunch WDA with `simctl` through the Limrun device client:
 
-<CodeGroup labels={["TypeScript", "Go"]}>
+<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 // The device client runs `simctl` on the simulator's host and reports the
 // UDID. The Appium session itself goes through the WDA URL, not this client.
@@ -223,14 +221,13 @@ if !ok {
     _ = cmd.Run()
 }
 ```
-
 </CodeGroup>
 
 ### iOS capabilities
 
 Pick your Appium client below. The capability keys are the same in every client; only the surrounding code differs.
 
-<CodeGroup labels={["TypeScript", "Python"]}>
+<CodeGroup labels={["TypeScript","Python"]}>
 ```ts
 import { remote } from 'webdriverio';
 
@@ -291,7 +288,6 @@ opts.set_capability('appium:wdaRequestHeaders', {'Authorization': f'Bearer {toke
 
 driver = webdriver.Remote('http://127.0.0.1:4723', options=opts)
 ```
-
 </CodeGroup>
 
 The Limrun-specific capabilities:
@@ -370,8 +366,9 @@ Android is simpler: open an ADB tunnel, then use any upstream Appium driver. UiA
 
 ### Open the ADB tunnel
 
-From the CLI, `lim android create` waits for the instance and opens the tunnel in one step:
+Create an emulator and open an ADB tunnel to it. The CLI does both in one step; the SDKs open the tunnel after the create call returns:
 
+<CodeGroup labels={["CLI","TypeScript","Go"]}>
 ```bash
 # `create` waits for the instance to be ready and opens an ADB tunnel by default.
 # `--no-connect` skips the tunnel; `connect` opens one against an existing instance.
@@ -381,9 +378,6 @@ adb devices
 # 127.0.0.1:<port>  device   ← port is chosen at runtime, e.g. 127.0.0.1:53412
 ```
 
-From an SDK, open the tunnel yourself after the create call:
-
-<CodeGroup labels={["TypeScript", "Go"]}>
 ```ts
 import { Limrun, createInstanceClient } from '@limrun/api';
 
@@ -429,7 +423,6 @@ if err := t.Start(); err != nil { panic(err) }
 defer t.Close()
 log.Printf("adb connected on %s", t.Addr())
 ```
-
 </CodeGroup>
 
 From Appium's side, the emulator is indistinguishable from a USB-attached device.
@@ -444,7 +437,7 @@ appium
 
 ### Android capabilities
 
-<CodeGroup labels={["TypeScript", "Python"]}>
+<CodeGroup labels={["TypeScript","Python"]}>
 ```ts
 import { remote } from 'webdriverio';
 
@@ -475,7 +468,6 @@ opts.set_capability('appium:appActivity', '.MainActivity')
 
 driver = webdriver.Remote('http://127.0.0.1:4723', options=opts)
 ```
-
 </CodeGroup>
 
 There are no Limrun-specific capabilities for Android. The tunnel makes the device local, so any capability documented for the upstream UiAutomator2 driver works as-is.

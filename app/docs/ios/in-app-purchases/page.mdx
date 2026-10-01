@@ -27,14 +27,12 @@ This has two consequences:
 
 Create the two instances and attach the simulator to the sandbox, the same shape as any build-and-test flow:
 
+<CodeGroup labels={["CLI","TypeScript","Python","Go"]}>
 ```bash
 lim xcode create --reuse-if-exists --label name=iap-test
 lim ios create --attach --reuse-if-exists --label name=iap-test
 ```
 
-From the SDK:
-
-<CodeGroup labels={["TypeScript", "Python"]}>
 ```ts
 import { Limrun, Ios } from '@limrun/api';
 
@@ -81,6 +79,36 @@ instance = limrun.ios_instances.create(
 # {"apiUrl": instance.status.api_url, "token": instance.status.token}.
 ```
 
+```go
+import (
+    "context"
+    "os"
+
+    limrun "github.com/limrun-inc/go-sdk"
+    "github.com/limrun-inc/go-sdk/option"
+    "github.com/limrun-inc/go-sdk/packages/param"
+)
+
+ctx := context.Background()
+lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
+
+// The Go SDK has no Xcode sandbox resource. Create the sandbox with
+// `lim xcode create --reuse-if-exists --label name=iap-test`.
+instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
+    Wait:          param.NewOpt(true),
+    ReuseIfExists: param.NewOpt(true),
+    Metadata: limrun.IosInstanceNewParamsMetadata{
+        Labels: map[string]string{"name": "iap-test"},
+    },
+})
+if err != nil {
+    panic(err)
+}
+
+// Attach the simulator with a direct HTTP call: POST {xcode status.apiUrl}/simulator
+// with the Xcode sandbox's status.token as bearer and body
+// {"apiUrl": instance.Status.APIURL, "token": instance.Status.Token}.
+```
 </CodeGroup>
 
 Two URLs matter for in-app purchase work:
@@ -92,12 +120,11 @@ Two URLs matter for in-app purchase work:
 
 Sync your source to the Xcode sandbox and build it. The build must be **ad-hoc signed** so StoreKit's local test environment accepts the bundle. A simulator build without certificate parameters is ad-hoc signed by default, so there is nothing to set up. After a successful build, the app installs on the attached simulator.
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 # Syncs the source folder and runs xcodebuild in one step.
 lim xcode build ./MyApp --id <xcode-instance-id> --scheme MyApp --sdk iphonesimulator
 ```
-
-From the TypeScript SDK:
 
 ```ts
 await xcode.sync('./MyApp', { watch: false });
@@ -111,6 +138,7 @@ build.stderr.on('data', (line) => process.stderr.write(line.toString()));
 const { exitCode } = await build;
 if (exitCode !== 0) throw new Error(`xcodebuild failed (${exitCode})`);
 ```
+</CodeGroup>
 
 The Python and Go SDKs do not sync or build. From those languages, run `lim xcode build` as a subprocess. [Build with Xcode](/docs/ios/build-with-xcode) covers workspaces, schemes, log streaming, and artifact upload.
 
@@ -187,6 +215,7 @@ After discovery succeeds, the generated config is registered for the bundle, exa
 
 Both flows leave the simulator in the same state: products and prices come from the local config. Drive the paywall and complete a purchase like any other UI test:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios launch-app --detach --id <instance-id> com.example.MyApp
 lim ios open-url   --id <instance-id> "myapp://settings/upgrade"
@@ -194,8 +223,6 @@ lim ios tap-element --id <instance-id> --ax-label "Subscribe Monthly"
 # StoreKit shows its purchase sheet. Tap the confirm button to complete.
 lim ios tap-element --id <instance-id> --ax-label "Confirm"
 ```
-
-From the TypeScript SDK:
 
 ```ts
 await ios.launchApp(bundleId);
@@ -207,6 +234,7 @@ await ios.tapElement({ AXLabel: 'Subscribe Monthly' });
 // StoreKit shows its purchase sheet. Tap the confirm button to complete.
 await ios.tapElement({ AXLabel: 'Confirm' });
 ```
+</CodeGroup>
 
 **What you see on screen.** The StoreKit purchase sheet looks like the production one, except the bottom shows `[Environment: Xcode]` instead of `[Environment: Production]` or `[Environment: Sandbox]`. There is no Apple ID prompt and no sandbox tester sign-in, and the confirmation completes without a network call to Apple.
 

@@ -29,6 +29,7 @@ These builds use the same unsigned IPA, manual signing, cloud signing, and uploa
 
 To produce a signed IPA for distribution, select a device SDK and pass a P12 certificate, its password, and a provisioning profile. Add an upload so the IPA lands in Asset Storage with a download URL. If you omit the SDK, signing defaults to `iphoneos`; pass `watchos`, `appletvos`, or `xros` explicitly for another platform.
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim xcode build . \
   --sdk iphoneos \
@@ -38,8 +39,6 @@ lim xcode build . \
   --provisioning-profile ./signing/MyApp.mobileprovision \
   --upload my-app-pr-42.ipa
 ```
-
-From the TypeScript SDK, pass the material base64-encoded:
 
 ```ts
 import fs from 'node:fs';
@@ -58,6 +57,9 @@ const build = xcode.xcodebuild(
 
 const { exitCode, signedDownloadUrl } = await build;
 ```
+</CodeGroup>
+
+TypeScript takes the certificate and profiles base64-encoded.
 
 Limrun verifies the signed app with Apple's code-signing verifier before uploading it. A signature that Apple's tooling would reject fails the build with a clear error instead of producing a broken IPA, so a signed build that succeeds has already passed Apple's verification.
 
@@ -65,6 +67,7 @@ Limrun verifies the signed app with Apple's code-signing verifier before uploadi
 
 App Store signing needs a distinct provisioning profile for every bundle the app embeds: the app itself plus each app extension (a WidgetKit widget, a share sheet, an intents extension) and watch app, all issued for the same distribution certificate. Repeat `--provisioning-profile` with one profile per bundle, or pass several entries in `provisioningProfilesBase64`. Each profile is matched to its bundle by the `application-identifier` it carries, so order does not matter, but every profile must name an explicit, non-wildcard bundle ID.
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim xcode build . \
   --sdk iphoneos \
@@ -94,6 +97,7 @@ const build = xcode.xcodebuild(
   },
 );
 ```
+</CodeGroup>
 
 Before signing, Limrun checks that every embedded bundle in the built app has a matching profile. A missing one fails the build with the uncovered bundle ID, so you see it immediately instead of as an App Store validation rejection after upload.
 
@@ -113,6 +117,7 @@ When you configure an upload, the build result includes a signed download URL. A
 
 Cloud signing produces a signed IPA without a p12 or provisioning profile. Xcode authenticates with an App Store Connect team API key, and Apple creates or reuses a cloud-managed certificate and the required profiles during export.
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim xcode build . \
   --sdk iphoneos \
@@ -125,18 +130,6 @@ lim xcode build . \
   --asc-key ./signing/AuthKey_2X9R4HXF34.p8 \
   --upload my-app-pr-42.ipa
 ```
-
-Choose the method for the IPA you need:
-
-| Method | Use |
-|---|---|
-| `debugging` | Development-signed IPA for devices registered to the team. |
-| `release-testing` | Distribution-signed IPA for registered test devices. |
-| `app-store-connect` | Distribution-signed IPA for App Store Connect. |
-
-Cloud signing works for device SDK builds: `--sdk iphoneos`, `watchos`, `appletvos`, and `xros`. It requires a team API key, its issuer ID, and a `--team-id` that matches the key's Apple Developer team. For `release-testing` and `app-store-connect`, the key must be an Admin key or have **Access to cloud-managed distribution certificates** enabled in App Store Connect.
-
-From the TypeScript SDK, pass `cloudSigning`:
 
 ```ts
 import fs from 'node:fs';
@@ -155,11 +148,26 @@ const build = xcode.xcodebuild(
   },
 );
 ```
+</CodeGroup>
+
+TypeScript passes these options as `cloudSigning`.
+
+Choose the method for the IPA you need:
+
+| Method | Use |
+|---|---|
+| `debugging` | Development-signed IPA for devices registered to the team. |
+| `release-testing` | Distribution-signed IPA for registered test devices. |
+| `app-store-connect` | Distribution-signed IPA for App Store Connect. |
+
+Cloud signing works for device SDK builds: `--sdk iphoneos`, `watchos`, `appletvos`, and `xros`. It requires a team API key, its issuer ID, and a `--team-id` that matches the key's Apple Developer team. For `release-testing` and `app-store-connect`, the key must be an Admin key or have **Access to cloud-managed distribution certificates** enabled in App Store Connect.
+
 
 ### Preserve entitlements
 
 Cloud signing archives your app unsigned, and Apple's export carries entitlements into the signed IPA only from an existing code signature. Capability entitlements from your project's `.entitlements` file (HealthKit, CloudKit, app groups, push) therefore do not survive on their own. Pass them with `--entitlements`, and the build server embeds them into the archive so the export keeps them. A bare path applies to the app. Use `<bundleId>=<path>` for embedded bundles such as widgets or a watch app, repeating the flag per bundle.
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim xcode build . \
   --sdk iphoneos \
@@ -175,8 +183,6 @@ lim xcode build . \
   --upload my-app-pr-42.ipa
 ```
 
-In the TypeScript SDK, `entitlements` is keyed by bundle ID, and the empty key targets the app:
-
 ```ts
 cloudSigning: {
   method: 'release-testing',
@@ -190,6 +196,9 @@ cloudSigning: {
   },
 },
 ```
+</CodeGroup>
+
+In TypeScript, `entitlements` is keyed by bundle ID, and the empty key targets the app.
 
 Three rules apply:
 
@@ -245,6 +254,7 @@ With these in place, one build command puts the app on your testers' devices as 
 
 `--upload-to-appstore` sends the signed IPA to App Store Connect after the build, where it becomes available for TestFlight and App Store distribution. It works with manual or cloud signing. A cloud-signed build can use the same API key for signing and upload with the `app-store-connect` method:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim xcode build . \
   --sdk iphoneos \
@@ -257,8 +267,6 @@ lim xcode build . \
   --asc-issuer-id "$ASC_ISSUER_ID" \
   --asc-key ./signing/AuthKey_2X9R4HXF34.p8
 ```
-
-From the TypeScript SDK, pass `appstore` next to the signing options:
 
 ```ts
 import fs from 'node:fs';
@@ -285,6 +293,9 @@ const { exitCode, appstore } = await build;
 // appstore.state: 'uploading' | 'processing' | 'accepted' | 'failed' | 'unknown'.
 // The field may be absent.
 ```
+</CodeGroup>
+
+In TypeScript, the upload options go in `appstore`, next to the signing options.
 
 With manual signing, keep the `--certificate-p12`, `--certificate-password`, and `--provisioning-profile` flags and add `--upload-to-appstore` with the `--asc-*` flags. App Store Connect upload supports `iphoneos`, `appletvos`, and `xros`; replace the SDK and scheme to deliver a tvOS or visionOS build. A standalone `watchos` build cannot use `--upload-to-appstore`; the CLI rejects it with `--upload-to-appstore requires --sdk iphoneos, --sdk appletvos, or --sdk xros`. An embedded watch app ships inside the iOS IPA. Combine with `--upload` if you also want the IPA in Asset Storage.
 
