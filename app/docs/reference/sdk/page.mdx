@@ -46,16 +46,9 @@ Each SDK client accepts an option to override it.
 
 Every control-plane request authenticates with an API key (prefix `lim_`). Create keys at [console.limrun.com](https://console.limrun.com) under **Settings → API Keys**. The CLI and every SDK read the key from the `LIM_API_KEY` environment variable by default.
 
-With `curl`, pass the key as a bearer token:
+The SDK clients take the key as a constructor argument, which can be omitted when `LIM_API_KEY` is set; with `curl`, pass it as a bearer token:
 
-```bash
-curl https://api.limrun.com/v1/ios_instances \
-  -H "Authorization: Bearer $LIM_API_KEY"
-```
-
-In the SDKs, the key argument can be omitted when `LIM_API_KEY` is set:
-
-<CodeGroup labels={["TypeScript","Python","Go"]}>
+<CodeGroup labels={["TypeScript","Python","Go","cURL"]}>
 ```ts
 import Limrun from '@limrun/api';
 
@@ -80,6 +73,11 @@ import (
 )
 
 client := limrun.NewClient(option.WithAPIKey("..."))  // defaults to LIM_API_KEY env
+```
+
+```bash
+curl https://api.limrun.com/v1/ios_instances \
+  -H "Authorization: Bearer $LIM_API_KEY"
 ```
 </CodeGroup>
 
@@ -220,25 +218,13 @@ The iOS calls below show every language. The other resources follow the same sha
 
 ### Create
 
-A create call with `wait`, `reuseIfExists`, labels, and a few spec fields. Over REST:
+A create call with `wait`, `reuseIfExists`, labels, and a few spec fields:
 
+<CodeGroup labels={["CLI","TypeScript","Python","Go","cURL"]}>
 ```bash
-curl -X POST "https://api.limrun.com/v1/ios_instances?wait=true&reuseIfExists=true" \
-  -H "Authorization: Bearer $LIM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "metadata": { "labels": { "session": "demo" } },
-    "spec": {
-      "model": "iphone",
-      "jurisdiction": "us",
-      "forceBundleId": "com.example.myapp"
-    }
-  }'
+lim ios create --reuse-if-exists --model iphone --jurisdiction us --force-bundle-id com.example.myapp --label session=demo
 ```
 
-From the SDKs:
-
-<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 const instance = await lim.iosInstances.create({
   wait: true,
@@ -274,24 +260,33 @@ instance, err := client.IosInstances.New(ctx, limrun.IosInstanceNewParams{
     },
 })
 ```
-</CodeGroup>
 
-The CLI equivalent is `lim ios create --reuse-if-exists --model iphone --jurisdiction us --force-bundle-id com.example.myapp --label session=demo`.
+```bash
+curl -X POST "https://api.limrun.com/v1/ios_instances?wait=true&reuseIfExists=true" \
+  -H "Authorization: Bearer $LIM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "metadata": { "labels": { "session": "demo" } },
+    "spec": {
+      "model": "iphone",
+      "jurisdiction": "us",
+      "forceBundleId": "com.example.myapp"
+    }
+  }'
+```
+</CodeGroup>
 
 `forceBundleId` does not launch the app when the instance starts. After the app first enters the foreground, Limrun brings it back whenever it is closed or backgrounded.
 
 ### List
 
-List calls filter by label selector and state. The SDK instance list methods page automatically; see [Pagination](#pagination). Over REST:
+List calls filter by label selector and state. The SDK instance list methods page automatically; see [Pagination](#pagination).
 
+<CodeGroup labels={["CLI","TypeScript","Python","Go","cURL"]}>
 ```bash
-curl "https://api.limrun.com/v1/ios_instances?labelSelector=session%3Ddemo&state=ready" \
-  -H "Authorization: Bearer $LIM_API_KEY"
+lim ios list --label-selector "session=demo" --state ready
 ```
 
-From the SDKs:
-
-<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 // Auto-paginating
 for await (const inst of lim.iosInstances.list({ labelSelector: 'session=demo', state: 'ready' })) {
@@ -308,36 +303,51 @@ while (page.hasNextPage()) {
 ```
 
 ```python
-for inst in client.ios_instances.list(label_selector="session=demo", state="ready"):
-    print(inst.metadata.id)
+params = {"label_selector": "session=demo", "state": "ready"}
+while page := client.ios_instances.list(**params).items:
+    for inst in page:
+        print(inst.metadata.id)
+    # Page by hand: the iterator stops after the first page.
+    params["starting_after"] = page[-1].metadata.id
 ```
 
 ```go
-iter := client.IosInstances.ListAutoPaging(ctx, limrun.IosInstanceListParams{
+// Page by hand: ListAutoPaging panics on instance lists.
+params := limrun.IosInstanceListParams{
     LabelSelector: param.NewOpt("session=demo"),
     State:         param.NewOpt("ready"),
-})
-for iter.Next() {
-    inst := iter.Current()
-    fmt.Println(inst.Metadata.ID)
 }
+for {
+    page, err := client.IosInstances.List(ctx, params)
+    if err != nil {
+        panic(err)
+    }
+    if len(page.Items) == 0 {
+        break
+    }
+    for _, inst := range page.Items {
+        fmt.Println(inst.Metadata.ID)
+    }
+    params.StartingAfter = param.NewOpt(page.Items[len(page.Items)-1].Metadata.ID)
+}
+```
+
+```bash
+curl "https://api.limrun.com/v1/ios_instances?labelSelector=session%3Ddemo&state=ready" \
+  -H "Authorization: Bearer $LIM_API_KEY"
 ```
 </CodeGroup>
 
-The CLI equivalent is `lim ios list --label-selector "session=demo" --state ready`.
-
 ### Get and delete
 
-Get and delete take the instance ID. Over REST:
+Get and delete take the instance ID:
 
+<CodeGroup labels={["CLI","TypeScript","Python","Go","cURL"]}>
 ```bash
-curl https://api.limrun.com/v1/ios_instances/<instance-id> -H "Authorization: Bearer $LIM_API_KEY"
-curl -X DELETE https://api.limrun.com/v1/ios_instances/<instance-id> -H "Authorization: Bearer $LIM_API_KEY"
+lim ios get <instance-id>
+lim ios delete <instance-id>
 ```
 
-From the SDKs:
-
-<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 const inst = await lim.iosInstances.get(id);
 await lim.iosInstances.delete(id);
@@ -352,9 +362,14 @@ client.ios_instances.delete(id)
 inst, _ := client.IosInstances.Get(ctx, id)
 _ = client.IosInstances.Delete(ctx, id)
 ```
+
+```bash
+curl https://api.limrun.com/v1/ios_instances/<instance-id> -H "Authorization: Bearer $LIM_API_KEY"
+curl -X DELETE https://api.limrun.com/v1/ios_instances/<instance-id> -H "Authorization: Bearer $LIM_API_KEY"
+```
 </CodeGroup>
 
-The CLI equivalents are `lim ios get <instance-id>` and `lim ios delete <instance-id>`; `lim ios delete` without an ID deletes the last iOS instance the CLI created in this workspace.
+CLI only: `lim ios delete` without an ID deletes the last iOS instance the CLI created in this workspace.
 
 ## Android instances
 
@@ -375,24 +390,17 @@ To run a build on a simulator, attach the simulator to the Xcode instance after 
 
 Assets use `getOrCreate` (an upsert, named `get_or_create` in Python and `GetOrNew` in Go) and `getOrUpload` (an upsert plus the upload) instead of `create`. The `platform` field is optional; leaving it unset makes the asset available on every platform. The `getOrUpload` helper, which handles MD5 deduplication and the signed PUT, ships in the TypeScript and Go SDKs. From Python, call `get_or_create`, then PUT the bytes to `signed_upload_url` when `md5` is missing or differs.
 
-Over REST:
+Upload, list, get, and delete assets:
 
+<CodeGroup labels={["CLI","TypeScript","Python","Go","cURL"]}>
 ```bash
-# Two-step upload: get-or-create returns a signed PUT URL, then push the bytes to it.
-curl -X PUT https://api.limrun.com/v1/assets \
-  -H "Authorization: Bearer $LIM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "name": "my-app.tar.gz" }'
-# returns signedUploadUrl + signedDownloadUrl
-
-curl -X PUT "$SIGNED_UPLOAD_URL" \
-  -H "Content-Type: application/octet-stream" \
-  --data-binary @./my-app.tar.gz
+lim asset push ./my-app.tar.gz --name my-app-v1.tar.gz
+lim asset list --name my-app-v1.tar.gz --download-url
+lim asset list <id>
+lim asset pull <id_or_name> --output ./downloads/
+lim asset delete <id>
 ```
 
-From the SDKs:
-
-<CodeGroup labels={["TypeScript","Python","Go"]}>
 ```ts
 // One-shot: getOrUpload computes MD5, skips re-upload if unchanged
 const asset = await lim.assets.getOrUpload({ path: './my-app.tar.gz', name: 'my-app.tar.gz' });
@@ -437,23 +445,28 @@ list, _ := client.Assets.List(ctx, limrun.AssetListParams{
 got, _ := client.Assets.Get(ctx, id, limrun.AssetGetParams{IncludeDownloadURL: param.NewOpt(true)})
 _ = client.Assets.Delete(ctx, id)
 ```
-</CodeGroup>
-
-The CLI covers the same operations:
 
 ```bash
-lim asset push ./my-app.tar.gz --name my-app-v1.tar.gz
-lim asset list --name my-app-v1.tar.gz --download-url
-lim asset list <id>
-lim asset pull <id_or_name> --output ./downloads/
-lim asset delete <id>
+# Two-step upload: get-or-create returns a signed PUT URL, then push the bytes to it.
+curl -X PUT https://api.limrun.com/v1/assets \
+  -H "Authorization: Bearer $LIM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "my-app.tar.gz" }'
+# returns signedUploadUrl + signedDownloadUrl
+
+curl -X PUT "$SIGNED_UPLOAD_URL" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @./my-app.tar.gz
 ```
+</CodeGroup>
+
+The cURL tab shows only the two-step upload. `lim asset pull` downloads an asset's file.
 
 [Asset Storage](/docs/platform/asset-storage) covers expiry, installs, and filters.
 
 ## Pagination
 
-Instance `list` methods in TypeScript, Python, and Go return iterables that fetch further pages as needed, as the [List](#list) examples show. In TypeScript, a single page also exposes `hasNextPage()` and `getNextPage()` when you want to page by hand. `limit` sets the page size: it defaults to 50 and caps at 500, and a larger value returns 500 per page.
+In TypeScript, instance `list` methods return iterables that fetch further pages as needed, and a single page also exposes `hasNextPage()` and `getNextPage()`. In Python and Go, page by hand as the [List](#list) examples show: pass the last instance ID of a page as `starting_after` (Python) or `StartingAfter` (Go), and stop at an empty page. The Python iterator stops after the first page, and Go `ListAutoPaging` panics on instance lists. `limit` sets the page size: it defaults to 50 and caps at 500, and a larger value returns 500 per page.
 
 `assets.list` does not page. It returns one array of at most `limit` assets (default 50), so repeat the call until it comes back empty when you need every asset; [Asset Storage](/docs/platform/asset-storage#organize-assets-for-multiple-tenants) shows the pattern.
 
@@ -494,7 +507,7 @@ const carriedOver = await client.analytics.getInstances({
 });
 ```
 
-Over REST, encode nested bounds as query parameters such as `startedAt[lte]` and `stoppedAt[gte]`. At least one time bound is required; one-sided bounds work.
+In REST query strings, encode nested bounds as parameters such as `startedAt[lte]` and `stoppedAt[gte]`. At least one time bound is required; one-sided bounds work.
 
 Time buckets are grouped by instance start time. A bounded start-time range, from `startedAt.gte` and `startedAt.lte`, includes empty buckets; queries without one return only populated buckets.
 

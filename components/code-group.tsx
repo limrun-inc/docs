@@ -1,12 +1,8 @@
 "use client";
 
 import * as React from "react";
-import {
-  Tab,
-  Tabs as FumadocsTabs,
-  TabsList,
-  TabsTrigger,
-} from "fumadocs-ui/components/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "fumadocs-ui/components/tabs";
+import { Tabs as TabsRoot } from "fumadocs-ui/components/ui/tabs";
 
 interface CodeGroupProps {
   children: React.ReactNode;
@@ -121,16 +117,57 @@ function CodeTabIcon({ label }: { label: string }) {
   );
 }
 
-export function CodeGroup({ children, labels }: CodeGroupProps) {
+// The reader's language choice is shared by every group on the site and kept in
+// localStorage. A group without that language shows its first tab instead,
+// which fumadocs' own groupId cannot do: it leaves such a group blank. Storage
+// can be blocked (site data off, private modes), so the cached value is the
+// source of truth and switching tabs never depends on storage succeeding.
+const LANGUAGE_KEY = "limrun-docs-lang";
+const languageListeners = new Set<() => void>();
+let language: string | null | undefined;
+
+function loadLanguage() {
+  try {
+    language = localStorage.getItem(LANGUAGE_KEY);
+  } catch {
+    language ??= null;
+  }
+}
+
+function onStorage(event: StorageEvent) {
+  if (event.key !== LANGUAGE_KEY) return;
+  loadLanguage();
+  for (const listener of languageListeners) listener();
+}
+
+function subscribeLanguage(onChange: () => void) {
+  if (languageListeners.size === 0) window.addEventListener("storage", onStorage);
+  languageListeners.add(onChange);
+  return () => {
+    languageListeners.delete(onChange);
+    if (languageListeners.size === 0) window.removeEventListener("storage", onStorage);
+  };
+}
+
+function readLanguage(): string | null {
+  if (language === undefined) loadLanguage();
+  return language ?? null;
+}
+
+function writeLanguage(value: string) {
+  language = value;
+  try {
+    localStorage.setItem(LANGUAGE_KEY, value);
+  } catch {}
+  for (const listener of languageListeners) listener();
+}
+
+function buildTabs(children: React.ReactNode, labels?: string[]) {
   const validChildren = React.Children.toArray(children).filter(
     React.isValidElement,
   ) as React.ReactElement[];
-
-  if (validChildren.length === 0) return null;
-  if (validChildren.length === 1) return <>{children}</>;
-
   const seen = new Map<string, number>();
-  const tabs = validChildren.map((child, index) => {
+  return validChildren.map((child, index) => {
     const explicitLabel = labels?.[index];
     const label =
       typeof explicitLabel === "string" && explicitLabel.length > 0
@@ -143,12 +180,28 @@ export function CodeGroup({ children, labels }: CodeGroupProps) {
     return {
       child,
       label: displayLabel,
-      value: `${displayLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${index}`,
+      value: displayLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     };
   });
+}
+
+export function CodeGroup({ children, labels }: CodeGroupProps) {
+  const chosen = React.useSyncExternalStore(subscribeLanguage, readLanguage, () => null);
+  const tabs = React.useMemo(() => buildTabs(children, labels), [children, labels]);
+
+  if (tabs.length === 0) return null;
+  if (tabs.length === 1) return <>{children}</>;
+
+  const value = tabs.find((tab) => tab.value === chosen)?.value ?? tabs[0].value;
 
   return (
-    <FumadocsTabs defaultValue={tabs[0].value} className="docs-code-tabs">
+    // The root is fumadocs' unstyled Tabs, because the styled one does not
+    // accept a controlled value; the classes match the styled root.
+    <TabsRoot
+      value={value}
+      onValueChange={writeLanguage}
+      className="docs-code-tabs flex flex-col overflow-hidden rounded-xl border bg-fd-secondary my-4"
+    >
       <TabsList>
         {tabs.map(({ label, value }) => (
           <TabsTrigger key={value} value={value}>
@@ -158,10 +211,10 @@ export function CodeGroup({ children, labels }: CodeGroupProps) {
         ))}
       </TabsList>
       {tabs.map(({ child, value }) => (
-        <Tab key={value} value={value}>
+        <TabsContent key={value} value={value}>
           {child}
-        </Tab>
+        </TabsContent>
       ))}
-    </FumadocsTabs>
+    </TabsRoot>
   );
 }

@@ -129,7 +129,6 @@ instance, err := lim.AndroidInstances.New(context.TODO(), limrun.AndroidInstance
     },
 })
 ```
-
 </CodeGroup>
 
 The Python and Go SDKs cover the create call, but only the TypeScript SDK exposes the `version` field. From Python or Go, the service runs its default version; send `version` through the REST API if you need another one. Playwright's Android device API ships only in the Node binding, so the rest of the page stays in TypeScript.

@@ -26,17 +26,13 @@ Most agents use both: the CLI for provisioning, builds, and assets, and MCP for 
 
 ## Get the MCP URL and token
 
-Create an instance, then read `mcpUrl` and `token` from its `status`. Both come back on the same response, and you need both to talk to the server.
+Read `mcpUrl` and `token` from the instance's `status`. Both come back on the same response, and you need both to talk to the server. The CLI example reads an instance you already have; the SDK examples create one, or reuse one with the same labels:
 
-From the CLI:
-
-```bash
+<CodeGroup>
+```bash CLI
 lim ios get --json | jq -r '.status.mcpUrl, .status.token'
 ```
 
-From the SDKs:
-
-<CodeGroup>
 ```ts TypeScript
 import Limrun from '@limrun/api';
 
@@ -78,6 +74,8 @@ fmt.Println(inst.Status.McpURL)
 fmt.Println(inst.Status.Token)   // bearer for the Authorization header
 ```
 </CodeGroup>
+
+CLI only: `lim ios get` reads the last iOS instance the CLI created; pass an instance ID (`lim ios get <id> --json`) to read another one.
 
 Android instances return `mcpUrl` the same way (not exposed in Go SDK v0.9.0).
 

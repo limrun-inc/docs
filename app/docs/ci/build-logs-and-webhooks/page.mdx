@@ -10,34 +10,42 @@ A CI job, coding agent, or backend often should not hold a build stream open for
 
 ## Detach from a build
 
-Add `--detach` to return as soon as the build is accepted instead of streaming logs until it finishes:
+Detach to return as soon as the build is accepted instead of streaming logs until it finishes:
 
 <Tabs>
 <Tab title="Xcode">
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim xcode build . --detach
 ```
 
+```ts
+const build = xcode.xcodebuild({ scheme: 'MyApp' });
+const execId = await build.detach();
+```
+</CodeGroup>
+
 </Tab>
 <Tab title="Gradle">
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim gradle build . --detach
 ```
+
+```ts
+const build = gradle.gradlebuild({ tasks: [':app:assembleRelease'] });
+const execId = await build.detach();
+```
+</CodeGroup>
 
 </Tab>
 </Tabs>
 
 Once the build is accepted, the CLI prints the instance ID, a console URL for the build, and the exact command that retrieves its logs. With `--json`, the output carries `instanceId`, `execId`, the console URL (`consoleUrl`), and `logsCommand`, plus `webhookUrl` when a webhook is configured. A webhook is optional; add one (see [Receive a webhook](#receive-a-webhook)) to get the terminal result without polling.
 
-The TypeScript SDK detaches the same way after the build request is accepted, and returns the exec ID:
-
-```ts
-const execId = await build.detach();
-```
-
-`build` is the handle returned by `xcode.xcodebuild(...)` or `gradle.gradlebuild(...)`; see [Build with Xcode](/docs/ios/build-with-xcode) and [Build with Gradle](/docs/android/build-with-gradle).
+In TypeScript, `detach()` resolves once the build request is accepted and returns the exec ID. `build` is the handle returned by `xcode.xcodebuild(...)` or `gradle.gradlebuild(...)`; see [Build with Xcode](/docs/ios/build-with-xcode) and [Build with Gradle](/docs/android/build-with-gradle).
 
 ### Build on a short-lived sandbox
 
@@ -52,23 +60,49 @@ The flag makes the build create a fresh instance with that lifecycle instead of 
 
 ## Read build logs
 
-`logs` reads the latest build on the remembered instance. No exec ID is needed:
+Read the latest build on the remembered instance, as a snapshot or following it live. No exec ID is needed:
 
 <Tabs>
 <Tab title="Xcode">
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim xcode logs
 lim xcode logs --follow
 ```
 
+```ts
+const result = await xcode.observeBuildLogs('latest', {
+  follow: true,
+  onEvent: (event) => {
+    if (event.type === 'stdout' || event.type === 'stderr') {
+      process.stdout.write(event.data + '\n');
+    }
+  },
+});
+```
+</CodeGroup>
+
 </Tab>
 <Tab title="Gradle">
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim gradle logs
 lim gradle logs --follow
 ```
+
+```ts
+const result = await gradle.observeBuildLogs('latest', {
+  follow: true,
+  onEvent: (event) => {
+    if (event.type === 'stdout' || event.type === 'stderr') {
+      process.stdout.write(event.data + '\n');
+    }
+  },
+});
+```
+</CodeGroup>
 
 </Tab>
 </Tabs>
@@ -88,20 +122,7 @@ Exec IDs are optional everywhere. Do not ask a user for one just to read the lat
 
 ### Read logs from the TypeScript SDK
 
-`observeBuildLogs` replays or follows a build while its sandbox still retains the stream:
-
-```ts
-const result = await xcode.observeBuildLogs('latest', {
-  follow: true,
-  onEvent: (event) => {
-    if (event.type === 'stdout' || event.type === 'stderr') {
-      process.stdout.write(event.data + '\n');
-    }
-  },
-});
-```
-
-The same method exists on the Gradle client (`gradle.observeBuildLogs`). `'latest'` reads only the sandbox's retained stream, which can include a completed build; unlike the CLI, it does not fall back to persisted logs. Omit `follow` for a snapshot, or replace `'latest'` with the exec ID returned by `detach()` to observe one specific build.
+`observeBuildLogs`, shown in [Read build logs](#read-build-logs), replays or follows a build while its sandbox still retains the stream. It exists on both the Xcode and the Gradle client. `'latest'` reads only the sandbox's retained stream, which can include a completed build; unlike the CLI, it does not fall back to persisted logs. Omit `follow` for a snapshot, or replace `'latest'` with the exec ID returned by `detach()` to observe one specific build.
 
 To read persisted logs, list the completed builds of an instance and download the selected record's `downloadUrl`:
 
@@ -119,13 +140,12 @@ Pass a webhook URL when something needs the terminal result without watching the
 <Tabs>
 <Tab title="Xcode">
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim xcode build . \
   --webhook-url https://ci.example.com/hooks/limrun \
   --webhook-header Authorization="Bearer $HOOK_SECRET"
 ```
-
-From the TypeScript SDK:
 
 ```ts
 const build = xcode.xcodebuild(
@@ -138,17 +158,17 @@ const build = xcode.xcodebuild(
   },
 );
 ```
+</CodeGroup>
 
 </Tab>
 <Tab title="Gradle">
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim gradle build . \
   --webhook-url https://ci.example.com/hooks/limrun \
   --webhook-header Authorization="Bearer $HOOK_SECRET"
 ```
-
-From the TypeScript SDK:
 
 ```ts
 const build = gradle.gradlebuild({
@@ -159,6 +179,7 @@ const build = gradle.gradlebuild({
   },
 });
 ```
+</CodeGroup>
 
 </Tab>
 </Tabs>

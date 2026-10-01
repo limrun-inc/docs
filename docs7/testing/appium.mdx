@@ -130,7 +130,6 @@ instance, err := lim.IosInstances.New(context.TODO(), limrun.IosInstanceNewParam
     },
 })
 ```
-
 </CodeGroup>
 
 The Python SDK covers instance operations (create, list, get, delete) but has no device client, so the WDA health check below is in TypeScript and Go. The Appium session itself runs in whatever language your test code is in.
@@ -166,7 +165,6 @@ import "strings"
 // After:  https://<host>.limrun.net:443/v1/ios_usea_01.../targetHttpPort8100
 wdaURL := strings.Replace(instance.Status.TargetHTTPPortURLPrefix, "limrun.net", "limrun.net:443", 1) + "8100"
 ```
-
 </CodeGroup>
 
 Pass `wdaUrl` to the driver as the `appium:webDriverAgentUrl` capability, and set `appium:wdaLocalPort: 443` so the two agree.
@@ -224,7 +222,6 @@ if !ok {
     _ = cmd.Run()
 }
 ```
-
 </CodeGroup>
 
 ### iOS capabilities
@@ -292,7 +289,6 @@ opts.set_capability('appium:wdaRequestHeaders', {'Authorization': f'Bearer {toke
 
 driver = webdriver.Remote('http://127.0.0.1:4723', options=opts)
 ```
-
 </CodeGroup>
 
 The Limrun-specific capabilities:
@@ -371,9 +367,10 @@ Android is simpler: open an ADB tunnel, then use any upstream Appium driver. UiA
 
 ### Open the ADB tunnel
 
-From the CLI, `lim android create` waits for the instance and opens the tunnel in one step:
+Create an emulator and open an ADB tunnel to it. The CLI does both in one step; the SDKs open the tunnel after the create call returns:
 
-```bash
+<CodeGroup>
+```bash CLI
 # `create` waits for the instance to be ready and opens an ADB tunnel by default.
 # `--no-connect` skips the tunnel; `connect` opens one against an existing instance.
 lim android create
@@ -382,9 +379,6 @@ adb devices
 # 127.0.0.1:<port>  device   ← port is chosen at runtime, e.g. 127.0.0.1:53412
 ```
 
-From an SDK, open the tunnel yourself after the create call:
-
-<CodeGroup>
 ```ts TypeScript
 import { Limrun, createInstanceClient } from '@limrun/api';
 
@@ -430,7 +424,6 @@ if err := t.Start(); err != nil { panic(err) }
 defer t.Close()
 log.Printf("adb connected on %s", t.Addr())
 ```
-
 </CodeGroup>
 
 From Appium's side, the emulator is indistinguishable from a USB-attached device.
@@ -476,7 +469,6 @@ opts.set_capability('appium:appActivity', '.MainActivity')
 
 driver = webdriver.Remote('http://127.0.0.1:4723', options=opts)
 ```
-
 </CodeGroup>
 
 There are no Limrun-specific capabilities for Android. The tunnel makes the device local, so any capability documented for the upstream UiAutomator2 driver works as-is.

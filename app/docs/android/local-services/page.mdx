@@ -10,22 +10,16 @@ icon: "network"
 
 ## Start a tunnel
 
-Start the tunnel before you launch the app. Connections the app opened earlier keep their original route until they close. Declare each destination as a `--selector`:
+Start the tunnel before you launch the app. Connections the app opened earlier keep their original route until they close. Declare each destination as a selector, then query or stop the tunnel when you are done:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim android tunnel --selector localhost:8080 --id <instance-id>
-```
 
-Without `--detach`, the tunnel runs until you stop the command. Add `--detach` to keep it running in the background, and `--verbose` to log every forwarded connection and dial failure; with `--detach` those lines go to the tunnel log file that `tunnel status` points to.
-
-Query or stop the tunnel from another process:
-
-```bash
+# From another process
 lim android tunnel status --id <instance-id>
 lim android tunnel stop --id <instance-id>
 ```
-
-From the TypeScript SDK, start the tunnel on a device client that was opened with the instance's `adbUrl` (`status.adbWebSocketUrl`). The caller owns the returned tunnel; disconnecting the device client does not close it.
 
 ```ts
 import { createInstanceClient } from '@limrun/api';
@@ -40,6 +34,11 @@ const tunnel = await client.startTunnel({ selectors: ['localhost:8080', '*.corp.
 const status = await client.getTunnelStatus();
 await client.stopTunnel(tunnel.tunnelId);
 ```
+</CodeGroup>
+
+CLI only: without `--detach`, the tunnel runs until you stop the command. Add `--detach` to keep it running in the background, and `--verbose` to log every forwarded connection and dial failure; with `--detach` those lines go to the tunnel log file that `tunnel status` points to.
+
+TypeScript only: start the tunnel on a device client that was opened with the instance's `adbUrl` (`status.adbWebSocketUrl`). The caller owns the returned tunnel; disconnecting the device client does not close it.
 
 ## Choose selectors
 

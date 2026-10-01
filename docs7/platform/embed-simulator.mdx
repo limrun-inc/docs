@@ -107,6 +107,49 @@ function clientIpFrom(req: express.Request): string | undefined {
 app.listen(3001);
 ```
 
+```python Python
+from fastapi import FastAPI, Request
+from limrun_api import AsyncLimrun
+import os
+
+# The async client keeps FastAPI's event loop free while an instance boots.
+lim = AsyncLimrun(api_key=os.environ["LIM_API_KEY"])
+app = FastAPI()
+
+@app.post("/sessions/start")
+async def start(req: Request):
+    body = await req.json()
+    client_ip = (req.headers.get("x-forwarded-for") or req.client.host).split(",")[0].strip()
+
+    instance = await lim.ios_instances.create(
+        wait=True,
+        reuse_if_exists=True,
+        metadata={
+            "labels": {
+                "tenant": body.get("tenant"),
+                "user":   body.get("user"),
+                "managed_by": "platform-embed",
+            },
+        },
+        spec={
+            "model": "iphone",
+            "inactivity_timeout": "15m",
+            "clues": [{"kind": "ClientIP", "client_ip": client_ip}] if client_ip else [],
+        },
+    )
+    return {
+        "id":        instance.metadata.id,
+        "endpointWebSocketUrl": instance.status.endpoint_web_socket_url,
+        "token":     instance.status.token,
+    }
+
+@app.post("/sessions/stop")
+async def stop(req: Request):
+    body = await req.json()
+    await lim.ios_instances.delete(body["id"])
+    return {"ok": True}
+```
+
 ```go Go
 package main
 
@@ -196,49 +239,6 @@ func main() {
     http.HandleFunc("/sessions/stop", stopHandler)
     http.ListenAndServe(":3001", nil)
 }
-```
-
-```python Python
-from fastapi import FastAPI, Request
-from limrun_api import AsyncLimrun
-import os
-
-# The async client keeps FastAPI's event loop free while an instance boots.
-lim = AsyncLimrun(api_key=os.environ["LIM_API_KEY"])
-app = FastAPI()
-
-@app.post("/sessions/start")
-async def start(req: Request):
-    body = await req.json()
-    client_ip = (req.headers.get("x-forwarded-for") or req.client.host).split(",")[0].strip()
-
-    instance = await lim.ios_instances.create(
-        wait=True,
-        reuse_if_exists=True,
-        metadata={
-            "labels": {
-                "tenant": body.get("tenant"),
-                "user":   body.get("user"),
-                "managed_by": "platform-embed",
-            },
-        },
-        spec={
-            "model": "iphone",
-            "inactivity_timeout": "15m",
-            "clues": [{"kind": "ClientIP", "client_ip": client_ip}] if client_ip else [],
-        },
-    )
-    return {
-        "id":        instance.metadata.id,
-        "endpointWebSocketUrl": instance.status.endpoint_web_socket_url,
-        "token":     instance.status.token,
-    }
-
-@app.post("/sessions/stop")
-async def stop(req: Request):
-    body = await req.json()
-    await lim.ios_instances.delete(body["id"])
-    return {"ok": True}
 ```
 </CodeGroup>
 

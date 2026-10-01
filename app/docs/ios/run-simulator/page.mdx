@@ -6,7 +6,7 @@ icon: "smartphone"
 ---
 # Run an iOS simulator
 
-Every task below shows the `lim` CLI first, for agents, scripts, and CI, then the SDK equivalent for backends. The loop is always the same: read the screen, act on what is there, and collect the evidence you need.
+Code examples have tabs for the `lim` CLI and the SDKs, and the site remembers the tab you pick. The loop is always the same: read the screen, act on what is there, and collect the evidence you need.
 
 To install your own build on the simulator, build it with [remote Xcode](/docs/ios/build-with-xcode) or [Bazel](/docs/ios/build-with-bazel) and attach the simulator to the sandbox.
 
@@ -161,15 +161,14 @@ Platform integrators should pass the end user's IP or location as a clue so the 
 
 ## Connect a device client
 
-The CLI opens its own connection for every command, so there is no client step:
+The SDKs open a WebSocket client with the instance's `apiUrl` and instance token. The CLI opens its own connection for every command, so it has no client step. `status.token` is returned only to a credential that can control the instance; a read-only API key or a viewer seat gets none, so check for it before connecting. The TypeScript SDK covers every method on this page. Go SDK v0.9.0 covers screenshots, the element tree, taps, element values, typing, key presses, app launch and install, URLs, orientation, `lsof`, and `simctl`; the [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix) has the full comparison. The Python SDK only manages instances, so drive devices from Python through the CLI.
 
+<CodeGroup labels={["CLI","TypeScript","Go"]}>
 ```bash
+# No client step: every command connects on its own.
 lim ios screenshot ./out.jpg
 ```
 
-From code, open a WebSocket client with the instance's `apiUrl` and instance token. `status.token` is returned only to a credential that can control the instance; a read-only API key or a viewer seat gets none, so check for it before connecting. The TypeScript SDK covers every method on this page. Go SDK v0.9.0 covers screenshots, the element tree, taps, element values, typing, key presses, app launch and install, URLs, orientation, `lsof`, and `simctl`; the [SDK capability matrix](/docs/reference/sdk#sdk-capability-matrix) has the full comparison. The Python SDK only manages instances, so drive devices from Python through the CLI.
-
-<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 import { Ios } from '@limrun/api';
 
@@ -218,20 +217,16 @@ Both clients return once the WebSocket is connected. The TypeScript client also 
 
 Read the screen before every action. The element tree lists each element's label, accessibility ID, type, and frame, and it is the source of truth for what the user can interact with. A screenshot is a visual check on top of it.
 
+<CodeGroup labels={["CLI","TypeScript","Go"]}>
 ```bash
 lim ios element-tree
 lim ios screenshot ./out.jpg
-```
 
-The tree can be large. Filter the JSON output with `jq` or `grep` so it does not fill an agent's context window:
-
-```bash
+# The tree can be large: filter the JSON output with jq or grep so it does not
+# fill an agent's context window.
 lim ios element-tree --json | jq '.. | objects | select((.AXLabel // "") | contains("Continue"))'
 ```
 
-From the SDK:
-
-<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 const tree = await client.elementTree();
 // tree: ElementTreeNode[] (recursive accessibility hierarchy)
@@ -248,7 +243,7 @@ shot, err := client.Screenshot(ctx)             // shot.Base64, shot.Width, shot
 
 </CodeGroup>
 
-Screenshots are JPEG images. Their dimensions are in points, the same coordinate space as `tap(x, y)`. To tap a coordinate from a scaled screenshot, pass the screenshot's size so the server converts it:
+Screenshots are JPEG images. Their dimensions are in points, the same coordinate space as `tap(x, y)`. To tap a coordinate from a scaled screenshot in TypeScript, pass the screenshot's size so the server converts it:
 
 ```ts
 await client.tapWithScreenSize(x, y, screenshotWidth, screenshotHeight);
@@ -258,6 +253,7 @@ await client.tapWithScreenSize(x, y, screenshotWidth, screenshotHeight);
 
 Select elements by accessibility ID first, then by label, and use coordinates only as a last resort. Accessibility selectors survive layout changes; coordinates do not.
 
+<CodeGroup labels={["CLI","TypeScript","Go"]}>
 ```bash
 lim ios tap-element --ax-unique-id startButton
 lim ios tap-element --ax-label "Save"
@@ -266,11 +262,6 @@ lim ios tap-element --type Button --ax-label "Done"
 lim ios tap 201 450
 ```
 
-`tap-element` accepts `--ax-unique-id`, `--ax-label`, `--ax-label-contains`, `--type`, `--title`, `--title-contains`, and `--ax-value`. Every field you pass must match (AND, not OR). The `contains` variants are case-insensitive.
-
-From the SDK:
-
-<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 // By accessibility identifier (most stable)
 await client.tapElement({ AXUniqueId: 'startButton' });
@@ -307,6 +298,8 @@ err = client.Tap(ctx, 201, 450)
 
 </CodeGroup>
 
+`tap-element` accepts `--ax-unique-id`, `--ax-label`, `--ax-label-contains`, `--type`, `--title`, `--title-contains`, and `--ax-value`. Every field you pass must match (AND, not OR). The `contains` variants are case-insensitive.
+
 The TypeScript selector fields are `AXUniqueId`, `AXLabel`, `AXLabelContains`, `type`, `title`, `titleContains`, and `AXValue`. Go names the same fields `AccessibilityID`, `Label`, `LabelContains`, `ElementType`, `Title`, `TitleContains`, and `Value`.
 
 `tapElement` taps with a real synthesized touch, so the app reacts as it would to a finger. Elements the accessibility tree can see are scrolled into view before the tap. A selector that matches nothing fails in about a second, and iOS creates list rows lazily, so a row below the fold is often missing from the tree. For those rows, pass `--scroll-search` (SDK: `{ scrollSearch: true }`): it pages the screen and retries until the row appears, up to three screens down and six screens up, within the call's time budget (`timeoutMs` in the SDK, 90 seconds by default). `--activate ax` (SDK: `{ activate: 'ax' }`) performs an accessibility press instead: no scrolling and no touch events, but it works on elements without a usable frame.
@@ -315,12 +308,11 @@ The TypeScript selector fields are `AXUniqueId`, `AXLabel`, `AXLabelContains`, `
 
 Steppers, sliders, and text fields can be set directly instead of tapped. `set-text` writes a value through accessibility: the value lands verbatim, but the app's text delegates and keyboard behavior are skipped.
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios set-text "42" --ax-label Count
 lim ios set-text "P@ssw0rd!" --focused
 ```
-
-From the TypeScript SDK:
 
 ```ts
 await client.incrementElement({ AXLabel: 'Volume' });
@@ -329,12 +321,17 @@ await client.setElementValue('42', { AXLabel: 'Count' });   // sets the exact va
 await client.setElementValue('P@ssw0rd!');                  // no selector: targets the focused field
 ```
 
+</CodeGroup>
+
+TypeScript only: `incrementElement` and `decrementElement` increment and decrement a stepper or slider.
+
 Use `set-text` to seed field values. Use `type`, below, when the app must react as if a user typed.
 
 ## Type and press keys
 
 `type` sends real hardware key events into the focused field: text delegates fire, and the field's own keyboard behavior applies (a default text field capitalizes the first letter, for example). It fails when no field has focus, so tap the field first. If you focused a field another way, such as a coordinate tap, and the focus check misreads it, pass `--no-require-focus` to type anyway.
 
+<CodeGroup labels={["CLI","TypeScript","Go"]}>
 ```bash
 lim ios type "hello world" --enter          # press Enter after typing
 lim ios type "hi" --no-require-focus
@@ -343,11 +340,6 @@ lim ios press-key enter --modifier shift
 lim ios toggle-keyboard
 ```
 
-`press-key` accepts shifted symbols (`@`, `#`, `?`) and adds the shift itself. `--modifier` is repeatable and accepts `shift`, `command`, `control`, and `alt`. `toggle-keyboard` is the equivalent of pressing ⌘K in the simulator.
-
-From the SDK:
-
-<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 await client.typeText('hello world');                   // types into focused field
 await client.typeText('email@example.com', true);       // pressEnter = true
@@ -367,14 +359,24 @@ err = client.PressKey(ctx, "a", "shift")
 
 </CodeGroup>
 
+`press-key` accepts shifted symbols (`@`, `#`, `?`) and adds the shift itself. `--modifier` is repeatable and accepts `shift`, `command`, `control`, and `alt`. `toggle-keyboard` is the equivalent of pressing ⌘K in the simulator.
+
 ## Scroll and swipe
 
 `scroll` is a finger-swipe gesture. `--amount` is the distance in pixels (default 300), `--coordinate` is the start point (default: the screen center; set it when the scrollable view is elsewhere, such as in a modal), and `--momentum` from 0.0 to 1.0 controls the fling. Directions follow the device rotation, so `down` scrolls the content down in landscape too.
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios scroll down --amount 300
 lim ios scroll up --amount 300 --momentum 0.4 --coordinate 200,400
 ```
+
+```ts
+await client.scroll('down', 300);
+await client.scroll('up',   300, { coordinate: [200, 400], momentum: 0.4 });
+```
+
+</CodeGroup>
 
 For gestures with explicit start and end points, such as pull-to-refresh, carousel paging, or sliders, use `swipe`. Longer durations drag more precisely; shorter ones fling. The default is 300 ms.
 
@@ -383,12 +385,7 @@ lim ios swipe --from 200,300 --to 200,600                 # pull-to-refresh: dra
 lim ios swipe --from 350,400 --to 50,400 --duration 800   # slow horizontal drag
 ```
 
-From the TypeScript SDK, scroll like this; compose a swipe from touch actions in [a batch](#run-a-batch-of-actions):
-
-```ts
-await client.scroll('down', 300);
-await client.scroll('up',   300, { coordinate: [200, 400], momentum: 0.4 });
-```
+CLI only: the SDKs have no `swipe` call. In TypeScript, compose a swipe from touch actions in [a batch](#run-a-batch-of-actions).
 
 ## Rotate the device
 
@@ -411,14 +408,12 @@ err = client.SetOrientation(ctx, iosws.OrientationLandscape)
 
 `open-url` opens web URLs in Safari and registered URL schemes in their apps:
 
+<CodeGroup labels={["CLI","TypeScript","Go"]}>
 ```bash
 lim ios open-url "https://apple.com"
 lim ios open-url "myapp://orders/42"
 ```
 
-From the SDK:
-
-<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 await client.openUrl('https://apple.com');               // opens in Safari
 await client.openUrl('myapp://orders/42');               // deep link into your app
@@ -435,6 +430,7 @@ err = client.OpenURL(ctx, "myapp://orders/42")
 
 When a sequence should run without a round trip between steps, send it as one batch. The server runs the whole batch next to the simulator. It stops at the first failing action, and the call fails with that action's error. When every action succeeds, it returns one result per action. Agents use this for anything longer than a single tap.
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios perform \
   --action 'type=tapElement,selector={"AXLabel":"Continue"}' \
@@ -442,7 +438,23 @@ lim ios perform \
   --action "type=typeText,text=hello,pressEnter=true"
 ```
 
-Longer sequences read better from a YAML or JSON file:
+```ts
+const result = await client.performActions(
+  [
+    { type: 'tapElement', selector: { AXLabel: 'Continue' } },
+    { type: 'wait', durationMs: 500 },
+    { type: 'typeText', text: 'hello', pressEnter: true },
+    { type: 'scroll', direction: 'down', pixels: 300 },
+    { type: 'pressKey', key: 'enter' },
+  ],
+  { timeoutMs: 10_000 },
+);
+// result.results has one entry per action; a failing action rejects the call instead
+```
+
+</CodeGroup>
+
+Longer CLI sequences read better from a YAML or JSON file:
 
 ```bash
 lim ios perform --file ./actions.yaml
@@ -458,21 +470,7 @@ lim ios perform --file ./actions.yaml
   pressEnter: true
 ```
 
-The CLI sizes the batch timeout from its waits and action count; override it with `--timeout <ms>`. From the TypeScript SDK:
-
-```ts
-const result = await client.performActions(
-  [
-    { type: 'tapElement', selector: { AXLabel: 'Continue' } },
-    { type: 'wait', durationMs: 500 },
-    { type: 'typeText', text: 'hello', pressEnter: true },
-    { type: 'scroll', direction: 'down', pixels: 300 },
-    { type: 'pressKey', key: 'enter' },
-  ],
-  { timeoutMs: 10_000 },
-);
-// result.results has one entry per action; a failing action rejects the call instead
-```
+The CLI sizes the batch timeout from its waits and action count; override it with `--timeout <ms>`. In TypeScript, pass `timeoutMs` as shown above.
 
 Action `type` values fall into two groups:
 
@@ -543,6 +541,7 @@ The example assumes portrait orientation. The local `TwoFingerAction` type adds 
 
 List, launch, terminate, and install apps by bundle ID. `list-apps` includes system apps.
 
+<CodeGroup labels={["CLI","TypeScript","Go"]}>
 ```bash
 lim ios list-apps
 lim ios launch-app com.example.MyApp --mode RelaunchIfRunning
@@ -551,11 +550,6 @@ lim ios install-app ./MyApp.app.zip
 lim ios install-app https://... --md5 abc... --launch-mode ForegroundIfRunning
 ```
 
-`launch-app` streams the app's logs and exits when the app exits. Pass `--detach` to return right after the launch, for example in scripts. `install-app` accepts a local archive, which the CLI uploads to Asset Storage first, or a remote URL, which the instance downloads itself. `--md5` enables server-side install caching for remote URLs. If you don't know the bundle ID, check the Xcode project or run `list-apps` after a successful build.
-
-From the SDK:
-
-<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 const apps = await client.listApps();
 // [{ bundleId, name, installType }, ...]
@@ -593,11 +587,13 @@ result, err := client.InstallApp(ctx, "https://...build.zip", &iosws.AppInstalla
 
 </CodeGroup>
 
-In TypeScript, use `onExit` when your runner needs to react to a crash or termination. The callback receives the stdout and stderr lines recorded for that launch.
+`launch-app` streams the app's logs and exits when the app exits. CLI only: pass `--detach` to return right after the launch, for example in scripts. `install-app` accepts a local archive, which the CLI uploads to Asset Storage first, or a remote URL, which the instance downloads itself. `--md5` (SDK: `md5`) enables server-side install caching for remote URLs. If you don't know the bundle ID, check the Xcode project or run `list-apps` after a successful build.
+
+TypeScript only: use `onExit` when your runner needs to react to a crash or termination. The callback receives the stdout and stderr lines recorded for that launch.
 
 ### Reset app data between runs
 
-Between test cases, wipe the app's data container and relaunch it instead of reinstalling. From the TypeScript SDK:
+Between test cases, wipe the app's data container and relaunch it instead of reinstalling. The TypeScript SDK does this with `softReset`:
 
 ```ts
 await client.softReset('com.example.MyApp');                       // strategy: 'data' (default)
@@ -609,12 +605,11 @@ await client.softReset('com.example.MyApp', { strategy: 'full' }); // also clear
 
 Tail recent lines (default 100) or stream live output for one app:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios app-log com.example.MyApp --tail 200
 lim ios app-log com.example.MyApp --follow
 ```
-
-From the TypeScript SDK, the stream emits one `line` event per log line, batched about every 500 ms on the server, plus `error` and `close`:
 
 ```ts
 // One-shot tail
@@ -628,6 +623,10 @@ stream.on('close', () => console.log('stream closed'));
 stream.stop();   // unsubscribe when done
 ```
 
+</CodeGroup>
+
+In TypeScript, the stream emits one `line` event per log line, batched about every 500 ms on the server, plus `error` and `close`.
+
 For low-level debugging beyond one app's stdout and stderr, stream the simulator's syslog until you interrupt it:
 
 ```bash
@@ -638,6 +637,7 @@ lim ios syslog --id <instance-id>
 
 For anything that moves (animations, gestures, games), record a video instead of taking screenshots, and attach it to the pull request. Recording runs on the server. `--quality` accepts integers from `5` (default) to `10`; higher values increase fidelity and file size.
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios record start --quality 5
 # ... drive the UI ...
@@ -646,8 +646,6 @@ lim ios record stop -o /tmp/demo.mp4
 lim ios record stop --presigned-url "<url>"
 ```
 
-From the TypeScript SDK, save to a local file, hand the bytes to a presigned URL, or both:
-
 ```ts
 await client.startRecording({ quality: 5 });
 // ... drive the UI ...
@@ -655,6 +653,10 @@ const downloadUrl = await client.stopRecording({ localPath: '/tmp/demo.mp4' });
 // or:
 await client.stopRecording({ presignedUrl: '<your-s3-upload-url>' });
 ```
+
+</CodeGroup>
+
+TypeScript only: `stopRecording` can save to a local file and hand the bytes to a presigned URL in the same call.
 
 ### Keep captures after the session
 
@@ -679,19 +681,20 @@ Each events and app-logs entry is a timestamped JSONL file.
 
 Play a video file as the simulator's camera for QR-code scanning, document capture, video-call screens, or any `AVCaptureSession` flow that needs predictable frames. The file uploads to the instance and replaces the live browser camera until you clear it; apps see it through their regular capture pipeline.
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios camera play ./fixtures/qr-scan.mp4
 lim ios camera play ./fixtures/intro.mp4 --no-loop
 lim ios camera clear
 ```
 
-From the TypeScript SDK:
-
 ```ts
 await client.setCameraVideo('./fixtures/qr-scan.mp4');                 // loops by default
 await client.setCameraVideo('./fixtures/intro.mp4', { loop: false }); // play once
 await client.clearCameraVideo();                                       // back to the live camera
 ```
+
+</CodeGroup>
 
 Without looping, the feed freezes on the last frame after one pass, so the app keeps receiving frames instead of seeing the camera stall. Anything AVFoundation can decode works, such as H.264 or HEVC in `.mp4` or `.mov`. Portrait recordings play upright.
 
@@ -709,36 +712,39 @@ lim ios microphone stop --id <instance-id>
 
 Put text on the simulator clipboard and read it back. Apps paste it like text copied inside the simulator, so the edit menu's Paste shows no permission prompt. For example, to paste a one-time code into a login form:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios clipboard set "123456"
 echo "123456" | lim ios clipboard set
 lim ios clipboard get
 ```
 
-From the TypeScript SDK, run `simctl pbcopy` and `pbpaste`; `pbcopy` reads its text from the `stdin` option:
-
 ```ts
+// Run simctl pbcopy and pbpaste; pbcopy reads its text from the stdin option.
 await client.simctl(['pbcopy', 'booted'], { stdin: '123456' }).wait();
 const { stdout: clipboard } = await client.simctl(['pbpaste', 'booted']).wait();
 ```
+
+</CodeGroup>
 
 ## Read and write user defaults
 
 Read, write, or delete the simulator's user defaults with its `defaults` tool. Pass the arguments after `--`. Apps read defaults at launch, so relaunch the app under test after a change. For example, to switch the device language and region without UI automation:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios defaults -- write -g AppleLanguages -array fr-FR
 lim ios defaults -- write -g AppleLocale -string fr_FR
 lim ios defaults -- read -g AppleLanguages
 ```
 
-From the TypeScript SDK:
-
 ```ts
 await client.simctl(['spawn', 'booted', 'defaults', 'write', '-g', 'AppleLanguages', '-array', 'fr-FR']).wait();
 ```
 
-Only `read`, `write`, and `delete` are available.
+</CodeGroup>
+
+`lim ios defaults` accepts only `read`, `write`, and `delete`.
 
 ## Post notifications
 
@@ -752,6 +758,7 @@ lim ios notify get <name>
 
 For example, the simulator drives Face ID through these notifications. Enroll once, then answer each Face ID prompt with a match or a non-match. Touch ID devices use `fingerTouch` in place of `pearl`:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios notify set com.apple.BiometricKit.enrollmentChanged 1
 lim ios notify post com.apple.BiometricKit.enrollmentChanged
@@ -759,16 +766,18 @@ lim ios notify post com.apple.BiometricKit_Sim.pearl.match     # the next scan s
 lim ios notify post com.apple.BiometricKit_Sim.pearl.nomatch   # the next scan fails
 ```
 
-From the TypeScript SDK, `notify post`, `set`, and `get` are `notifyutil -p`, `-s`, and `-g`:
-
 ```ts
+// notify post, set, and get are notifyutil -p, -s, and -g.
 await client.simctl(['spawn', 'booted', 'notifyutil', '-p', 'com.apple.BiometricKit_Sim.pearl.match']).wait();
 ```
+
+</CodeGroup>
 
 ## Transfer files
 
 List a directory to find the exact relative path, then pull, push, or delete files with the same container flags:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios ls Documents --bundle-id com.example.app --container-type data
 lim ios pull-file Documents/recording.mov ./recording.mov \
@@ -779,13 +788,10 @@ lim ios delete-file Documents/fixture.json \
   --bundle-id com.example.app --container-type data
 ```
 
-Without `--bundle-id`, file commands target the simulator staging folder. With `--bundle-id`, the default container type is `app`; use `data` for writable app data such as `Documents`, `Library`, and `tmp`, or pass an App Group identifier. Every path that `ls` returns is relative to the selected root and works with the other commands unchanged.
-
-From the TypeScript SDK, pass the same container options to each call:
-
 ```ts
 import { writeFile } from 'node:fs/promises';
 
+// Pass the same container options to each call.
 const container = {
   bundleId: 'com.example.app',
   containerType: 'data',
@@ -798,6 +804,10 @@ const entries = await client.listFiles('Documents', container);
 const recording = await client.pullFile(entries[0].path, container);
 await writeFile('./recording.mov', recording);
 ```
+
+</CodeGroup>
+
+Without `--bundle-id`, file commands target the simulator staging folder. With `--bundle-id`, the default container type is `app`; use `data` for writable app data such as `Documents`, `Library`, and `tmp`, or pass an App Group identifier. Every path that `ls` returns is relative to the selected root and works with the other commands unchanged.
 
 ## Save and restore the keychain
 
@@ -835,6 +845,7 @@ lim ios keychain restore keychain/login.tar.gz --encryption-key-stdin < keychain
 
 The iPhone Duo model must be available to your organization. Create one, then read or change the hinge:
 
+<CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
 lim ios create --model iphone-duo
 lim ios fold --json --id <instance-id>
@@ -845,12 +856,6 @@ lim ios screenshot ./inner.jpg --display inner --id <instance-id>
 lim ios tap 300 200 --display inner --id <instance-id>
 ```
 
-The hinge accepts fractional angles from 0° (closed) to 180° (flat). Omit the angle to read the fold state. Use `fold 0` to close and `fold 180` to unfold; there is no separate unfold command. `--orientation` accepts `portrait`, `pud` (portrait upside down), `landscape-left`, or `landscape-right`, and changes independently of the hinge, so `lim ios fold --orientation portrait --id <instance-id>` rotates without moving the hinge.
-
-This drives the native simulator hinge, so apps receive Apple's hinge and layout updates. `--display outer` targets the cover display and `--display inner` the unfolded one, for `screenshot` and `tap`.
-
-From the TypeScript SDK:
-
 ```ts
 const fold = await client.getFoldState(); // null on an ordinary simulator
 await client.setHingeAngle(110);
@@ -858,6 +863,12 @@ await client.setDuoOrientation('landscape-left');
 const inner = await client.screenshotDisplay('inner');
 await client.tapDisplay('inner', inner.width / 2, inner.height / 2);
 ```
+
+</CodeGroup>
+
+The hinge accepts fractional angles from 0° (closed) to 180° (flat). Omit the angle to read the fold state. Use `fold 0` to close and `fold 180` to unfold; there is no separate unfold command. `--orientation` accepts `portrait`, `pud` (portrait upside down), `landscape-left`, or `landscape-right`, and changes independently of the hinge, so `lim ios fold --orientation portrait --id <instance-id>` rotates without moving the hinge.
+
+This drives the native simulator hinge, so apps receive Apple's hinge and layout updates. `--display outer` targets the cover display and `--display inner` the unfolded one, for `screenshot` and `tap`.
 
 `setDuoOrientation` accepts `portrait`, `landscape-left`, `landscape-right`, and `pud`. Display screenshots are upright, report dimensions in points, and contain JPEG data, including when saved with `lim ios screenshot --display`; `tapDisplay` uses those coordinates. These calls do not activate a display, so fold or unfold first; a display that is not ready reports an error.
 
@@ -869,6 +880,7 @@ In the browser stream, the Duo starts in a 2D frame and offers a lazy-loaded 3D 
 
 When the commands above don't cover what you need, the instance exposes a small set of macOS developer tools:
 
+<CodeGroup labels={["CLI","TypeScript","Go"]}>
 ```bash
 lim ios simctl -- listapps booted
 lim ios xcrun  -- --sdk iphonesimulator --show-sdk-version
@@ -876,9 +888,6 @@ lim ios xcodebuild -- -version
 lim ios lsof
 ```
 
-`simctl` streams stdout and stderr. `xcrun` is limited to the `--sdk` and `--show-*` flags, and `xcodebuild` to `-version`. From the SDK:
-
-<CodeGroup labels={["TypeScript","Go"]}>
 ```ts
 // Streaming simctl
 const exec = client.simctl(['listapps', 'booted']);
@@ -914,12 +923,20 @@ sockets, err := client.Lsof(ctx)
 
 </CodeGroup>
 
+`simctl` streams stdout and stderr. `xcrun` is limited to the `--sdk` and `--show-*` flags, and `xcodebuild` to `-version`.
+
 ## Reuse and clean up
 
 Each simulator is single-tenant: only one client should drive it at a time. Scope instances per user, pull request, or session with labels, and let `reuseIfExists` return the same warm instance on the next call. For platform integrators, this matters when a UI action triggers `create`: without reuse, repeated clicks can create hundreds of instances, each billed; with it, they settle on one.
 
+This create call returns the same instance for the same session across multiple agent runs:
+
+<CodeGroup labels={["CLI","TypeScript","Python","Go"]}>
+```bash
+lim ios create --reuse-if-exists --label session=<session-id> --label user=<user-id>
+```
+
 ```ts
-// Reuse the same instance for the same session across multiple agent runs
 const instance = await lim.iosInstances.create({
   wait: true,
   reuseIfExists: true,
@@ -927,14 +944,36 @@ const instance = await lim.iosInstances.create({
 });
 ```
 
-Delete an instance when you are done. Without an ID, `lim ios delete` removes the last iOS instance the CLI created in this workspace. If you created several, list them by label first:
+```python
+instance = client.ios_instances.create(
+    wait=True,
+    reuse_if_exists=True,
+    metadata={"labels": {"session": session_id, "user": user_id}},
+)
+```
 
+```go
+instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
+    Wait:          param.NewOpt(true),
+    ReuseIfExists: param.NewOpt(true),
+    Metadata: limrun.IosInstanceNewParamsMetadata{
+        Labels: map[string]string{"session": sessionID, "user": userID},
+    },
+})
+if err != nil {
+    panic(err)
+}
+```
+
+</CodeGroup>
+
+Delete an instance when you are done, or list instances by label and delete every match:
+
+<CodeGroup labels={["CLI","TypeScript","Python","Go"]}>
 ```bash
 lim ios list --label-selector "agent=ci,issue=LIM-34"
 lim ios delete <instance-id>
 ```
-
-`lim ios list` shows ready instances by default; pass `--all` or `--state` for other states. From the TypeScript SDK, delete one instance or everything that matches a label:
 
 ```ts
 await lim.iosInstances.delete(instance.metadata.id);
@@ -944,6 +983,48 @@ for await (const inst of stale) {
   await lim.iosInstances.delete(inst.metadata.id);
 }
 ```
+
+```python
+client.ios_instances.delete(instance.metadata.id)
+
+params = {"label_selector": f"user={user_id}", "state": "ready"}
+while page := client.ios_instances.list(**params).items:
+    for inst in page:
+        client.ios_instances.delete(inst.metadata.id)
+    # Page by hand: the iterator stops after the first page.
+    params["starting_after"] = page[-1].metadata.id
+```
+
+```go
+if err := lim.IosInstances.Delete(ctx, instance.Metadata.ID); err != nil {
+    panic(err)
+}
+
+// Page by hand: ListAutoPaging panics on instance lists.
+params := limrun.IosInstanceListParams{
+    LabelSelector: param.NewOpt("user=" + userID),
+    State:         param.NewOpt("ready"),
+}
+for {
+    page, err := lim.IosInstances.List(ctx, params)
+    if err != nil {
+        panic(err)
+    }
+    if len(page.Items) == 0 {
+        break
+    }
+    for _, inst := range page.Items {
+        if err := lim.IosInstances.Delete(ctx, inst.Metadata.ID); err != nil {
+            panic(err)
+        }
+    }
+    params.StartingAfter = param.NewOpt(page.Items[len(page.Items)-1].Metadata.ID)
+}
+```
+
+</CodeGroup>
+
+CLI only: without an ID, `lim ios delete` removes the last iOS instance the CLI created in this workspace, so list by label first if you created several. `lim ios list` shows ready instances by default; pass `--all` or `--state` for other states.
 
 The console's **Instances** tab shows the same data. Filter by state or label selector, sort by duration or creation time, and reopen any ready instance with one click:
 

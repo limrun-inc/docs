@@ -83,7 +83,7 @@ lim xcode test . --build-only
 
 ## Run tests from the TypeScript SDK
 
-The TypeScript SDK runs tests through `xcodebuild` with `action: 'build-for-testing'`. Unlike the CLI, it does not create a simulator for you: the tests run only when a simulator is attached to the Xcode sandbox, and without one the call just compiles them. Attach one first, as in [Install on a simulator](/docs/ios/build-with-xcode#install-on-a-simulator). Per-case events stream through `onXctestEvent`, and the accumulated cases and summary land on the result:
+The TypeScript SDK runs tests through `xcodebuild` with `action: 'build-for-testing'`. It does not create a simulator: the tests run only when a simulator is attached to the Xcode sandbox, and without one the call only compiles them. Attach one first, as in [Install on a simulator](/docs/ios/build-with-xcode#install-on-a-simulator). Per-case events stream through `onXctestEvent`, and the accumulated cases and summary land on the result:
 
 ```ts
 await xcode.attachNewSimulator(); // or xcode.attachSimulator(iosInstance)
@@ -97,7 +97,7 @@ console.log(result.xctest?.summary); // { type: 'summary', passed, failed, planF
 console.log(result.exitCode);        // non-zero when tests fail
 ```
 
-`onlyTesting` and `skipTesting` go on the same settings object as `scheme`. `runTests: false` compiles the test targets without running them, the SDK equivalent of `--build-only`. `xcode` is the Xcode sandbox client from [Build with Xcode](/docs/ios/build-with-xcode).
+`onlyTesting` and `skipTesting` go on the same settings object as `scheme`. `runTests: false` compiles the test targets without running them, like [`--build-only`](#build-without-running). `xcode` is the Xcode sandbox client from [Build with Xcode](/docs/ios/build-with-xcode).
 
 ## Run in CI
 

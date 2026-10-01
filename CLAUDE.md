@@ -25,7 +25,11 @@ Review a page in two passes, in this order: technical verification first, writin
 ## Product rules
 
 - No customer or coding-agent product name-drops where they are not load-bearing. Use category names: "coding agents", "platform integrators". Exception: when the name is genuinely the reference (a CLI flag enum, a UI screenshot label).
-- The `lim` CLI and the SDKs are different personas. CLI serves coding agents and CI; SDKs serve platform integrators embedding simulators. Keep them on separate pages or in separate blocks, cross-link, and never mix them in one CodeGroup.
+- When a task can be done from more than one surface, show it in one `CodeGroup` with tabs in the order `CLI`, `TypeScript`, `Python`, `Go`, `cURL` (the docs7 build enforces the order). The reader's choice syncs across the site, so never split one task into a CLI block and an SDK block joined by "From the SDK:" prose.
+  - The sentence above the group is surface-neutral.
+  - A feature that only one surface has gets one sentence naming that surface ("CLI only: `--detach` returns right after launch.") or a comment inside its tab.
+  - Flag tables stay outside the group.
+  - A `CodeGroup` holds only code fences. Nest it inside a platform `<Tab>` when a section is split by platform or build tool.
 - Cloud agents are headless. Where the audience is an agent, lead with the `LIM_API_KEY` environment variable and do not mention `lim login`. `lim login` belongs only on human-facing quickstart content.
 - Do not pitch default behavior as a feature.
 - Do not document unobservable server internals without a source.

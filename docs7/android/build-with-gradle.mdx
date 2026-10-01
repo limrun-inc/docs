@@ -40,15 +40,15 @@ lim gradle build . --project-path android
 
 The sync skips paths your `.gitignore` files exclude. Repeat `--ignore '<regex>'` to skip more paths, and `--include '<regex>'` to force-sync paths that a built-in rule or `.gitignore` would exclude. `--env KEY=VALUE` passes an environment variable to the build, and `--basis-cache-dir` sets where the client keeps its sync cache.
 
-To create the sandbox yourself, for example with labels or a jurisdiction, run `lim gradle create` first; `lim gradle build` then uses it. Without `--inactivity-timeout`, a Gradle sandbox is deleted after 10 minutes of inactivity:
+To create the sandbox yourself, for example with labels or a jurisdiction, create it first; the build then uses it:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim gradle create --jurisdiction eu --label env=dev --display-name ci-builder
+lim gradle build . --task :app:assembleRelease
 ```
 
-From the TypeScript SDK, the same flow is explicit: create the instance, open a client, sync, then build:
-
-```ts
+```ts TypeScript
 import Limrun from '@limrun/api';
 
 const lim = new Limrun({ apiKey: process.env['LIM_API_KEY'] });
@@ -66,6 +66,9 @@ const build = gradle.gradlebuild({ tasks: [':app:assembleRelease'] });
 build.stdout.on('data', (line) => console.log(line));
 const { exitCode } = await build;
 ```
+</CodeGroup>
+
+Without `--inactivity-timeout`, a Gradle sandbox is deleted after 10 minutes of inactivity. In TypeScript, each step is explicit: create the instance, open a client, sync, then build.
 
 For long builds, return as soon as the build is accepted with `--detach`, read the log later with `lim gradle logs`, or receive the result on a webhook. [Build logs and webhooks](/ci/build-logs-and-webhooks) covers all three, including the webhook payload's `applicationId`, `versionName`, and `versionCode`.
 
@@ -121,13 +124,25 @@ The selected Node is exposed as `NODE_BINARY`, and mise sets `JAVA_HOME`. Sandbo
 
 `lim gradle run` syncs the current directory, then runs a one-shot shell command after `--` in the remote workspace with the selected tools. Pass environment variables with `--env`, which `lim gradle build` accepts too:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim gradle run -- node --version
 lim gradle run --env APP_ENV=staging -- npm run generate
 lim gradle build . --env APP_ENV=staging
 ```
 
-Options:
+```ts TypeScript
+const gradle = await lim.gradleInstances.createClient({ instance });
+await gradle.sync('.');
+const install = await gradle.run('mise install', { cwd: 'apps/mobile' });
+if (install.exitCode !== 0) throw new Error('Tool installation failed');
+const result = await gradle.gradlebuild({ env: ['APP_ENV=staging'] });
+```
+</CodeGroup>
+
+In TypeScript, sync the project first, then call `run` to install tools or run a command. `run` accepts `cwd`, `env`, and `timeoutSeconds` and returns the same streamed process interface as `gradlebuild`.
+
+CLI options:
 
 - `--no-sync` uses the existing remote workspace instead of syncing first.
 - The optional positional directory (`lim gradle run apps/api -- make generate`) is relative to the synced workspace.
@@ -139,16 +154,6 @@ Commands stream their output.
 <Note>
 Commands and builds share one slot per sandbox: starting a new command or build cancels the one that is running.
 </Note>
-
-From the TypeScript SDK, sync the project, then call `run` to install tools or run a command. `run` accepts `cwd`, `env`, and `timeoutSeconds` and returns the same streamed process interface as `gradlebuild`:
-
-```ts
-const gradle = await lim.gradleInstances.createClient({ instance });
-await gradle.sync('.');
-const install = await gradle.run('mise install', { cwd: 'apps/mobile' });
-if (install.exitCode !== 0) throw new Error('Tool installation failed');
-const result = await gradle.gradlebuild({ env: ['APP_ENV=staging'] });
-```
 
 ## Keep builds warm
 
@@ -164,33 +169,35 @@ There are two ways to get the artifact out of the sandbox.
 
 **Upload to Asset Storage.** The artifact lives in Limrun's managed storage, and later creates can install it by name. See [Asset Storage](/platform/asset-storage).
 
-```bash
+<CodeGroup>
+```bash CLI
 lim gradle build . --upload myapp.apk
 lim android create --install-asset=myapp.apk
 ```
 
-From the TypeScript SDK, set the upload on the build call:
-
-```ts
+```ts TypeScript
 const build = gradle.gradlebuild({ upload: { assetName: 'myapp.apk' } });
 const { exitCode, signedDownloadUrl } = await build;
 ```
+</CodeGroup>
 
 The uploaded asset expires 14 days after the last upload by default. Each build upload pushes the expiry out again, so actively rebuilt assets stay alive. Pass `--upload-ttl` with a Go duration (`ttl` in the SDK) to change the window: `720h` works, `1d` is not valid Go syntax. Assets uploaded with `lim asset push` are unaffected; they never expire unless given a `--ttl`.
 
 The build result includes a signed download URL. Anyone with the URL can download the artifact without a Limrun API key. The signature expires after 15 minutes; fetch a fresh one with `lim asset list --name <asset-name> --download-url`.
 
-**Upload to your own bucket.** Pass a presigned S3, GCS, or R2 URL and the sandbox PUTs the artifact straight to it, without a round trip through the machine that started the build. `--signed-upload-url` defaults to the `LIM_SIGNED_UPLOAD_URL` environment variable:
+**Upload to your own bucket.** Pass a presigned S3, GCS, or R2 URL and the sandbox PUTs the artifact straight to it, without a round trip through the machine that started the build:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim gradle build . --signed-upload-url '<presigned-url>'
 ```
 
-From the TypeScript SDK:
-
-```ts
+```ts TypeScript
 const build = gradle.gradlebuild({ upload: { signedUploadUrl: '<presigned-url>' } });
 ```
+</CodeGroup>
+
+CLI only: `--signed-upload-url` defaults to the `LIM_SIGNED_UPLOAD_URL` environment variable.
 
 To build on every push from a Linux runner, see [GitHub Actions recipes](/ci/github-actions).
 
