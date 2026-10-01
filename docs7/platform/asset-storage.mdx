@@ -48,15 +48,13 @@ Pick the upload path by who holds the file:
 
 `getOrUpload` computes the local file's MD5, checks Asset Storage for an entry with the same name and MD5, and skips the transfer when they match. It ships in the TypeScript and Go SDKs; from Python, use the [two-step upload](#upload-from-another-process-or-a-browser).
 
-With the CLI:
+Upload a local build under a name of your choice:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim asset push ./build/MyApp.app.tar.gz -n my-app-v1.2.3.tar.gz
 ```
 
-From the TypeScript and Go SDKs:
-
-<CodeGroup>
 ```ts TypeScript
 import Limrun from '@limrun/api';
 
@@ -89,7 +87,7 @@ lim asset push ./build/MyApp.app.tar.gz \
   -n "preview/${OWNER}/${REPO}/pr-${PR_NUMBER}-ios"
 ```
 
-The action itself builds and uploads in one step through the TypeScript SDK, using the same naming convention. The CLI equivalent is `lim xcode build --upload "preview/…"`; see [Build with Xcode](/ios/build-with-xcode).
+The action itself builds and uploads in one step through the TypeScript SDK, using the same naming convention. `lim xcode build --upload "preview/…"` also builds and uploads in one step; see [Build with Xcode](/ios/build-with-xcode).
 
 ### Upload from another process or a browser
 
@@ -112,6 +110,32 @@ if (!asset.md5) {
     },
   });
 }
+```
+
+```python Python
+import hashlib
+import requests
+from limrun_api import Limrun
+
+client = Limrun()  # picks up LIM_API_KEY from env
+
+path = "./build/MyApp.app.tar.gz"
+name = "my-app-v1.2.3.tar.gz"
+
+with open(path, "rb") as f:
+    data = f.read()
+local_md5 = hashlib.md5(data).hexdigest()
+
+asset = client.assets.get_or_create(name=name)
+if asset.md5 != local_md5:
+    r = requests.put(
+        asset.signed_upload_url,
+        data=data,
+        headers={"Content-Type": "application/octet-stream"},
+    )
+    r.raise_for_status()
+
+# asset.id, asset.name, asset.signed_download_url
 ```
 
 ```go Go
@@ -142,32 +166,6 @@ if asset.Md5 == "" {
     defer resp.Body.Close()
 }
 ```
-
-```python Python
-import hashlib
-import requests
-from limrun_api import Limrun
-
-client = Limrun()  # picks up LIM_API_KEY from env
-
-path = "./build/MyApp.app.tar.gz"
-name = "my-app-v1.2.3.tar.gz"
-
-with open(path, "rb") as f:
-    data = f.read()
-local_md5 = hashlib.md5(data).hexdigest()
-
-asset = client.assets.get_or_create(name=name)
-if asset.md5 != local_md5:
-    r = requests.put(
-        asset.signed_upload_url,
-        data=data,
-        headers={"Content-Type": "application/octet-stream"},
-    )
-    r.raise_for_status()
-
-# asset.id, asset.name, asset.signed_download_url
-```
 </CodeGroup>
 
 For browser-direct uploads, call `getOrCreate` on your backend, where the API key lives, and hand only the `signedUploadUrl` to the browser. The browser PUTs to it without touching your `LIM_API_KEY` or proxying bytes through your servers, which fits platforms whose end users upload their own builds.
@@ -191,19 +189,19 @@ There are two moments to install: at instance boot, or into an instance that is 
 
 ### Pre-install at boot
 
-Add entries to `spec.initialAssets` in the create call, and the device starts with the app on its home screen. With the CLI, `--install <path>` uploads a local file to Asset Storage first, and `--install-asset <name>` references a stored asset; repeat either flag for several apps:
-
-```bash
-lim ios create --install ./MyApp.app.tar.gz
-lim android create --install-asset my-app-v1.2.3.apk
-```
+Add entries to `spec.initialAssets` in the create call, and the device starts with the app on its home screen. On the CLI, `--install <path>` uploads a local file to Asset Storage first, and `--install-asset <name>` references a stored asset; repeat either flag for several apps.
 
 <Tabs>
 <Tab title="iOS">
 
-From the TypeScript SDK, with every source shown:
+Create a simulator with the app installed. The SDK examples show every source:
 
-```ts
+<CodeGroup>
+```bash CLI
+lim ios create --install ./MyApp.app.tar.gz
+```
+
+```ts TypeScript
 const instance = await lim.iosInstances.create({
   wait: true,
   spec: {
@@ -222,6 +220,55 @@ const instance = await lim.iosInstances.create({
 });
 ```
 
+```python Python
+instance = client.ios_instances.create(
+    wait=True,
+    spec={
+        "initial_assets": [
+            # From Asset Storage by name
+            {"kind": "App", "source": "AssetName", "asset_name": "my-app-v1.2.3.tar.gz",
+             "launch_mode": "ForegroundIfRunning"},
+
+            # From a public HTTPS URL
+            {"kind": "App", "source": "URL", "url": "https://example.com/builds/123.tar.gz"},
+
+            # By asset ID (when you already have one)
+            {"kind": "App", "source": "AssetID", "asset_id": "asset_01j..."},
+        ],
+    },
+)
+```
+
+```go Go
+instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
+    Wait: param.NewOpt(true),
+    Spec: limrun.IosInstanceNewParamsSpec{
+        InitialAssets: []limrun.IosInstanceNewParamsSpecInitialAsset{
+            // From Asset Storage by name
+            {
+                Kind:       "App",
+                Source:     "AssetName",
+                AssetName:  param.NewOpt("my-app-v1.2.3.tar.gz"),
+                LaunchMode: "ForegroundIfRunning",
+            },
+            // From a public HTTPS URL
+            {
+                Kind:   "App",
+                Source: "URL",
+                URL:    param.NewOpt("https://example.com/builds/123.tar.gz"),
+            },
+            // By asset ID (when you already have one)
+            {
+                Kind:    "App",
+                Source:  "AssetID",
+                AssetID: param.NewOpt("asset_01j..."),
+            },
+        },
+    },
+})
+```
+</CodeGroup>
+
 An iOS `initialAssets` entry has these fields:
 
 | Field | Type | Meaning |
@@ -231,14 +278,19 @@ An iOS `initialAssets` entry has these fields:
 | `url` / `assetName` / `assetId` | string | The matching identifier. |
 | `launchMode` | `'ForegroundIfRunning' \| 'RelaunchIfRunning'` | `ForegroundIfRunning` brings the app to the foreground, launching it if needed; `RelaunchIfRunning` kills and relaunches it. Omit it to install without launching. |
 
-The Python SDK takes the same fields in snake_case (`initial_assets`, `asset_name`, `launch_mode`), and the Go SDK as `IosInstanceNewParamsSpecInitialAsset` values.
+The Python SDK takes the same fields in snake_case (`initial_assets`, `asset_name`, `launch_mode`), and the Go SDK as `IosInstanceNewParamsSpecInitialAsset` values. Both accept only `kind: 'App'`.
 
 </Tab>
 <Tab title="Android">
 
-From the TypeScript SDK, one entry per app:
+Create an emulator with the app installed. The SDK examples show one entry per source:
 
-```ts
+<CodeGroup>
+```bash CLI
+lim android create --install-asset my-app-v1.2.3.apk
+```
+
+```ts TypeScript
 const instance = await lim.androidInstances.create({
   wait: true,
   spec: {
@@ -255,6 +307,53 @@ const instance = await lim.androidInstances.create({
   },
 });
 ```
+
+```python Python
+instance = client.android_instances.create(
+    wait=True,
+    spec={
+        "initial_assets": [
+            # From Asset Storage by name
+            {"kind": "App", "source": "AssetName", "asset_name": "my-app-v1.2.3.apk"},
+
+            # From a public HTTPS URL
+            {"kind": "App", "source": "URL", "url": "https://example.com/builds/123.apk"},
+
+            # By asset ID (Android takes a list)
+            {"kind": "App", "source": "AssetIDs", "asset_ids": ["asset_01j..."]},
+        ],
+    },
+)
+```
+
+```go Go
+instance, err := lim.AndroidInstances.New(ctx, limrun.AndroidInstanceNewParams{
+    Wait: param.NewOpt(true),
+    Spec: limrun.AndroidInstanceNewParamsSpec{
+        InitialAssets: []limrun.AndroidInstanceNewParamsSpecInitialAsset{
+            // From Asset Storage by name
+            {
+                Kind:      "App",
+                Source:    "AssetName",
+                AssetName: param.NewOpt("my-app-v1.2.3.apk"),
+            },
+            // From a public HTTPS URL
+            {
+                Kind:   "App",
+                Source: "URL",
+                URL:    param.NewOpt("https://example.com/builds/123.apk"),
+            },
+            // By asset ID (Android takes a list)
+            {
+                Kind:     "App",
+                Source:   "AssetIDs",
+                AssetIDs: []string{"asset_01j..."},
+            },
+        },
+    },
+})
+```
+</CodeGroup>
 
 An Android `initialAssets` entry has these fields:
 
@@ -279,16 +378,17 @@ For the rest of the create call, such as regions, clues, timeouts, and sandboxes
 
 ### Install on a running instance
 
-When a user rebuilds during a live session, push the new build and tell the running instance to install it. No restart and no reconnect are needed. The CLI's `install-app` accepts a local path, which it uploads to Asset Storage first with MD5 deduplication, or a URL it passes to the instance:
+When a user rebuilds during a live session, push the new build and tell the running instance to install it. No restart and no reconnect are needed:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim ios install-app ./MyApp.app.tar.gz
 lim android install-app https://example.com/build.apk --id <instance-id>
 ```
 
-From the TypeScript device clients, iOS uses `installApp` and Android uses `sendAsset`:
+```ts TypeScript
+// The device clients use installApp on iOS and sendAsset on Android.
 
-```ts
 // iOS: the md5 enables server-side caching, so a build already installed
 // in this region skips the download.
 await ios.installApp(asset.signedDownloadUrl, {
@@ -300,6 +400,9 @@ await ios.installApp(asset.signedDownloadUrl, {
 // The default client-side timeout is 120 s; raise it for large APKs.
 await android.sendAsset(asset.signedDownloadUrl, 180_000);
 ```
+</CodeGroup>
+
+CLI only: `install-app` accepts a local path, which it uploads to Asset Storage first with MD5 deduplication, or a URL it passes to the instance.
 
 `installApp` accepts `md5`, `timeoutMs` (default `120_000`), and `launchMode`. The Go iOS client has `InstallApp` too; `sendAsset` is TypeScript-only, and the Python SDK has no device client. From those languages, use `lim ios install-app` and `lim android install-app`, or `adb install` over the tunnel. Split-APK groups install only at boot. For opening device clients and the full app lifecycle, see [Manage apps](/ios/run-simulator#manage-apps) and [Pre-install APKs](/android/run-emulator#pre-install-apks).
 
@@ -346,18 +449,18 @@ That is the whole integration: the backend creates the instance with the Expo Go
 
 List the catalog to see what else is available. The server fills the result with your own assets first and gives catalog entries only the remaining slots, so filter on the `appstore/` prefix to see the whole catalog:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim asset list --include-app-store --name-prefix appstore/
 ```
 
-From the TypeScript SDK:
-
-```ts
+```ts TypeScript
 const apps = await lim.assets.list({
   includeAppStore: true,
   namePrefixFilter: 'appstore/',
 });
 ```
+</CodeGroup>
 
 <Note>
 The API strips the `appstore/` prefix before it queries the catalog. `nameFilter: 'appstore/Expo-Go-54.0.6.tar.gz'` with `includeAppStore: true` works as expected, but a partial prefix such as `namePrefixFilter: 'appstor'` never matches a catalog entry, because the comparison happens after the prefix is removed.
@@ -408,20 +511,16 @@ Integrations written before the field was named `platform` may still read `os`, 
 
 ## List, get, and delete assets
 
-`assets.list`, `assets.get`, and `assets.delete` are the calls you wire into an admin UI, a cleanup job, or an offboarding flow.
+`assets.list`, `assets.get`, and `assets.delete` are the calls you wire into an admin UI, a cleanup job, or an offboarding flow. List assets with a name filter, fetch one by ID, and delete it:
 
-With the CLI:
-
-```bash
+<CodeGroup>
+```bash CLI
 lim asset list
 lim asset list --name my-app-v1.2.3.tar.gz --download-url
 lim asset list <id> --download-url
 lim asset delete <id>
 ```
 
-From the SDKs:
-
-<CodeGroup>
 ```ts TypeScript
 const assets = await lim.assets.list({
   limit: 50,
@@ -435,20 +534,6 @@ const assets = await lim.assets.list({
 const single = await lim.assets.get(assetId, { includeDownloadUrl: true });
 
 await lim.assets.delete(assetId);
-```
-
-```go Go
-assets, err := lim.Assets.List(ctx, limrun.AssetListParams{
-    Limit:              param.NewOpt(int64(50)),
-    NameFilter:         param.NewOpt("my-app-v1.2.3.tar.gz"),
-    IncludeDownloadURL: param.NewOpt(true),
-})
-
-single, err := lim.Assets.Get(ctx, assetID, limrun.AssetGetParams{
-    IncludeDownloadURL: param.NewOpt(true),
-})
-
-err = lim.Assets.Delete(ctx, assetID)
 ```
 
 ```python Python
@@ -465,6 +550,20 @@ assets = client.assets.list(
 single = client.assets.get(asset_id, include_download_url=True)
 
 client.assets.delete(asset_id)
+```
+
+```go Go
+assets, err := lim.Assets.List(ctx, limrun.AssetListParams{
+    Limit:              param.NewOpt(int64(50)),
+    NameFilter:         param.NewOpt("my-app-v1.2.3.tar.gz"),
+    IncludeDownloadURL: param.NewOpt(true),
+})
+
+single, err := lim.Assets.Get(ctx, assetID, limrun.AssetGetParams{
+    IncludeDownloadURL: param.NewOpt(true),
+})
+
+err = lim.Assets.Delete(ctx, assetID)
 ```
 </CodeGroup>
 

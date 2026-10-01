@@ -16,32 +16,55 @@ A sandbox builds with its node's default Xcode unless you select another install
 - A bare major (`27`) binds the newest GA release of that major on the node, never a beta. It follows Apple's point releases on its own. Use it for App Store builds.
 - A major.minor (`27.1`) pins that exact version. This is how you pick a beta.
 
-The preference is stored per workspace, the way a version manager remembers a version. A workspace is your git repository or worktree, or a directory assigned with `lim set-workspace-dir`.
+The CLI stores the selection as a workspace preference that later commands and new sandboxes use, while the TypeScript SDK's `setXcode` binds one running sandbox and stores no preference. The preference works the way a version manager remembers a version. A workspace is your git repository or worktree, or a directory assigned with `lim set-workspace-dir`.
 
 ### List the installed versions
 
 Print the versions the sandbox can build with:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim xcode version list
 ```
 
-Each row shows the bound marker (`*` for the one in use), the Select value to type, the channel (`ga` or `beta`), and the full version. `--quiet` prints only the Select values, one per line. For example, on a node with three installed versions the Select values are `26`, `27`, and `27.1`, and the last row reads `27.1 beta (27A9269)`. The versions on your node may differ.
+```ts TypeScript
+const { installed } = await xcode.getXcode();
+for (const x of installed) console.log(x.version, x.channel); // for example "27.0 ga", "27.1 beta"
+```
+</CodeGroup>
 
-To see which Xcode the sandbox has selected, and the workspace preference when the two differ:
+CLI only: each row shows the bound marker (`*` for the one in use), the Select value to type, the channel (`ga` or `beta`), and the full version. `--quiet` prints only the Select values, one per line. For example, on a node with three installed versions the Select values are `26`, `27`, and `27.1`, and the last row reads `27.1 beta (27A9269)`. The versions on your node may differ.
 
-```bash
+To see which Xcode the sandbox has selected:
+
+<CodeGroup>
+```bash CLI
 lim xcode version
 ```
 
+```ts TypeScript
+const { bound } = await xcode.getXcode();
+if (bound.channel !== 'ga') throw new Error('App Store uploads need a released Xcode');
+```
+</CodeGroup>
+
+The CLI also prints the workspace preference when it differs from the selected Xcode.
+
 ### Pin a version for the workspace
 
-Set the preference with `lim xcode use` or `lim xcode version set`. Both remember the selector and switch the existing sandbox; with no sandbox, they save the preference for the next one. `lim xcode build`, `test`, `rbe`, and new sandboxes all use it:
+Set the preference with `lim xcode use` or `lim xcode version set`. Both remember the selector and switch the existing sandbox; with no sandbox, they save the preference for the next one. `lim xcode build`, `test`, `rbe`, and new sandboxes all use it. In TypeScript, `setXcode` switches the sandbox the client points at:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim xcode use xcode@27        # the newest GA Xcode 27
 lim xcode version set 27.1    # or pin the 27.1 beta
 ```
+
+```ts TypeScript
+await xcode.setXcode('27');    // GA lane: the newest released Xcode 27
+await xcode.setXcode('27.1');  // beta lane: this exact version; pick one lane or the other
+```
+</CodeGroup>
 
 `lim xcode use xcode@27` is equivalent to `lim xcode version set 27` and does not sync or write mise configuration. You can combine it with tool requests, such as `lim xcode use xcode@27 node@24`; only the other tools go into mise. `--cwd` applies only to mise tools, and `--workspace` chooses the Limrun workspace whose preference is set.
 
@@ -59,21 +82,6 @@ Remove the preference, and the sandbox goes back to the node default:
 
 ```bash
 lim xcode version unset
-```
-
-### Select the version from the SDK
-
-From the TypeScript SDK, read the installed versions and bind one on the sandbox client:
-
-```ts
-const { installed } = await xcode.getXcode();
-for (const x of installed) console.log(x.version, x.channel); // for example "27.0 ga", "27.1 beta"
-
-await xcode.setXcode('27');    // GA lane: the newest released Xcode 27
-await xcode.setXcode('27.1');  // beta lane: this exact version; pick one lane or the other
-
-const { bound } = await xcode.getXcode();
-if (bound.channel !== 'ga') throw new Error('App Store uploads need a released Xcode');
 ```
 
 ### How switching works

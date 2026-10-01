@@ -12,21 +12,51 @@ icon: "lock-keyhole"
 
 Run the create where the API key lives: your machine, the orchestrator, or CI. Every instance returns its own `status.apiUrl` and `status.token`:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim ios create --json > instance.json
 jq -r .status.apiUrl instance.json    # the instance's API URL
 jq -r .status.token  instance.json    # the instance's token
 ```
 
-If the orchestrator is a backend service, the TypeScript SDK makes the same call:
-
-```ts
+```ts TypeScript
 import Limrun from '@limrun/api';
 
 const lim = new Limrun({ apiKey: process.env.LIM_API_KEY });
 const instance = await lim.iosInstances.create({ wait: true });
 // Hand instance.status.apiUrl and instance.status.token to the sandbox.
 ```
+
+```python Python
+from limrun_api import Limrun
+
+lim = Limrun()  # reads LIM_API_KEY
+instance = lim.ios_instances.create(wait=True)
+# Hand instance.status.api_url and instance.status.token to the sandbox.
+```
+
+```go Go
+import (
+    "context"
+    "os"
+
+    limrun "github.com/limrun-inc/go-sdk"
+    "github.com/limrun-inc/go-sdk/option"
+    "github.com/limrun-inc/go-sdk/packages/param"
+)
+
+ctx := context.Background()
+lim := limrun.NewClient(option.WithAPIKey(os.Getenv("LIM_API_KEY")))
+
+instance, err := lim.IosInstances.New(ctx, limrun.IosInstanceNewParams{
+    Wait: param.NewOpt(true),
+})
+if err != nil {
+    panic(err)
+}
+// Hand instance.Status.APIURL and instance.Status.Token to the sandbox.
+```
+</CodeGroup>
 
 Create each resource as the agent needs it:
 
@@ -92,21 +122,38 @@ lim xcode build .       # remote build, still no API key
 
 [Asset Storage](/platform/asset-storage) lives on the management API, so the sandbox cannot mint asset URLs itself. Create the asset outside and hand the sandbox its signed URLs, which carry their own authorization.
 
-To let the agent ship a build artifact, create the asset where the key lives and pass its upload URL in:
+To let the agent ship a build artifact, create the asset where the key lives and pass its upload URL in. The SDKs return both URLs in one call without uploading anything:
 
-```bash
+<CodeGroup>
+```bash CLI
 : > agent-build.zip                     # empty placeholder; the agent's upload replaces it
 lim asset push ./agent-build.zip
 lim asset list --name agent-build.zip --upload-url --json | jq -r '.[0].signedUploadUrl'
 ```
 
-From the TypeScript SDK, one call returns both URLs without uploading anything:
-
-```ts
+```ts TypeScript
 const asset = await lim.assets.getOrCreate({ name: 'agent-build.zip' });
 // Hand asset.signedUploadUrl to the sandbox. The same call also returns
 // asset.signedDownloadUrl for later.
 ```
+
+```python Python
+asset = lim.assets.get_or_create(name="agent-build.zip")
+# Hand asset.signed_upload_url to the sandbox. The same call also returns
+# asset.signed_download_url for later.
+```
+
+```go Go
+asset, err := lim.Assets.GetOrNew(ctx, limrun.AssetGetOrNewParams{
+    Name: "agent-build.zip",
+})
+if err != nil {
+    panic(err)
+}
+// Hand asset.SignedUploadURL to the sandbox. The same call also returns
+// asset.SignedDownloadURL for later.
+```
+</CodeGroup>
 
 In the sandbox, the build uploads straight to that URL without touching the management API:
 

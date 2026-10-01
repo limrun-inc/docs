@@ -15,29 +15,23 @@ A destination tunnel sends the connections you declare from the simulator throug
 
 ## Start a tunnel from an iOS simulator
 
-Declare each destination the app needs as a `--selector`, and run the tunnel in the background with `--detach`:
+Declare each destination the app needs as a selector, start the tunnel, then query or stop it when you are done:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim ios tunnel \
   --selector localhost:8000 \
   --selector 10.20.30.40:443 \
   --selector "*.staging.example" \
   --detach \
   --id <instance-id>
-```
 
-The app keeps using the literal `localhost:8000`, and the tunnel connects it to `localhost:8000` on the machine running the command. Without `--detach`, the tunnel runs until you stop the command. `--verbose` logs every forwarded connection and dial failure; with `--detach` those lines go to the tunnel log file that `tunnel status` points to.
-
-Query or stop the tunnel from another process:
-
-```bash
+# From another process
 lim ios tunnel status --id <instance-id> --json
 lim ios tunnel stop --id <instance-id>
 ```
 
-From the TypeScript SDK, start the tunnel on a device client. The caller owns the returned tunnel; disconnecting the device client does not close it.
-
-```ts
+```ts TypeScript
 const tunnel = await client.startTunnel({
   selectors: ['localhost:8000', '10.20.30.40:443', 'api.corp.example', '*.staging.example'],
 });
@@ -45,6 +39,13 @@ const tunnel = await client.startTunnel({
 const status = await client.getTunnelStatus();
 await client.stopTunnel(tunnel.tunnelId);
 ```
+</CodeGroup>
+
+The app keeps using the literal `localhost:8000`, and the tunnel connects it to `localhost:8000` on the machine running the tunnel.
+
+CLI only: `--detach` runs the tunnel in the background. Without it, the tunnel runs until you stop the command. `--verbose` logs every forwarded connection and dial failure; with `--detach` those lines go to the tunnel log file that `tunnel status` points to.
+
+TypeScript only: the tunnel starts on a device client. The caller owns the returned tunnel; disconnecting the device client does not close it.
 
 The Python and Go SDKs do not start destination tunnels. Raw HTTP cannot start one either: it takes the CLI, the TypeScript SDK, or an implementation of the tunnel's multiplexed WebSocket protocol.
 
@@ -88,7 +89,7 @@ This captures a HAR file and keeps a network log for seven days:
 lim ios tunnel --selector "*.api.example" --har ./traffic.har --persist --ttl 604800 --id <instance-id>
 ```
 
-HTTPS is decoded with a certificate authority the device trusts, so apps that pin certificates fail through inspected selectors. Leave the pinned host out of the selectors, or pass `--no-inspect` to keep TLS end to end. From the TypeScript SDK, pass `inspection: { enabled: false }` to `startTunnel` for the same effect.
+HTTPS is decoded with a certificate authority the device trusts, so apps that pin certificates fail through inspected selectors. Leave the pinned host out of the selectors, or pass `--no-inspect` to keep TLS end to end. In TypeScript, pass `inspection: { enabled: false }` to `startTunnel` for the same effect.
 
 ## Connect Expo and Metro
 
@@ -129,18 +130,15 @@ lim ios open-url \
 
 ## Use the legacy fixed-port reverse tunnel
 
-`lim ios reverse` remains for existing workflows that already pick a simulator-facing port in the reserved range 57090 to 57099. New workflows should use the destination tunnel above.
+`lim ios reverse` remains for existing workflows that already pick a simulator-facing port in the reserved range 57090 to 57099. New workflows should use the destination tunnel above. This exposes local port 57090 to the simulator:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim ios reverse 57090:57090            # expose local :57090 as simulator :57090
 lim ios reverse 57091 --local-host 0.0.0.0
 ```
 
-The mapping is `<remotePort>` or `<remotePort>:<localPort>`. `--local-host` defaults to `127.0.0.1`; non-loopback hosts are meant for debugging. On start, the CLI prints the address the app must connect to. It is an internal listener IP near the simulator, not `127.0.0.1`.
-
-From the TypeScript SDK:
-
-```ts
+```ts TypeScript
 const tunnel = await client.startReverseTunnel({
   remotePort: 57090,           // must be in 57090..57099
   localPort: 57090,            // defaults to remotePort
@@ -150,6 +148,9 @@ const tunnel = await client.startReverseTunnel({
 // `${tunnel.remoteAddress.address}:${tunnel.remoteAddress.port}`.
 // tunnel.close() to tear it down.
 ```
+</CodeGroup>
+
+The CLI mapping is `<remotePort>` or `<remotePort>:<localPort>`. `--local-host` defaults to `127.0.0.1`; non-loopback hosts are meant for debugging. On start, the CLI prints the address the app must connect to. It is an internal listener IP near the simulator, not `127.0.0.1`.
 
 The reverse tunnel has these constraints:
 

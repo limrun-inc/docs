@@ -38,7 +38,8 @@ The keystore and its passwords reach the build sandbox for the duration of the b
 
 If Google Play already knows your upload key, pass your keystore instead of `--sign`:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim gradle build . \
   --keystore ./signing/upload.jks \
   --keystore-password "$KEYSTORE_PASSWORD" \
@@ -47,13 +48,7 @@ lim gradle build . \
   --upload myapp.aab
 ```
 
-The passwords can come from the `LIM_KEYSTORE_PASSWORD` and `LIM_KEY_PASSWORD` environment variables instead of the command line.
-
-Add `--save-key` to escrow the provided key, so later builds can drop the keystore flags and use plain `--sign`. Escrow never overwrites: if a different key is already stored for the app, `--save-key` fails before any instance is created. To move a key to another organization, run a build there with your keystore and `--save-key`.
-
-The TypeScript SDK has no escrow shortcut. Pass the signing material on the build call:
-
-```ts
+```ts TypeScript
 import fs from 'node:fs';
 
 const build = gradle.gradlebuild({
@@ -67,6 +62,13 @@ const build = gradle.gradlebuild({
   upload: { assetName: 'myapp.aab' },
 });
 ```
+</CodeGroup>
+
+The TypeScript SDK has no escrow shortcut, so every SDK build passes the signing material on the build call.
+
+CLI only: the passwords can come from the `LIM_KEYSTORE_PASSWORD` and `LIM_KEY_PASSWORD` environment variables instead of the command line.
+
+CLI only: add `--save-key` to escrow the provided key, so later builds can drop the keystore flags and use plain `--sign`. Escrow never overwrites: if a different key is already stored for the app, `--save-key` fails before any instance is created. To move a key to another organization, run a build there with your keystore and `--save-key`.
 
 ## Publish to Google Play
 

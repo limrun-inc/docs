@@ -28,7 +28,7 @@ The CLI covers the whole build surface. The SDKs cover it as follows:
 | Sync source and run `xcodebuild` | ✓ | ✓ | not in SDK | not in SDK |
 | Run one-shot project commands | ✓ | ✓ | not in SDK | not in SDK |
 
-From Python, provision with `client.xcode_instances.create`; from Go, over REST (`POST /v1/xcode_instances`) or with `lim xcode create`. Then drive the build with `lim xcode build`. The [SDK capability matrix](/reference/sdk#sdk-capability-matrix) lists every surface by language.
+Python provisions with `xcode_instances.create` (see [Provision the sandbox yourself](#provision-the-sandbox-yourself)). Go provisions over REST (`POST /v1/xcode_instances`) or with `lim xcode create`. Then drive the build with `lim xcode build`. The [SDK capability matrix](/reference/sdk#sdk-capability-matrix) lists every surface by language.
 
 ## Build your project
 
@@ -50,15 +50,12 @@ lim xcode build . --scheme MyApp --workspace MyApp.xcworkspace
 
 `lim xcode build` creates a sandbox on demand. Create one explicitly when you want labels, a specific lifecycle, or the instance before the first build:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim xcode create --reuse-if-exists --label session=demo
 ```
 
-The sandbox and any simulator you attach are separate instances with their own lifecycles; see [Concepts](/concepts#instances).
-
-From the TypeScript SDK, create the sandbox and open a client for it. The `xcode` handle is what the sync and build examples on this page use:
-
-```ts
+```ts TypeScript
 import Limrun from '@limrun/api';
 
 const lim = new Limrun({ apiKey: process.env['LIM_API_KEY'] });
@@ -71,6 +68,25 @@ const xcodeInstance = await lim.xcodeInstances.create({
 
 const xcode = await lim.xcodeInstances.createClient({ instance: xcodeInstance });
 ```
+
+```python Python
+from limrun_api import Limrun
+
+lim = Limrun()  # reads LIM_API_KEY
+
+xcode_instance = lim.xcode_instances.create(
+    wait=True,
+    reuse_if_exists=True,
+    metadata={"labels": {"session": "demo"}},
+)
+
+print(xcode_instance.metadata.id, xcode_instance.status.state)
+```
+</CodeGroup>
+
+The sandbox and any simulator you attach are separate instances with their own lifecycles; see [Concepts](/concepts#instances).
+
+TypeScript only: `createClient` opens a client for the sandbox. The `xcode` handle it returns is what the sync and build examples on this page use. The Python SDK has no sync or build client, so build on a Python-created sandbox with `lim xcode build --id <sandbox-id>`.
 
 If another process created the instance and you only have its URL and token, open the client from those:
 
@@ -88,7 +104,8 @@ Create the sandbox with `--snapshot-key myapp-main` to restore and later save it
 
 Attach a simulator to the Xcode sandbox at any time. The attach installs the latest successful build immediately, and every later successful build installs and launches on it. `lim ios create --attach` creates a simulator and attaches it in one step; `lim xcode attach-simulator` attaches one that already exists:
 
-```bash
+<CodeGroup>
+```bash CLI
 # Create a simulator and attach it (installs the latest successful build)
 lim ios create --attach
 
@@ -96,17 +113,16 @@ lim ios create --attach
 lim xcode attach-simulator <instance-id>
 ```
 
-From the TypeScript SDK:
-
-```ts
+```ts TypeScript
 await xcode.attachSimulator(iosInstance);
 // or with a raw URL and token:
 await xcode.attachSimulator({ apiUrl: '...', token: '...' });
 // or create a fresh simulator and attach it in one call:
 const { simulator } = await xcode.attachNewSimulator();
 ```
+</CodeGroup>
 
-From Python or Go, attach with an HTTP call: `POST {xcode status.apiUrl}/simulator` with the Xcode sandbox's `status.token` as the bearer token and the body `{"apiUrl": "<simulator status.apiUrl>", "token": "<simulator status.token>"}`.
+Python and Go have no attach call; attach with an HTTP call instead: `POST {xcode status.apiUrl}/simulator` with the Xcode sandbox's `status.token` as the bearer token and the body `{"apiUrl": "<simulator status.apiUrl>", "token": "<simulator status.token>"}`.
 
 Attach a different simulator to test the same build on another device model. [Run a simulator](/ios/run-simulator) covers everything you can do with the running app.
 
@@ -119,20 +135,20 @@ After upgrading, you see one of these:
 - TypeScript: `'sandbox' does not exist in type 'Spec'` on `iosInstances.create`, or `Property 'sandbox' does not exist on type 'Status'` where the code reads `status.sandbox.xcode.url`.
 - CLI: `Expected an Xcode instance (sandbox_...), got ios_...` when an `ios_` ID is passed to a `lim xcode` command. A paired target the previous CLI remembered is ignored, so the next `lim xcode build` creates a new Xcode sandbox.
 
-Create the Xcode sandbox on its own and attach the simulator to it. From the CLI:
+Create the Xcode sandbox on its own and attach the simulator to it:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim ios create --xcode                                       # new simulator and Xcode sandbox, attached
 lim xcode create --attach --simulator-id <ios-instance-id>   # new Xcode sandbox for an existing simulator
 ```
 
-From the TypeScript SDK:
-
-```ts
+```ts TypeScript
 const xcodeInstance = await lim.xcodeInstances.create({ wait: true });
 const xcode = await lim.xcodeInstances.createClient({ instance: xcodeInstance });
 const { simulator } = await xcode.attachNewSimulator(); // or xcode.attachSimulator(existingIosInstance)
 ```
+</CodeGroup>
 
 Pass the Xcode sandbox's `sandbox_` ID to `lim xcode` commands and the simulator's `ios_` ID to `lim ios` commands. The two instances have separate lifecycles: delete each one, or let each time out on its own.
 
@@ -140,13 +156,12 @@ Pass the Xcode sandbox's `sandbox_` ID to `lim xcode` commands and the simulator
 
 Every `lim xcode build` syncs first. The first sync uploads everything; later syncs send only what changed. For a continuous sync without building, for example while a tool watches the remote workspace, use watch mode:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim xcode sync . --watch
 ```
 
-From the TypeScript SDK, `sync` keeps watching the folder by default (`watch` defaults to `true`) and installs after each sync (`install` also defaults to `true`). Pass `watch: false` for a one-shot sync:
-
-```ts
+```ts TypeScript
 await xcode.sync('./my-app', {
   watch: true,             // re-sync on file changes
   install: true,           // install after each sync (attached simulator only)
@@ -155,6 +170,9 @@ await xcode.sync('./my-app', {
   ],
 });
 ```
+</CodeGroup>
+
+TypeScript only: `sync` keeps watching the folder by default (`watch` defaults to `true`) and installs after each sync (`install` also defaults to `true`). Pass `watch: false` for a one-shot sync.
 
 ### What gets synced
 
@@ -173,15 +191,13 @@ Dependency caches do not need to ship. The sandbox detects `Podfile`, `Package.s
 
 ### Exclude or force-include paths
 
-To exclude something the sync does not already skip, pass a regular expression with `--ignore`. Repeat the flag for several patterns:
+To exclude something the sync does not already skip, pass a regular expression with `--ignore`. Repeat the flag for several patterns. `--include` works the other way: it force-syncs paths that `.gitignore`, a built-in rule, or `--ignore` would exclude. When a path matches both flags, `--include` wins. Use it when a local codegen step produces gitignored files the build needs:
 
-```bash
+<CodeGroup>
+```bash CLI
+# Skip secrets and local-only config
 lim xcode build . --ignore '^Secrets/' --ignore '\.local\.json$'
-```
 
-`--include` works the other way: it force-syncs paths that `.gitignore`, a built-in rule, or `--ignore` would exclude. When a path matches both flags, `--include` wins. Use it when a local codegen step produces gitignored files the build needs:
-
-```bash
 # A generated local Swift package the build depends on
 lim xcode build . --include '^ios/GeneratedKit/'
 
@@ -189,11 +205,7 @@ lim xcode build . --include '^ios/GeneratedKit/'
 lim xcode build . --include '^Carthage/Build/'
 ```
 
-Both flags take regular expressions, not gitignore syntax. An excluded parent directory prunes its whole subtree, so to reach files inside it the pattern must also match the directory path itself, as both examples do (`^ios/`, not `GeneratedKit/`). The basis cache is never included.
-
-From the TypeScript SDK, pass predicates instead of patterns:
-
-```ts
+```ts TypeScript
 await xcode.sync('./my-app', {
   watch: false,
   ignore: (relPath) =>
@@ -201,6 +213,9 @@ await xcode.sync('./my-app', {
   include: (relPath) => relPath.startsWith('ios/GeneratedKit/'),
 });
 ```
+</CodeGroup>
+
+Both flags take regular expressions, not gitignore syntax; TypeScript takes predicates instead of patterns. An excluded parent directory prunes its whole subtree, so to reach files inside it the pattern must also match the directory path itself, as the `--include` examples do (`^ios/`, not `GeneratedKit/`). The basis cache is never included.
 
 ### Tools that need a Git repository
 
@@ -212,15 +227,15 @@ lim xcode build . --git-init
 
 ### Add files from outside the repository
 
-When the build needs files that are not in your repository, such as a `.netrc` for private packages, a CI-only `Config.swift`, or a secrets file, sync them alongside the source with `--additional-file local=remote`. Repeat the flag for each file:
+When the build needs files that are not in your repository, such as a `.netrc` for private packages, a CI-only `Config.swift`, or a secrets file, sync them alongside the source. Each entry maps a local path to a remote path:
 
-```bash
+<CodeGroup>
+```bash CLI
+# --additional-file local=remote; repeat the flag for each file
 lim xcode build . --additional-file ~/.netrc=~/.netrc
 ```
 
-Remote paths that start with `~/` expand to the sandbox's home directory. From the TypeScript SDK:
-
-```ts
+```ts TypeScript
 await xcode.sync('./my-app', {
   watch: false,
   additionalFiles: [
@@ -229,6 +244,9 @@ await xcode.sync('./my-app', {
   ],
 });
 ```
+</CodeGroup>
+
+Remote paths that start with `~/` expand to the sandbox's home directory.
 
 ### Keep the delta cache on CI
 
@@ -266,11 +284,28 @@ Passing any of these flags always regenerates the project, even when the sync su
 
 ## Run project commands
 
-Use `lim xcode run` when the repository needs a macOS command, such as a Make target or a code generator. It syncs the current directory, then runs the command after `--` in the remote workspace:
+Use `lim xcode run` when the repository needs a macOS command, such as a Make target or a code generator. It syncs the current directory, then runs the command in the remote workspace:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim xcode run -- make api
 ```
+
+```ts TypeScript
+await xcode.sync('./my-app', { watch: false });
+
+const command = xcode.run('make api', {
+  cwd: '.',
+  timeoutSeconds: 1800,
+});
+
+command.stdout.on('data', (line) => process.stdout.write(line));
+command.stderr.on('data', (line) => process.stderr.write(line));
+const { exitCode } = await command;
+```
+</CodeGroup>
+
+The CLI runs the command after `--`. In TypeScript, call `sync` before `run`, as the example does.
 
 The optional positional path sets the remote working directory, relative to the synced workspace. It defaults to `.`:
 
@@ -285,26 +320,11 @@ lim xcode run --no-sync -- make api
 lim xcode run --env API_ENV=development -- npm run generate
 ```
 
-Commands are one-shot. They stream stdout and stderr, return the remote exit code, and do not provide an interactive terminal. `--timeout` sets the server-side limit in seconds: 3600 by default, 21600 at most.
-
-From the TypeScript SDK, sync first and then run the command:
-
-```ts
-await xcode.sync('./my-app', { watch: false });
-
-const command = xcode.run('make api', {
-  cwd: '.',
-  timeoutSeconds: 1800,
-});
-
-command.stdout.on('data', (line) => process.stdout.write(line));
-command.stderr.on('data', (line) => process.stderr.write(line));
-const { exitCode } = await command;
-```
+Commands are one-shot. They stream stdout and stderr, return the remote exit code, and do not provide an interactive terminal. `--timeout` (`timeoutSeconds` in TypeScript) sets the server-side limit in seconds: 3600 by default, 21600 at most.
 
 ## Run xcodebuild from the SDK
 
-From the TypeScript SDK, `xcodebuild` starts the build on a synced sandbox and streams its output:
+The TypeScript SDK's `xcodebuild` starts the build on a synced sandbox and streams its output:
 
 ```ts
 const build = xcode.xcodebuild({
@@ -344,17 +364,18 @@ To return before the build finishes, or to receive the result on a webhook, see 
 
 ## Pass build settings
 
-Repeat `--build-setting KEY=VALUE` to pass custom build settings. Keys must be uppercase letters, digits, and underscores (`^[A-Z0-9_]+$`), and the server reserves a few managed keys. A build takes at most 32 settings, 4096 bytes per value, and 64 KiB in total. Your values apply after Limrun's managed settings and replace a managed value with the same key, so a project that needs to can override a default such as `ONLY_ACTIVE_ARCH`. `APP_CONFIG_*` values are treated as app configuration and redacted from build logs.
+Pass custom build settings with a repeated `--build-setting KEY=VALUE`, or with `buildSettings` in TypeScript. Keys must be uppercase letters, digits, and underscores (`^[A-Z0-9_]+$`), and the server reserves a few managed keys. A build takes at most 32 settings, 4096 bytes per value, and 64 KiB in total. Your values apply after Limrun's managed settings and replace a managed value with the same key, so a project that needs to can override a default such as `ONLY_ACTIVE_ARCH`. `APP_CONFIG_*` values are treated as app configuration and redacted from build logs.
 
-```bash
+This build passes a staging API URL and a compilation condition:
+
+<CodeGroup>
+```bash CLI
 lim xcode build . --scheme MyApp \
   --build-setting APP_CONFIG_API_URL=https://staging.example.com \
   --build-setting SWIFT_ACTIVE_COMPILATION_CONDITIONS=STAGING
 ```
 
-From the TypeScript SDK, set `buildSettings`:
-
-```ts
+```ts TypeScript
 xcode.xcodebuild(
   { scheme: 'MyApp' },
   {
@@ -365,6 +386,7 @@ xcode.xcodebuild(
   },
 );
 ```
+</CodeGroup>
 
 Build settings reach `xcodebuild` only. `--env KEY=VALUE` sets an environment variable for every remote build command instead: dependency installs, `expo prebuild`, `pod install`, and `xcodebuild`. Server-managed variables such as `PATH` cannot be overridden.
 
@@ -372,52 +394,52 @@ Build settings reach `xcodebuild` only. `--env KEY=VALUE` sets an environment va
 
 Upload the artifact to Asset Storage when you want to install it on other simulators, open it as a [PR preview](/ci/pr-previews), or keep it as a CI artifact:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim xcode build . --scheme MyApp --upload my-build.zip
 ```
 
-From the TypeScript SDK:
-
-```ts
+```ts TypeScript
 xcode.xcodebuild(
   { scheme: 'MyApp' },
   { upload: { assetName: 'my-build.zip' } },
 );
 ```
+</CodeGroup>
 
 Later creates can install it by name with `lim ios create --install-asset my-build.zip`. The uploaded asset expires 14 days after the last upload by default: each build upload pushes the expiry out again, so assets you keep rebuilding stay alive. Pass `--upload-ttl` with a Go duration (`ttl` in the SDK) such as `720h` to change the window; `1d` is not a valid Go duration. Assets uploaded with `lim asset push` never expire unless you give them a `--ttl`. [Asset Storage](/platform/asset-storage) covers the rest of the asset model.
 
 To put the artifact in storage you already manage, pass a presigned S3, GCS, or R2 URL. The sandbox PUTs the artifact to it directly, so the bytes never travel through the machine that called `lim xcode build`. This also saves pulling a large build back through your CI runner:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim xcode build . --scheme MyApp --signed-upload-url '<presigned-url>'
 ```
 
-From the TypeScript SDK:
-
-```ts
+```ts TypeScript
 xcode.xcodebuild(
   { scheme: 'MyApp' },
   { upload: { signedUploadUrl: '<presigned-url>' } },
 );
 ```
+</CodeGroup>
 
 ### When the product name differs from the scheme
 
 The server finds the built `.app` on its own, including projects where the scheme and `PRODUCT_NAME` diverge, such as a scheme "MyApp Dev" that builds `MyApp-dev.app`. If an upload still fails with `built artifact not found`, name the bundle file, including the `.app` extension. The server then takes that name from the build products verbatim and skips discovery:
 
-```bash
+<CodeGroup>
+```bash CLI
 lim xcode build . --scheme "MyApp Dev" --upload myapp-dev-build --artifact-name MyApp-dev.app
 ```
 
-From the TypeScript SDK:
-
-```ts
+```ts TypeScript
 xcode.xcodebuild(
   { scheme: 'MyApp Dev', artifactName: 'MyApp-dev.app' },
   { upload: { assetName: 'myapp-dev-build' } },
 );
 ```
+</CodeGroup>
 
 ## Build flag reference
 
