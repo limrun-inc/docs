@@ -869,11 +869,29 @@ await client.tapDisplay('inner', inner.width / 2, inner.height / 2);
 
 The hinge accepts fractional angles from 0° (closed) to 180° (flat). Omit the angle to read the fold state. Use `fold 0` to close and `fold 180` to unfold; there is no separate unfold command. `--orientation` accepts `portrait`, `pud` (portrait upside down), `landscape-left`, or `landscape-right`, and changes independently of the hinge, so `lim ios fold --orientation portrait --id <instance-id>` rotates without moving the hinge.
 
-This drives the native simulator hinge, so apps receive Apple's hinge and layout updates. `--display outer` targets the cover display and `--display inner` the unfolded one, for `screenshot` and `tap`.
+This drives the native simulator hinge, so apps receive Apple's hinge and layout updates. `tap`, `scroll`, `swipe`, and `perform` follow the active display by default. Pass `--display outer` or `--display inner` to override the target for coordinate input. `screenshot` also accepts these display flags.
 
 `setDuoOrientation` accepts `portrait`, `landscape-left`, `landscape-right`, and `pud`. Display screenshots are upright, report dimensions in points, and contain JPEG data, including when saved with `lim ios screenshot --display`; `tapDisplay` uses those coordinates. These calls do not activate a display, so fold or unfold first; a display that is not ready reports an error.
 
-Use the display-specific methods for Duo automation. The element tree, the default screenshot, and recordings do not follow the inner display automatically.
+Gestures and scrolls follow the active display. Use `display` to override that target. Coordinates use the selected display's upright screenshot points:
+
+```ts
+await client.performActions([
+  { type: 'touchDown', x: 650, y: 400, x2: 750, y2: 400 },
+  { type: 'wait', durationMs: 600 },
+  { type: 'touchMove', x: 600, y: 400, x2: 800, y2: 400 },
+  { type: 'touchUp', x: 600, y: 400, x2: 800, y2: 400 },
+], { display: 'inner' });
+await client.scroll('down', 300); // active display
+await client.scroll('down', 300, { display: 'inner' }); // explicit override
+const activeDisplays = (await client.getFoldState())?.displays.filter(display => display.active);
+```
+
+For two-finger gestures, supply `x2` and `y2` together and keep both contacts through down, move, and up. Omitting `display` follows the active display for coordinate taps, scrolls, and raw gestures in both the SDK and CLI. Each new action resolves the active panel. A held raw touch keeps its original panel until touch-up, including across waits. `tapElement`, including scroll search and batched element taps, follows the active display. Default screenshots capture the active display. Default recordings follow the active display, including fold changes. The video keeps its initial canvas size and letterboxes panels with a different aspect ratio. Use `screenshotDisplay('inner')` or `startRecording({ display: 'inner' })` to pin a capture to one panel. CLI capture overrides are `screenshot --display inner|outer` and `record start --display inner|outer`.
+
+`elementTree()` preserves the accessibility frames reported by iOS. The application root does not define the capture canvas. On the iOS 27.1 Duo simulator, we observed an application root of 669 × 951 while its window and descendant frames used the upright inner display's 951 × 669 coordinate space. Use the `width` and `height` returned by `screenshotDisplay` for the capture canvas. In that full-screen window, descendant coordinates already matched the capture; do not scale or rotate them using the root's size. An app in iPhone compatibility mode can instead report app-local frames inside a centered window, so this observation is not a universal coordinate transform. If your renderer needs a full-canvas root, apply that size to a separate presentation copy of the tree.
+
+`getFoldState()` reports an `active` flag for each display from the simulator's current display state. Read it after a fold transition; the hinge angle alone cannot identify the active panel. Multiple panels can report active during a transition. Automatic input targeting, selector actions, and scroll search require exactly one active panel; retry after the fold settles if the result is ambiguous. If the native activity query fails, `getFoldState()` still returns geometry and omits `active`. The flag is also absent on older servers and on hinge, orientation, and unsolicited fold-state responses.
 
 In the browser stream, the Duo starts in a 2D frame and offers a lazy-loaded 3D frame. Both modes provide hinge and rotation controls, touch input on the cover and inner display, and single-finger touch and drag, but not multi-touch. Click or hold the frame's Sleep/Wake and volume buttons to control iOS. In 3D, the position starts unlocked; **Lock position** stops camera rotation while the screen and buttons stay active. Rotating the view moves the camera, while **Rotate device** changes the native orientation. **Laptop view** sets the hinge and orientation; it does not enable Apple's separate Table Mode. To embed the Duo frame in your own app, see [iPhone Duo frame](/platform/embed-simulator#iphone-duo-frame).
 
