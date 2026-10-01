@@ -10,7 +10,42 @@ icon: "plug"
 
 - **One endpoint, signed in with your Limrun account.** OAuth is the default: the client opens a browser, you approve access, and tokens refresh on their own afterwards. For headless setups, an API key in an `Authorization: Bearer` header works too.
 - **Stateless.** Every tool that touches a device takes an explicit `instanceId`, so there is no session to lose. Reconnects and long gaps are fine.
-- **Instances only.** An OAuth connection can create, inspect, drive, and delete instances and list your app assets. It cannot reach billing or the rest of the API. Builds and file uploads stay on the [`lim` CLI](/docs/agents/cli).
+- **Devices and cloud builds.** An OAuth connection controls devices and can pair the [`lim` CLI](/docs/agents/cli) for Xcode builds using the same account and environment. Builds still run through the CLI. Paired access does not include billing, account administration, or general asset uploads.
+
+## Use the same login for CLI builds
+
+For an agent with a local shell, including on Windows, the MCP connection can
+pair the CLI without another browser login:
+
+1. Call `get-cli-auth-context` to obtain the API endpoint, console endpoint, and organization ID.
+2. In the project directory, run:
+
+   ```shell
+   lim login --mcp --api-endpoint <apiEndpoint> --console-endpoint <consoleEndpoint> --organization-id <organizationId>
+   ```
+
+3. Call `approve-cli-login` with the command's `sessionId` and `phrase`.
+4. Complete the connection in the same project directory:
+
+   ```shell
+   lim login --complete <sessionId>
+   ```
+
+The CLI collects its credential directly from Limrun and saves it with both
+endpoints for this workspace. Credentials do not appear in tool results or chat.
+The same commands work in PowerShell, macOS, and Linux shells. Use a CLI version
+that supports `lim login --mcp`.
+
+Access lasts up to one hour and stops working if its approving MCP token is
+revoked or the approving member loses the required permissions. Repeat pairing
+when it expires. Existing MCP connections must reconnect once to authorize cloud
+builds; refreshing an old token does not grant additional access.
+
+The workspace rejects conflicting environment credentials or endpoints and does
+not fall back to a saved production login. Remove conflicting `LIM_API_KEY`,
+`LIM_API_ENDPOINT`, or `LIM_CONSOLE_ENDPOINT` overrides from the build shell.
+Changing the paired account or API environment clears remembered devices in that
+workspace. Other workspaces retain their own configuration.
 
 ## Choose the remote or per-instance server
 
@@ -21,7 +56,7 @@ Every instance also runs [its own MCP server](/docs/agents/mcp). Pick by who hol
 | Endpoint | `https://mcp.limrun.com/mcp` for the whole organization | One URL per instance, from `status.mcpUrl` |
 | Auth | OAuth sign-in, or an API key | That instance's `status.token` |
 | Lifecycle tools | Create, list, inspect, and delete instances | None; the instance must already exist |
-| Blast radius | Every iOS simulator and Android emulator in the organization | One instance; the token stops working with it |
+| Access | Organization devices and paired Xcode builds, limited by the approving member’s permissions | One instance; the token stops working with it |
 | Best for | An agent that owns the whole loop, from "get me a device" to cleanup | Handing one device to an agent that holds no organization credential |
 
 ## Connect from Claude Code
