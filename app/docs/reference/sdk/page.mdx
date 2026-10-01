@@ -303,21 +303,32 @@ while (page.hasNextPage()) {
 ```
 
 ```python
-for inst in client.ios_instances.list(label_selector="session=demo", state="ready"):
-    print(inst.metadata.id)
+params = {"label_selector": "session=demo", "state": "ready"}
+while page := client.ios_instances.list(**params).items:
+    for inst in page:
+        print(inst.metadata.id)
+    # Page by hand: the iterator stops after the first page.
+    params["starting_after"] = page[-1].metadata.id
 ```
 
 ```go
-// List returns one page (up to 50 instances by default).
-page, err := client.IosInstances.List(ctx, limrun.IosInstanceListParams{
+// Page by hand: ListAutoPaging panics on instance lists.
+params := limrun.IosInstanceListParams{
     LabelSelector: param.NewOpt("session=demo"),
     State:         param.NewOpt("ready"),
-})
-if err != nil {
-    panic(err)
 }
-for _, inst := range page.Items {
-    fmt.Println(inst.Metadata.ID)
+for {
+    page, err := client.IosInstances.List(ctx, params)
+    if err != nil {
+        panic(err)
+    }
+    if len(page.Items) == 0 {
+        break
+    }
+    for _, inst := range page.Items {
+        fmt.Println(inst.Metadata.ID)
+    }
+    params.StartingAfter = param.NewOpt(page.Items[len(page.Items)-1].Metadata.ID)
 }
 ```
 
@@ -455,7 +466,7 @@ The cURL tab shows only the two-step upload. `lim asset pull` downloads an asset
 
 ## Pagination
 
-Instance `list` methods in TypeScript, Python, and Go return iterables that fetch further pages as needed, as the [List](#list) examples show. In TypeScript, a single page also exposes `hasNextPage()` and `getNextPage()` when you want to page by hand. `limit` sets the page size: it defaults to 50 and caps at 500, and a larger value returns 500 per page.
+In TypeScript, instance `list` methods return iterables that fetch further pages as needed, and a single page also exposes `hasNextPage()` and `getNextPage()`. In Python and Go, page by hand as the [List](#list) examples show: pass the last instance ID of a page as `starting_after` (Python) or `StartingAfter` (Go), and stop at an empty page. The Python iterator stops after the first page, and Go `ListAutoPaging` panics on instance lists. `limit` sets the page size: it defaults to 50 and caps at 500, and a larger value returns 500 per page.
 
 `assets.list` does not page. It returns one array of at most `limit` assets (default 50), so repeat the call until it comes back empty when you need every asset; [Asset Storage](/docs/platform/asset-storage#organize-assets-for-multiple-tenants) shows the pattern.
 

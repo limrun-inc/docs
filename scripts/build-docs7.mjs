@@ -108,7 +108,7 @@ const LABEL_ORDER = ["CLI", "TypeScript", "Python", "Go", "cURL"];
 
 function checkLabelOrder(labels, name) {
   const ranks = labels.map((label) => LABEL_ORDER.indexOf(label)).filter((rank) => rank >= 0);
-  if (ranks.some((rank, i) => i > 0 && rank <= ranks[i - 1])) {
+  if (!ranks.every((rank, i) => i === 0 || rank > ranks[i - 1])) {
     throw new Error(`${name}: CodeGroup labels ${labels.join(", ")} are not in the order ${LABEL_ORDER.join(", ")}`);
   }
 }
@@ -148,6 +148,7 @@ function transformBody(body, name) {
       } else if (group && !title) {
         throw new Error(`${name}: fence in an unlabeled CodeGroup needs a title="..."`);
       }
+      if (group) group.seen.push(label);
       out.push(`${indent}${marker}${label ? `${lang} ${label}` : rest.trim()}`);
       continue;
     }
@@ -172,14 +173,14 @@ function transformBody(body, name) {
     const groupOpen = line.match(/^(\s*)<CodeGroup(?: labels=\{\[(.*)\]\})?>\s*$/);
     if (groupOpen) {
       if (group) throw new Error(`${name}: nested CodeGroup`);
-      group = { labels: groupOpen[2] === undefined ? null : parseLabels(groupOpen[2]), next: 0 };
-      checkLabelOrder(group.labels ?? [], name);
+      group = { labels: groupOpen[2] === undefined ? null : parseLabels(groupOpen[2]), next: 0, seen: [] };
       line = `${groupOpen[1]}<CodeGroup>`;
     } else if (/^\s*<\/CodeGroup>\s*$/.test(line)) {
       if (!group) throw new Error(`${name}: </CodeGroup> without opener`);
       if (group.labels && group.next !== group.labels.length) {
         throw new Error(`${name}: CodeGroup has ${group.labels.length} labels but ${group.next} fences`);
       }
+      checkLabelOrder(group.seen, name);
       group = null;
     }
 
