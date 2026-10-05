@@ -12,9 +12,11 @@ Organization admins can review their organization's archived activity in the Lim
 
 Select your organization in the [console](https://console.limrun.com), then open **Audit logs** under Account. Choose a start and end time up to 7 days apart and select **Search**. Times use your browser's local timezone.
 
-You can filter by action, actor ID, resource ID, and outcome. Text filters match exact values. Results show up to 50 events per page, newest first. Use **Next** and **Previous** to browse, and **Details** to inspect an event's identifiers, source, HTTP status, duration, and available metadata.
+You can filter by action, actor ID, resource ID, and outcome. Text filters match exact values. Results show the matching total and the current record range, newest first. Choose 25, 50, 100, or 200 under **Rows per page**. The default is 50. Use **Next** and **Previous** to browse, and **Details** to inspect an event's identifiers, source, HTTP status, duration, and available metadata.
 
-**Refresh** repeats the current search window. To include activity after its end time, update **To** and search again. Changing organizations clears the previous organization's search.
+Loaded pages stay available during the search, and the console loads the next page ahead of time. Returning to a loaded page does not run another search.
+
+**Refresh** clears cached pages and repeats the current search window from the first page. To include activity after its end time, update **To** and search again. Changing organizations clears the previous organization's search.
 
 ## Read the results
 
@@ -33,6 +35,7 @@ The console uses `GET /organizations/{organizationId}/audit_logs` with the signe
 | `start`, `end` | Required timestamps with timezone offsets. Start is inclusive and end is exclusive; the range cannot exceed 7 days. |
 | `action`, `actorId`, `resourceId` | Optional exact text matches. |
 | `outcome` | Optional `success`, `accepted`, `denied`, `failure`, or `unknown`. |
-| `cursor` | The previous response's `nextCursor`, used with the same organization and filters. |
+| `limit` | Optional page size from 1 to 200, default 50. |
+| `cursor` | The previous response's `nextCursor`, used with the same organization, filters, and page size. |
 
-The response contains an `events` array and an optional `nextCursor`. It does not provide a fixed snapshot across pages.
+The response contains an `events` array, a `total` matching count after deduplication and before pagination, and an optional `nextCursor`. The count may change as late events arrive. It does not provide a fixed snapshot across pages.
