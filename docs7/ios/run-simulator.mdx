@@ -559,12 +559,16 @@ await client.launchApp('com.example.MyApp');
 await client.launchApp('com.example.MyApp', 'RelaunchIfRunning');
 await client.launchApp('com.example.MyApp', {
   mode: 'RelaunchIfRunning',
-  onExit: async (logs) => {
-    console.log('App exited. Last lines from this launch:');
+  onExit: (logs, info) => {
+    console.log(info.reason, info.crash?.shortMsg);
     for (const line of logs) console.log(line);
   },
 });
-await client.terminateApp('com.example.MyApp');
+
+const watch = await client.watchApp('com.example.MyApp', (logs, info) => console.log(info.reason));
+await watch.stop();
+
+await client.terminateApp('com.example.MyApp'); // fires onExit with reason 'terminated'
 
 // Install from a URL (md5 enables server-side caching)
 await client.installApp('https://...build.zip', {
@@ -588,9 +592,34 @@ result, err := client.InstallApp(ctx, "https://...build.zip", &iosws.AppInstalla
 
 </CodeGroup>
 
-`launch-app` streams the app's logs and exits when the app exits. CLI only: pass `--detach` to return right after the launch, for example in scripts. `install-app` accepts a local archive, which the CLI uploads to Asset Storage first, or a remote URL, which the instance downloads itself. `--md5` (SDK: `md5`) enables server-side install caching for remote URLs. If you don't know the bundle ID, check the Xcode project or run `list-apps` after a successful build.
+`launch-app` streams the app's logs and exits when the app exits, printing the exit reason and, after a crash, the crash details. CLI only: pass `--detach` to return right after the launch, for example in scripts. `install-app` accepts a local archive, which the CLI uploads to Asset Storage first, or a remote URL, which the instance downloads itself. `--md5` (SDK: `md5`) enables server-side install caching for remote URLs. If you don't know the bundle ID, check the Xcode project or run `list-apps` after a successful build.
 
-TypeScript only: use `onExit` when your runner needs to react to a crash or termination. The callback receives the stdout and stderr lines recorded for that launch.
+TypeScript only: `onExit` and `watchApp` report how an app ended; see [React to crashes and exits](#react-to-crashes-and-exits).
+
+### React to crashes and exits
+
+Use `onExit` on `launchApp`, or `watchApp` for an app you didn't launch through the client, when your runner needs to know why an app stopped. Both call back once, with the log lines and an `info` object:
+
+- `info.reason` is `crash` when the app died on a fatal signal, `terminated` when it was stopped through `terminateApp` or a relaunch, and `exit` when it ended on its own.
+- `info.crash` is set for crashes. `shortMsg` names the exception and signal, for example `EXC_BAD_ACCESS (SIGSEGV) at 0x10`. `longMsg` carries the crash message the app left, such as a Swift `Fatal error: ...` line or an uncaught exception's reason. `stackTrace` lists the crashed thread's frames, with symbol names for the app's own code, followed by the binary images those frames belong to.
+- `logs` holds the stdout and stderr lines of that launch. `watchApp` callbacks get no log lines.
+
+`watchApp` picks up the next exit of any process of the app, including one started later, for example by a deep link:
+
+```ts
+const watch = await client.watchApp('com.example.MyApp', (logs, info) => {
+  if (info.reason === 'crash') console.log(info.crash?.longMsg, info.crash?.stackTrace);
+});
+await client.openUrl('myapp://orders/42');
+```
+
+The frames show function names, not file and line. To get file and line, symbolicate a frame with your build's dSYM: take the load address of the frame's image from the `Binary Images` lines at the end of `stackTrace`.
+
+```bash
+atos -arch arm64 -o MyApp.app.dSYM/Contents/Resources/DWARF/MyApp -l <load address> <frame address>
+```
+
+Only the app process ending counts as an exit. A JavaScript error that shows the React Native or Expo red error screen keeps the process running, so it reports nothing.
 
 ### Reset app data between runs
 
