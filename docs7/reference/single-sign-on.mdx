@@ -160,5 +160,5 @@ If the email domain is verified and the provider sign-in succeeds, Limrun signs 
 
 - Limrun supports OIDC SSO. For user and group provisioning, see [SCIM provisioning](/reference/single-sign-on/scim). SAML is not supported.
 - A Limrun organization has one OIDC connection.
-- Without SCIM, a first SSO sign-in creates an account and joins the organization. With SCIM, provisioning creates the account before sign-in. New users can sign in after activation when they are active in the directory and belong to a group mapped to a Limrun role.
+- Without SCIM, a first SSO sign-in creates an account and joins the organization. With SCIM, provisioning creates the account before sign-in. New users can sign in after activation when they are active in the directory and have a role through a mapped group or an IdP-assigned entitlement.
 - If a user already exists with the same verified email address, a successful OIDC sign-in links that account to the OIDC identity for the organization.
