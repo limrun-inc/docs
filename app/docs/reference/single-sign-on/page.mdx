@@ -10,7 +10,7 @@ Limrun acts as an OIDC service provider. It uses each user's verified email doma
 
 Once a domain is verified and its organization has an SSO connection, everyone with that email domain must use **Continue with SSO**. This applies to new signups and existing accounts. Google, GitHub, Microsoft, and email-code sign-in cannot be used for that domain.
 
-For provider-specific setup, see [Okta](/docs/reference/single-sign-on/okta) or [Microsoft Entra ID](/docs/reference/single-sign-on/microsoft-entra). To manage users and group access, see [SCIM provisioning](/docs/reference/single-sign-on/scim).
+For provider-specific setup, see [Okta](/docs/reference/single-sign-on/okta) or [Microsoft Entra ID](/docs/reference/single-sign-on/microsoft-entra). To manage users and roles, see [SCIM provisioning](/docs/reference/single-sign-on/scim).
 
 ## Before you start
 
@@ -49,7 +49,7 @@ Each SSO domain must be verified before users with that domain can sign in throu
 
 5. After the DNS record is published, click **Verify DNS** in Limrun.
 
-New domains have auto-join enabled by default. Auto-join takes effect after verification. If you manage domains through the API, set `autoJoinEnabled: false` to opt out. Without SCIM, successful SSO sign-in adds the user to the connection's organization regardless of this setting. Connecting SCIM disables auto-join and new SSO admission during setup. Once activated, SCIM requires an active provisioned user and a mapped group.
+New domains have auto-join enabled by default. Auto-join takes effect after verification. If you manage domains through the API, set `autoJoinEnabled: false` to opt out. Without SCIM, successful SSO sign-in adds the user to the connection's organization regardless of this setting. Connecting SCIM disables auto-join and new SSO admission during setup. Once activated, SCIM requires an active provisioned user with a role under the configured policy.
 
 ## Create the OIDC application
 
@@ -157,7 +157,7 @@ If the email domain is verified and the provider sign-in succeeds, Limrun signs 
 
 ## Limits and account linking
 
-- Limrun supports OIDC SSO. For user and group provisioning, see [SCIM provisioning](/docs/reference/single-sign-on/scim). SAML is not supported.
+- Limrun supports OIDC SSO. For user provisioning, see [SCIM provisioning](/docs/reference/single-sign-on/scim). SAML is not supported.
 - A Limrun organization has one OIDC connection.
-- Without SCIM, a first SSO sign-in creates an account and joins the organization. With SCIM, provisioning creates the account before sign-in. New users can sign in after activation when they are active in the directory and have a role through a mapped group or an IdP-assigned entitlement.
+- Without SCIM, a first SSO sign-in creates an account and joins the organization. With SCIM, provisioning creates the account before sign-in. New users can sign in after activation when they are active in the directory and have a console-managed or provider-assigned role.
 - If a user already exists with the same verified email address, a successful OIDC sign-in links that account to the OIDC identity for the organization.
