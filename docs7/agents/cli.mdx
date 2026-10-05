@@ -46,8 +46,7 @@ Narrow or change the install with these flags:
 
 | Flag | What it does |
 |---|---|
-| `--version <version>` | Install a skills release, such as `0.1.17` or `v0.1.17`. Cannot be combined with `--commit`. |
-| `--commit <sha>` | Install an exact full 40-character commit SHA. Cannot be combined with `--version`. |
+| `--ref <version-or-sha>` | Install a skills release version, such as `0.1.17` or `v0.1.17`, or a full 40-character commit SHA. Branch names are not accepted. |
 | `--agents claude\|cursor\|codex` | Install for one agent. Repeat to pick several. |
 | `--skills <name>` | Install one skill, such as `limrun-xcode`. Repeat to pick several. |
 | `--scope project\|global` | Install into the project (default) or into the agent's global skills directory. |
@@ -58,11 +57,11 @@ Existing skill directories with different content are updated in place, so revie
 To pin a skills release or commit:
 
 ```bash
-lim skills install --version 0.1.17
-lim skills install --commit <full-commit-sha>
+lim skills install --ref 0.1.17
+lim skills install --ref <full-commit-sha>
 ```
 
-Without either flag, the command fetches `main`. The summary and JSON `source.commit` field report the resolved commit. Save it and use `--commit` to install the same source again, even if a release tag moves. Missing versions or commits fail without falling back to the latest skills. Use explicit `--skills` and `--agents` selections to keep the installed selection fixed across projects. `--keep-existing` can preserve local content that differs from the pinned source.
+Without `--ref`, the command fetches `main`. The summary and JSON `source.commit` field report the resolved commit. Save it and use `--ref` to install the same source again, even if a release tag moves. Missing versions or commits fail without falling back to the latest skills. Use explicit `--skills` and `--agents` selections to keep the installed selection fixed across projects. `--keep-existing` can preserve local content that differs from the pinned source.
 
 ## Ask for a change
 
