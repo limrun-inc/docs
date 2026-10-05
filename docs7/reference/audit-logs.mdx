@@ -10,7 +10,7 @@ Organization admins can review their organization's archived activity in the Lim
 
 ## Search activity
 
-Select your organization in the [console](https://console.limrun.com), then open **Audit logs** under Account. Choose a start and end time up to 24 hours apart and select **Search**. Times use your browser's local timezone.
+Select your organization in the [console](https://console.limrun.com), then open **Audit logs** under Account. Choose a start and end time up to 7 days apart and select **Search**. Times use your browser's local timezone.
 
 You can filter by action, actor ID, resource ID, and outcome. Text filters match exact values. Results show up to 50 events per page, newest first. Use **Next** and **Previous** to browse, and **Details** to inspect an event's identifiers, source, HTTP status, duration, and available metadata.
 
@@ -30,7 +30,7 @@ The console uses `GET /organizations/{organizationId}/audit_logs` with the signe
 
 | Parameter | Meaning |
 | --- | --- |
-| `start`, `end` | Required timestamps with timezone offsets. Start is inclusive and end is exclusive; the range cannot exceed 24 hours. |
+| `start`, `end` | Required timestamps with timezone offsets. Start is inclusive and end is exclusive; the range cannot exceed 7 days. |
 | `action`, `actorId`, `resourceId` | Optional exact text matches. |
 | `outcome` | Optional `success`, `accepted`, `denied`, `failure`, or `unknown`. |
 | `cursor` | The previous response's `nextCursor`, used with the same organization and filters. |
