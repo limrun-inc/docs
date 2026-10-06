@@ -13,16 +13,16 @@ A coding agent that writes mobile code cannot tell whether the code works until 
 Install Limrun from your client's own directory. You sign in with your Limrun account the first time the agent uses it, and there is nothing else to configure.
 
 - **Claude** (claude.ai and Claude Desktop): add [Limrun from the connectors directory](https://claude.ai/directory/limrun).
-- **ChatGPT**: search for Limrun in the apps directory.
-- **Cursor**: search for Limrun in the Cursor Marketplace.
+- **ChatGPT**: add the [Limrun plugin](https://chatgpt.com/plugins/plugin_asdk_app_6aa95107d094819192324cfe1acf2985).
 
-Command-line agents install the same thing as a plugin with one command:
+Coding agents install the same thing as a plugin:
 
 | Agent | Install |
 |---|---|
 | Claude Code | `/plugin marketplace add limrun-inc/skills`, then `/plugin install limrun@limrun` |
 | Codex CLI | `codex plugin marketplace add limrun-inc/skills`, then `codex plugin install limrun` |
 | Gemini CLI | `gemini extensions install https://github.com/limrun-inc/skills` |
+| Cursor | `git clone https://github.com/limrun-inc/skills ~/.cursor/plugins/local/limrun` |
 
 For any other MCP client, connect it to `https://mcp.limrun.com/mcp`. [Remote MCP server](/docs/agents/remote-mcp) covers manual setup and API-key auth for headless agents.
 
