@@ -1,0 +1,61 @@
+---
+title: "Mobile simulator MCP for coding agents"
+description: "Add Limrun to your AI client, then have it launch a cloud iOS simulator or Android emulator, test a flow, and show you the result."
+order: 3
+icon: "bot"
+---
+# Drive a mobile simulator from a coding agent over MCP
+
+A coding agent that writes mobile code cannot tell whether the code works until it can open the app and look. Limrun's MCP server gives the agent a cloud iOS simulator or Android emulator it can launch, tap through, read back, and show you live.
+
+## Add Limrun to your client
+
+Install Limrun from your client's own directory. You sign in with your Limrun account the first time the agent uses it, and there is nothing else to configure.
+
+- **Claude** (claude.ai and Claude Desktop): add [Limrun from the connectors directory](https://claude.ai/directory/limrun).
+- **ChatGPT**: add the [Limrun plugin](https://chatgpt.com/plugins/plugin_asdk_app_6aa95107d094819192324cfe1acf2985).
+
+Coding agents install the same thing as a plugin:
+
+| Agent | Install |
+|---|---|
+| Claude Code | `/plugin marketplace add limrun-inc/skills`, then `/plugin install limrun@limrun` |
+| Codex CLI | `codex plugin marketplace add limrun-inc/skills`, then `codex plugin install limrun` |
+| Gemini CLI | `gemini extensions install https://github.com/limrun-inc/skills` |
+| Cursor | `git clone https://github.com/limrun-inc/skills ~/.cursor/plugins/local/limrun` |
+
+For any other MCP client, connect it to `https://mcp.limrun.com/mcp`. [Remote MCP server](/docs/agents/remote-mcp) covers manual setup and API-key auth for headless agents.
+
+## What MCP covers, and what the CLI covers
+
+MCP is for working with devices: creating them, tapping, typing, reading the screen and the app's logs, and showing you the live device. Building an app and installing files from your machine take the [`lim` CLI](/docs/agents/cli), because an MCP server cannot read your local files. The plugins above install both: the MCP server, plus skills that teach the agent when to switch to the CLI.
+
+## Ask for the outcome
+
+You do not call the tools yourself. Describe what you want tested, and the agent picks the tools:
+
+> Open an iOS simulator with my app, sign in as test@example.com, and tell me what the home screen shows.
+
+Behind that request, the agent:
+
+1. Calls `create-ios-simulator`, which waits until the simulator is ready and returns its instance ID. Apps can be preinstalled at creation by asset name or by public URL.
+2. Calls `ios-screenshot-and-element-tree` to read the screen. The element tree lists each element's label, accessibility ID, type, and frame, so the agent works from structure instead of guessing from pixels.
+3. Calls `ios-use` with a batch of actions, such as tapping the email field, typing, and tapping **Sign in**, then reads the screen again.
+4. Calls `ios-logs` to check the app's output, because a screen that looks right can sit on top of a failed request.
+5. Calls `delete-instance` when it is done.
+
+Ask it to "show me the simulator" at any point, and it calls `stream-device`, which shows the live, interactive device inside the chat where the client supports it. Android works the same way with `create-android-emulator`, `android-screenshot-and-element-tree`, and `android-use`.
+
+[Remote MCP server](/docs/agents/remote-mcp#tools) lists every tool and its arguments.
+
+## Troubleshooting
+
+**The agent says it cannot reach Limrun.** Open your client's connector or MCP settings and finish the Limrun sign-in. In Claude Code, run `/mcp`, select **limrun**, and choose **Authenticate**.
+
+**The simulator disappeared in the middle of a session.** Simulators stop after a period without interaction, set by your organization. Ask the agent to create the simulator with a longer `inactivityTimeout`, such as `"30m"`.
+
+**The agent cannot find a row further down a list.** iOS creates list rows only when they scroll into view. Ask the agent to scroll before tapping; in `ios-use`, `scroll` actions go before the `tapElement` in the same batch.
+
+**Taps land but the app does not respond.** Ask the agent to bring the app to the front with `ios-app` and to check `ios-logs` for a crash.
+
+**The agent should not hold an organization credential.** If the agent runs in a shared or untrusted sandbox, create the simulator yourself and give the agent only that one device. [Sandboxed agents](/docs/agents/sandboxed-agents) shows how.
