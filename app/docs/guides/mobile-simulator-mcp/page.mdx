@@ -1,116 +1,61 @@
 ---
 title: "Mobile simulator MCP for coding agents"
-description: "Have a coding agent launch a cloud iOS simulator or Android emulator, drive a flow, and check the result over MCP."
+description: "Add Limrun to your AI client, then have it launch a cloud iOS simulator or Android emulator, test a flow, and show you the result."
 order: 3
 icon: "bot"
 ---
 # Drive a mobile simulator from a coding agent over MCP
 
-A coding agent that writes mobile code cannot tell whether the code works until it can open the app and look. Limrun's MCP servers give the agent a cloud iOS simulator or Android emulator it can launch, tap through, read back, and hand to you as a link.
+A coding agent that writes mobile code cannot tell whether the code works until it can open the app and look. Limrun's MCP server gives the agent a cloud iOS simulator or Android emulator it can launch, tap through, read back, and show you live.
 
-This guide is the task view: launching a device, driving a flow, reading what happened, and fixing a session that misbehaves. Connect your agent first:
+## Add Limrun to your client
 
-- [Remote MCP server](/docs/agents/remote-mcp): one endpoint for your organization. The agent creates and deletes its own devices.
-- [Per-instance MCP server](/docs/agents/mcp): one endpoint per simulator, authenticated with that instance's token. Use it when the agent should hold credentials for one device and nothing else.
+Install Limrun from your client's own directory. You sign in with your Limrun account the first time the agent uses it, and there is nothing else to configure.
 
-Both pages list every tool and its arguments.
+- **Claude** (claude.ai and Claude Desktop): add [Limrun from the connectors directory](https://claude.ai/directory/limrun).
+- **ChatGPT**: search for Limrun in the apps directory.
+- **Cursor**: search for Limrun in the Cursor Marketplace.
 
-## Launch a simulator
+Command-line agents install the same thing as a plugin with one command:
 
-Through the remote server, the agent calls `create-ios-simulator`. The call blocks until the simulator is ready and returns its instance ID, which every device tool takes as `instanceId`. Three optional fields are worth setting:
+| Agent | Install |
+|---|---|
+| Claude Code | `/plugin marketplace add limrun-inc/skills`, then `/plugin install limrun@limrun` |
+| Codex CLI | `codex plugin marketplace add limrun-inc/skills`, then `codex plugin install limrun` |
+| Gemini CLI | `gemini extensions install https://github.com/limrun-inc/skills` |
 
-- `apps` installs apps at boot, by asset name or by public URL of a simulator build.
-- `inactivityTimeout` terminates the simulator after a period without interaction, such as `"10m"`.
-- `idempotencyKey` makes a retried call return the same simulator instead of creating a second one.
+For any other MCP client, connect it to `https://mcp.limrun.com/mcp`. [Remote MCP server](/docs/agents/remote-mcp) covers manual setup and API-key auth for headless agents.
 
-Instances created this way carry the label `created-by: mcp`, so you can find them later.
+## What MCP covers, and what the CLI covers
 
-With the per-instance server, you create the simulator yourself and hand its MCP URL and token to the agent. From the CLI:
+MCP is for working with devices: creating them, tapping, typing, reading the screen and the app's logs, and showing you the live device. Building an app and installing files from your machine take the [`lim` CLI](/docs/agents/cli), because an MCP server cannot read your local files. The plugins above install both: the MCP server, plus skills that teach the agent when to switch to the CLI.
 
-```bash
-lim ios create --reuse-if-exists --label agent=session-14 --inactivity-timeout 10m
-```
+## Ask for the outcome
 
-Labels scope reuse and cleanup to one agent, pull request, or session. `--reuse-if-exists` needs at least one label and returns an instance whose labels match exactly. List the instances for a session later with `lim ios list --label-selector "agent=session-14"`.
+You do not call the tools yourself. Describe what you want tested, and the agent picks the tools:
 
-## Drive a flow
+> Open an iOS simulator with my app, sign in as test@example.com, and tell me what the home screen shows.
 
-The loop is the same every time: read the screen, act, read the screen again. `ios-screenshot-and-element-tree` returns the screenshot and the accessibility element tree in one call, and the tree is the source of truth: each element's label, accessibility ID, type, and frame.
+Behind that request, the agent:
 
-`ios-use` runs a batch of actions in order. This batch taps an email field, types into it, presses Enter, and taps a button, all in one round trip:
+1. Calls `create-ios-simulator`, which waits until the simulator is ready and returns its instance ID. Apps can be preinstalled at creation by asset name or by public URL.
+2. Calls `ios-screenshot-and-element-tree` to read the screen. The element tree lists each element's label, accessibility ID, type, and frame, so the agent works from structure instead of guessing from pixels.
+3. Calls `ios-use` with a batch of actions, such as tapping the email field, typing, and tapping **Sign in**, then reads the screen again.
+4. Calls `ios-logs` to check the app's output, because a screen that looks right can sit on top of a failed request.
+5. Calls `delete-instance` when it is done.
 
-```json
-{
-  "instanceId": "ios_...",
-  "actions": [
-    { "kind": "tapElement", "selector": { "AXUniqueId": "emailField" } },
-    { "kind": "type", "text": "test@example.com", "pressEnter": true },
-    { "kind": "tapElement", "selector": { "AXLabel": "Sign in" } }
-  ]
-}
-```
+Ask it to "show me the simulator" at any point, and it calls `stream-device`, which shows the live, interactive device inside the chat where the client supports it. Android works the same way with `create-android-emulator`, `android-screenshot-and-element-tree`, and `android-use`.
 
-Leave out `instanceId` on the per-instance server, which is already bound to one simulator. A `type` action writes into the focused field, so tap the field first. Selectors match on `AXUniqueId`, `AXLabel`, `AXLabelContains`, `type`, `title`, `titleContains`, and `AXValue`, and every field you supply must match.
-
-When the agent has a shell, the CLI runs the same actions one command at a time:
-
-```bash
-lim ios tap-element --ax-unique-id emailField
-lim ios type "test@example.com" --enter
-lim ios tap-element --ax-label "Sign in"
-lim ios open-url "myapp://orders/42"
-```
-
-## Read what happened
-
-Three signals tell the agent whether the app works, not just whether the taps landed.
-
-**The screen.** Call `ios-screenshot-and-element-tree` after every batch and compare the tree with what the flow should have produced.
-
-**The app's logs.** UI that looks right can sit on top of a failed request. `ios-logs` returns the last log lines for a bundle ID, 200 by default. From a shell:
-
-```bash
-lim ios app-log com.example.MyApp --tail 200
-```
-
-**A link for a person.** Every simulator has a Signed Stream URL that opens the live device in any browser, with no sign-in. Anyone with the link can control the simulator, so share it only with people who should have access. For a review after the fact, record the run:
-
-```bash
-lim ios record start
-lim ios record stop -o ./run.mp4
-```
-
-## Android
-
-The Android tools follow the same pattern: `create-android-emulator` on the remote server, then `android-screenshot-and-element-tree`, `android-use`, and `android-open-url`. From the CLI, `lim android create` waits for the emulator and starts an ADB tunnel in the background, so existing tooling sees it as a connected device:
-
-```bash
-lim android create
-adb devices
-```
-
-From there, `adb install` and the rest of your Android tooling work as usual. [Run an Android emulator](/docs/android/run-emulator) covers the CLI and SDK in full.
+[Remote MCP server](/docs/agents/remote-mcp#tools) lists every tool and its arguments.
 
 ## Troubleshooting
 
-**Every MCP call fails authentication.** The two servers take different credentials. The per-instance server takes the instance's `status.token`, not your organization API key. The remote server takes OAuth or an organization API key.
+**The agent says it cannot reach Limrun.** Open your client's connector or MCP settings and finish the Limrun sign-in. In Claude Code, run `/mcp`, select **limrun**, and choose **Authenticate**.
 
-**The MCP URL is missing.** `status.mcpUrl` is set when the instance is assigned and works once it is `ready`. Create with `wait: true`, or poll `get-instance-status` until the state is `ready`.
+**The simulator disappeared in the middle of a session.** Simulators stop after a period without interaction, set by your organization. Ask the agent to create the simulator with a longer `inactivityTimeout`, such as `"30m"`.
 
-**The simulator disappeared mid-session.** Check the inactivity and hard timeouts. An open but idle tunnel does not count as activity.
+**The agent cannot find a row further down a list.** iOS creates list rows only when they scroll into view. Ask the agent to scroll before tapping; in `ios-use`, `scroll` actions go before the `tapElement` in the same batch.
 
-**`--reuse-if-exists` keeps creating new instances.** Reuse needs at least one label and matches the label set exactly, in the region that handles the create. A different label value, or a create that lands in another region, starts a new instance.
+**Taps land but the app does not respond.** Ask the agent to bring the app to the front with `ios-app` and to check `ios-logs` for a crash.
 
-**The element tree fills the agent's context.** Filter it before it reaches the model. This prints only buttons:
-
-```bash
-lim ios element-tree --json | jq -c '.. | objects | select(.type? == "Button")'
-```
-
-**A selector matches nothing.** iOS creates list rows only when they scroll into view, so a row below the fold is often absent from the tree. In `ios-use`, put `scroll` actions before the `tapElement` in the same batch. On the CLI, add `--scroll-search`.
-
-**Two agents are driving the same device.** Everyone using the same simulator controls the same screen. Give each agent, pull request, or session its own instance with labels.
-
-**The stream link stopped working.** A Signed Stream URL works only while its instance runs. If a timeout terminated the instance, create a new one and share its new URL.
-
-**Actions land but the app does not respond.** Bring the app to the front with `ios-app`, then check `ios-logs` for a crash. To keep one app in front for a whole session, create the simulator with `--force-bundle-id`; after the app first reaches the foreground, Limrun brings it back whenever it is closed or backgrounded.
+**The agent should not hold an organization credential.** If the agent runs in a shared or untrusted sandbox, create the simulator yourself and give the agent only that one device. [Sandboxed agents](/docs/agents/sandboxed-agents) shows how.
