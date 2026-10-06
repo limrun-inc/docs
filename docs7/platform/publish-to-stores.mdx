@@ -163,6 +163,46 @@ Both modes prepare an App Store Connect app record and API key for the upload.
   </Step>
 </Steps>
 
+### Developer service keys and team access
+
+The authenticated Apple ID `relay` also supports Developer Portal service keys,
+agreement checks, and team access. These use the selected Developer Portal
+`teamId`. Developer service keys are separate from the App Store Connect API key
+used for signing and uploads.
+
+```ts
+import { createAppleDeveloperKey, downloadAppleDeveloperKey } from '@limrun/apple-auth';
+
+const key = await createAppleDeveloperKey({
+  relay,
+  teamId,
+  name: 'App notifications',
+  apns: true,
+});
+const downloaded = await downloadAppleDeveloperKey({ relay, teamId, keyId: key.keyId });
+// Decode downloaded.rawBodyBase64 once and store the .p8 bytes in your secret store.
+```
+
+The APNs option creates a team-scoped key for development and production.
+`deviceCheck: true` enables DeviceCheck; `musicId` selects an existing opaque
+Music ID for MusicKit. Key creation returns metadata, and the private key is
+retrieved by the separate download call.
+
+| Task | Helper |
+| --- | --- |
+| Read outstanding agreements without accepting them | `listApplePendingAgreements` |
+| Read members and their roles | `listAppleTeamMembers` |
+| Read pending invitations | `listAppleTeamInvites` |
+| Change a member's role to `admin` or `member` | `setAppleTeamMemberRole` |
+| Remove a member by `teamMemberId` | `removeAppleTeamMember` |
+| Invite an email address as `admin` or `member` | `inviteAppleTeamMember` |
+
+All helpers accept `{ relay, teamId }`. Member writes use Apple's opaque
+`teamMemberId`, which the member list returns. Await portal setup calls
+sequentially on a shared relay session. See the
+[SDK helper reference](https://github.com/limrun-inc/typescript-sdk/tree/main/packages/apple-auth#developer-service-keys-agreements-and-team-access)
+for options and response types.
+
 ## 3. Publish the iOS app
 
 When the user clicks publish, send the project path, team ID, bundle ID, signing mode, optional scheme, and webhook URL to your backend.
