@@ -1,0 +1,218 @@
+---
+title: "iOS development without a Mac"
+description: "Build, run, test, and ship an iOS app from Windows, Linux, ChromeOS, or a cloud agent sandbox."
+order: 2
+icon: "cloud"
+---
+# iOS development without a Mac
+
+You can write, compile, run, test, and submit an iOS app without owning a Mac, as long as the two macOS-only parts of the toolchain run somewhere else. Those two parts are `xcodebuild` and the iOS Simulator. Limrun runs both on a remote Mac, and you drive them from the machine you already have with the `lim` CLI, the SDKs, or MCP.
+
+This guide covers the setup for a Windows machine, a Chromebook or Linux box, and a cloud agent sandbox, then sharing, shipping, and the limits worth knowing before you commit.
+
+## What actually blocks you without a Mac
+
+Apple ships Xcode for macOS only, and the iOS Simulator is part of Xcode, so it carries the same restriction. Most of your project is still portable: your editor, source control, and any JavaScript, Dart, or server-side Swift toolchain run on Linux or Windows. None of that produces an iOS app bundle, because that takes `xcodebuild` on macOS.
+
+So you need macOS for three jobs:
+
+1. Compiling the app with `xcodebuild`.
+2. Running the result on a simulator to see whether it works.
+3. Signing the archive and uploading it to App Store Connect.
+
+Limrun covers each of them with a remote service:
+
+| Service | What it does |
+| --- | --- |
+| Xcode sandbox | A remote Mac that runs `xcodebuild`, signs the archive, and uploads it to App Store Connect. |
+| iOS simulator | A remote Mac that runs the iOS Simulator, streams it to a browser, and takes commands from code. |
+| Asset Storage | Keeps a build so you can install it on a new simulator or share it as a preview link without rebuilding. |
+
+## Base setup
+
+This part is the same on Windows, Linux, ChromeOS, and inside a container. It needs Node.js 20 LTS or newer and nothing from Apple.
+
+### Install the CLI
+
+Install `lim` with your package manager:
+
+```bash
+npm install --global lim
+```
+
+### Authenticate
+
+On a machine with a browser, log in:
+
+```bash
+lim login
+```
+
+The CLI opens the Limrun console, finishes authentication in your browser, and writes the API key to `~/.lim/config.yaml`.
+
+On a headless host such as a CI runner, a devcontainer, or a cloud agent sandbox, create a token at [console.limrun.com/settings](https://console.limrun.com/settings) under **API Keys** and export it:
+
+```bash
+export LIM_API_KEY=lim_...
+```
+
+The CLI also reads a `.env` file in the working directory.
+
+### Build on a remote Mac
+
+Run this from your project root:
+
+```bash
+lim xcode build .
+```
+
+The first run creates an Xcode sandbox, syncs your working directory, and runs `xcodebuild` there. Later syncs send only the changed bytes, and build logs stream back as they happen. If the project has more than one scheme, add `--scheme <name>` and either `--workspace <path>` or `--project <path>`.
+
+### Run it on a simulator
+
+Create a simulator and attach it to the sandbox you just built on:
+
+```bash
+lim ios create --attach --reuse-if-exists --label project=quickstart
+```
+
+The attach installs and launches the latest build, and every later successful `lim xcode build .` reinstalls on its own. The output includes a **Signed Stream URL**. Open it in any browser to see and control the running simulator.
+
+### Drive the app
+
+Read the screen first, then act on what it shows:
+
+```bash
+lim ios element-tree
+lim ios tap-element --ax-label "Continue"
+lim ios screenshot ./screen.png
+```
+
+The element tree lists each element's label, accessibility ID, type, and frame, so work from it rather than from pixels. Replace `"Continue"` with something your own first screen shows. To fill a text field, use `lim ios set-text "Hello" --ax-unique-id <field-id>`; `lim ios type` sends real keystrokes and needs a focused field.
+
+### Clean up
+
+Delete both instances when you are done:
+
+```bash
+lim ios delete
+lim xcode delete
+```
+
+Without an ID, each command deletes the last instance of that type the CLI created.
+
+To try a simulator before installing anything, open the **Playground** in the [console](https://console.limrun.com). It creates and streams an instance from a dropdown.
+
+## Windows
+
+The build, simulator, and cleanup commands above run unchanged in PowerShell and in the Command Prompt: install Node.js and `lim`, then run them from your project folder. Your source stays on the Windows filesystem and syncs to the Xcode sandbox on each build, and the simulator is a browser tab, so there is no local emulator or virtual machine.
+
+In PowerShell, set the API key like this:
+
+```powershell
+$env:LIM_API_KEY = "lim_..."
+```
+
+If you already develop inside WSL, install `lim` inside the WSL distribution and keep the project on the Linux filesystem. The sync reads your working directory, and reading through `/mnt/c` is slower.
+
+For React Native and Expo projects, run Metro on your machine and tunnel its port to the simulator. [Connect to local services](/docs/ios/local-services) has the exact commands, including `EXPO_PACKAGER_PROXY_URL`.
+
+## ChromeOS and Linux
+
+On a Chromebook, turn on the Linux development environment, install Node.js inside it, and follow the base setup. Everything runs over HTTPS, WebSocket, and WebRTC, so the Chromebook only needs a network connection.
+
+Linux has one more benefit: CI already runs there. A standard `ubuntu-latest` GitHub Actions runner builds and tests an iOS app with no macOS runner. [GitHub Actions recipes](/docs/ci/github-actions) has complete workflows, and [`limrun-inc/ios-preview-action`](https://github.com/limrun-inc/ios-preview-action) wraps the build-and-preview case into one step.
+
+## Run your existing tests
+
+Your test frameworks work from any of these machines:
+
+- [Maestro](/docs/testing/maestro): your flows and the Maestro CLI run unchanged against a remote simulator. Only `maestro test` is supported.
+- [Appium](/docs/testing/appium): iOS uses `@limrun/appium-xcuitest-driver`, a fork of the upstream XCUITest driver.
+- [XCTest](/docs/testing/xctest): `lim xcode test` streams one line per test case and exits non-zero when a test fails.
+
+## Cloud agent sandboxes
+
+Most cloud coding agents run in Linux sandboxes. They can write Swift but cannot compile it or look at the result. Adding Limrun gives the agent a build command and a device it can see.
+
+Install the CLI and the Limrun skills in the agent's environment, and set `LIM_API_KEY` in the shell the agent uses:
+
+```bash
+npm install --global lim
+lim skills install
+```
+
+`lim skills install` fetches the latest skills from `limrun-inc/skills` and installs them without prompting. [Set up a coding agent](/docs/agents/cli) covers the options. For agents that discover tools rather than commands, Limrun also exposes device control over MCP: one [per-instance server](/docs/agents/mcp) for each simulator, and a [remote MCP server](/docs/agents/remote-mcp) for your organization that can also create and delete instances.
+
+An organization API key can create, list, and delete every instance you own. If the sandbox is shared or untrusted, keep the key and any saved login out of it: create the simulator outside and hand the agent only that instance's URL and token. [Sandboxed agents](/docs/agents/sandboxed-agents) walks through it.
+
+## Share a live preview
+
+The Signed Stream URL opens the running simulator in any browser, with no install, Mac, or Limrun account. Anyone with the link can control the simulator, so share it only with people who should have access.
+
+For pull request review, upload the build as an asset and post a preview link:
+
+```bash
+lim xcode build . --scheme MyApp --upload my-app-pr-42.zip
+```
+
+The reviewer opens `https://console.limrun.com/preview?asset=my-app-pr-42.zip&platform=ios`. Build uploads expire 14 days after the last upload by default. [PR previews](/docs/ci/pr-previews) covers the full workflow.
+
+For an asynchronous review, record the session instead:
+
+```bash
+lim ios record start
+lim ios record stop -o ./demo.mp4
+```
+
+To put a live device inside your own web app, see [Embed the simulator](/docs/platform/embed-simulator).
+
+## Ship to TestFlight and the App Store
+
+Signing and upload run in the Xcode sandbox. With Apple's cloud signing, one command builds, signs, and uploads to App Store Connect, where the build becomes available in TestFlight:
+
+```bash
+lim xcode build . \
+  --sdk iphoneos \
+  --configuration Release \
+  --scheme MyApp \
+  --signing-method app-store-connect \
+  --team-id VMBY3VYW4U \
+  --upload-to-appstore \
+  --asc-key-id 2X9R4HXF34 \
+  --asc-issuer-id "$ASC_ISSUER_ID" \
+  --asc-key ./signing/AuthKey_2X9R4HXF34.p8
+```
+
+You still need an Apple Developer Program membership, and the app record must already exist in App Store Connect because Apple's API cannot create one. [Sign and distribute](/docs/ios/sign-and-distribute) covers signing with your own `.p12` and provisioning profiles, and the App Store Connect settings that make TestFlight delivery automatic.
+
+## Where a remote simulator is not enough
+
+- **Simulators are not devices.** They do not reproduce real GPU behavior, thermal throttling, cellular conditions, or battery drain. Test a TestFlight build on a real phone before release.
+- **Some hardware needs a device.** Limrun can play a video file as the simulator's camera, which covers QR scanning and similar flows. Motion sensors, LiDAR, NFC, and Bluetooth peripherals need a physical device.
+- **In-app purchases use StoreKit's local test environment.** Transactions are signed with Apple's local-test certificate, so a backend that validates them against Apple's production or sandbox APIs rejects them. [Test in-app purchases](/docs/ios/in-app-purchases) has the setup.
+- **Input travels over the network.** A browser stream does not feel identical to a local simulator. For latency-sensitive work such as gesture tuning, test on hardware.
+
+## Troubleshooting
+
+**`--reuse-if-exists` keeps creating new instances.** Reuse needs at least one label and returns an instance whose labels match exactly, looked up in the region that handles the create. A different label value, or a retry from a network that lands in another region, creates a new instance.
+
+**`element-tree` output is too large.** Filter it before it reaches you or your agent. This prints every element whose label contains "Continue":
+
+```bash
+lim ios element-tree --json | jq -c '.. | objects | select((.AXLabel? // "") | contains("Continue"))'
+```
+
+**`tap-element` cannot find a row further down a list.** iOS creates list rows only when they scroll into view. Add `--scroll-search` to scroll and retry.
+
+**A generated source file is missing from the build.** The sync skips files your `.gitignore` excludes. Force-include what the build needs:
+
+```bash
+lim xcode build . --include '^ios/GeneratedKit/'
+```
+
+**The build cannot find the `.xcodeproj`.** If the project file is gitignored and a `project.yml` exists, the sandbox runs XcodeGen. A spec at the repository root or one directory down is found without flags; pin any other location with `--xcodegen-spec` and `--xcodegen-project`.
+
+**The simulator disappeared mid-session.** Check `--inactivity-timeout`. An open but idle tunnel does not count as activity.
+
+**The stream link stopped working.** A Signed Stream URL works only while its instance runs. If a timeout terminated the instance, create a new one and share its new URL.
