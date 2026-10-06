@@ -14,7 +14,7 @@ Select your organization in the [console](https://console.limrun.com), then open
 
 You can filter by action, actor ID, resource ID, and outcome. Text filters match exact values. Results show the matching total and the current record range, newest first. Choose 25, 50, 100, or 200 under **Rows per page**. The default is 50. Use **Next** and **Previous** to browse, and **Details** to inspect an event's identifiers, source, HTTP status, duration, and available metadata.
 
-Loaded pages stay available during the search, and the console loads the next page ahead of time. Returning to a loaded page does not run another search.
+Loaded pages stay available during the search, and the console loads the next page ahead of time. Returning to a loaded page does not run another search. If loading the next page in the background fails, selecting **Next** retries it.
 
 **Refresh** clears cached pages and repeats the current search window from the first page. To include activity after its end time, update **To** and search again. Changing organizations clears the previous organization's search.
 
@@ -26,7 +26,7 @@ Secret-value access, invoice links, build logs, session artifacts, authenticatio
 
 Recent events may take a few minutes to appear. An empty result means no archived events matched the search; it does not prove an action never happened. Capture is best effort, and activity can be missing. Late arrivals can change results between pages.
 
-Instance creation and readiness are separate events. A download grant records permission to download, not proof that a transfer completed. A successful billing request does not establish payment settlement.
+Instance creation and readiness are separate events. Lifecycle events show when the transition occurred, even if they arrived later. A download grant records permission to download, not proof that a transfer completed. A successful billing request does not establish payment settlement.
 
 If browsing is unavailable, the console displays an error rather than an empty result. Retry a busy search shortly. For a timeout, try a shorter window or more specific filters.
 
