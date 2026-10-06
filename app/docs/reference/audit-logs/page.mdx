@@ -20,6 +20,8 @@ Loaded pages stay available during the search, and the console loads the next pa
 
 ## Read the results
 
+Routine reads such as instance polling, metadata lists, analytics and audit-log searches are excluded from new audit capture. Authentication and authorization failures and rate-limit violations remain recorded. Secret-value access, invoice links, build logs, session artifacts, authentication events and billing-session creation remain recorded. Asset reads are recorded when upload or download URLs are requested. Previously archived read events remain searchable.
+
 Recent events may take a few minutes to appear. An empty result means no archived events matched the search; it does not prove an action never happened. Capture is best effort, and activity can be missing. Late arrivals can change results between pages.
 
 Instance creation and readiness are separate events. A download grant records permission to download, not proof that a transfer completed. A successful billing request does not establish payment settlement.
