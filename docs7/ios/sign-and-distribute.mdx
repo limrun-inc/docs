@@ -203,7 +203,7 @@ In TypeScript, `entitlements` is keyed by bundle ID, and the empty key targets t
 
 Three rules apply:
 
-- **Every capability must be enabled on your App ID.** The export registers toggleable capabilities such as HealthKit and push on the App ID for you. Capabilities that need extra configuration, such as app group assignments or special-agreement entitlements, must be set up in the developer portal first, or the export fails naming them.
+- **Every capability must be enabled on your App ID.** The export registers toggleable capabilities such as HealthKit and push on the App ID for you. Capabilities that need extra configuration, such as app group assignments or special-agreement entitlements, must be set up in the developer portal or through the Apple ID SDK helpers below before export, or the export fails naming them.
 - **Values must be fully expanded.** Build-setting references such as `$(AppIdentifierPrefix)` are rejected; write the concrete team prefix instead.
 - **Omit the keys the export manages.** Leave out `application-identifier`, `com.apple.developer.team-identifier`, `get-task-allow`, and `beta-reports-active`; the export sets them from the generated profile and distribution method.
 
@@ -212,6 +212,54 @@ Check what landed in the IPA:
 ```bash
 unzip -q my-app.ipa -d out && codesign -d --entitlements - out/Payload/MyApp.app
 ```
+
+### Configure App Groups through an Apple ID session
+
+`@limrun/apple-auth` can create an App Group, enable the capability, and assign
+it to both the main app and widget without opening the developer portal. Use the
+same authenticated `relay` and selected `teamId` as the
+[publish-to-stores flow](/platform/publish-to-stores).
+
+```ts
+import {
+  ensureAppleAppGroup,
+  getAppleBundleIDDetails,
+  updateAppleAppService,
+  assignAppleAppGroups,
+} from '@limrun/apple-auth';
+
+// Use the authenticated relay and the selected Developer Portal team.
+const group = await ensureAppleAppGroup({
+  relay,
+  teamId,
+  identifier: 'group.com.example.shared',
+  name: 'Shared widget data',
+});
+
+// These are Apple's opaque App ID record IDs, not bundle identifier strings.
+for (const appIdId of [mainAppIdId, widgetAppIdId]) {
+  const details = await getAppleBundleIDDetails({ relay, teamId, appIdId });
+  const applicationGroups = [...new Set([
+    ...(details.associatedApplicationGroups ?? []).map(g => g.applicationGroup),
+    group.applicationGroup,
+  ])];
+  await updateAppleAppService({
+    relay, teamId, appIdId, featureType: 'APG3427HIY', featureValue: true,
+  });
+  await assignAppleAppGroups({ relay, teamId, appIdId, applicationGroups });
+}
+```
+
+Create or regenerate provisioning profiles after these changes, then download
+fresh profiles for both bundles. The helpers `getAppleProfileDetails` and
+`regenerateAppleProfile` support profile repair. Continue passing the shared
+`com.apple.security.application-groups` entitlement for both bundles through
+`--entitlements`; portal assignments alone do not embed it in the IPA.
+
+The package also provides iCloud container, Apple Pay merchant and domain,
+Wallet pass type, website push, and Developer Portal key helpers. See the
+[helper reference](https://github.com/limrun-inc/typescript-sdk/tree/main/packages/apple-auth#developer-portal-resources)
+for the full list and the remaining unsupported portal calls.
 
 ## Troubleshoot signing
 
