@@ -86,7 +86,8 @@
         "group": "Guides",
         "icon": "graduation-cap",
         "pages": [
-          "guides/ios-bazel-claude-code-web"
+          "guides/ios-bazel-claude-code-web",
+          "guides/ios-without-a-mac"
         ]
       },
       {
