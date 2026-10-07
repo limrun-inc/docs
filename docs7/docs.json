@@ -108,8 +108,7 @@
               "reference/single-sign-on/microsoft-entra",
               "reference/single-sign-on/scim"
             ]
-          },
-          "reference/audit-logs"
+          }
         ]
       }
     ]

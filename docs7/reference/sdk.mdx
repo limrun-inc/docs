@@ -517,6 +517,12 @@ Time buckets are grouped by instance start time. A bounded start-time range, fro
 
 Historical `stoppedAt` values approximate with the time billing was recorded, which can be after termination. For periodic imports, rescan overlapping windows and upsert results by `instanceTid`, and keep a reconciliation scan of older windows to catch bills delayed beyond the overlap.
 
+## Audit log actors
+
+Organization admins can review events in [Audit logs](https://console.limrun.com/audit-logs). The Actor column shows the member's current email or the API key's current name. Hover over the circled info icon, or focus it with the keyboard, to see the corresponding ID.
+
+The audit-log response includes an `actor` display label. `actorId` is present for resolved organization members and API keys. System actors use labels such as **Limrun system**; missing or removed identities display as **Actor unavailable** without an ID.
+
 ## Next steps
 
 <Columns cols={2}>
