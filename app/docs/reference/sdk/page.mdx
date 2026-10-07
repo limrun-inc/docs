@@ -529,6 +529,24 @@ The `action` filter on `GET /organizations/{organizationId}/audit_logs` accepts 
 
 Instance lifecycle events (`instance.assigned`, `instance.ready`, and `instance.terminated`) and build asset-upload requests remain visible, including historical events. Internal setup and log-persistence operations are excluded from this view.
 
+Events can include optional `metadata` in the API response and the expanded console row. These values describe the event at capture time, while the Actor column resolves the current email or API-key name.
+
+| Event | Metadata when available |
+| --- | --- |
+| `instance.terminated` | `reason`: `UserRequested`, `InactivityTimeout`, `HardTimeout`, or `Unknown`. |
+| `instance.create` | Effective `inactivity_timeout` and `hard_timeout`, such as `5m0s` and `1h0m0s`. Billing or concurrency rejections can include the public error `reason`. |
+| Membership and invitations | Target `email`, `role`, `previous_role`, and a `result` distinguishing additions, updates and unchanged membership. |
+| API keys, scoped tokens, CLI approval and OAuth grants | Granted `scopes`, `expires_at`, and key `name` or OAuth `client_id` where applicable. |
+| Secret reads, writes and deletion | `name`, `secret_type`, and `result`. Writes distinguish `created`, `replaced` and `existing`. Secret values are never included. |
+| User, organization and SSO updates | `changed_fields`. Organization numeric settings include `settings` entries with `field`, `before` and `after`. SSO secret changes set `secret_rotated`. |
+| SCIM changes | Credential creation or rotation, policy `activated` and `direct_role_assignments_disabled`, or user `email`, `active` and assigned `role`. User updates can include `previous_active` and `previous_role`. |
+| Organization domains | `added_domains`, `removed_domains`, or verified `domain` and `verification_method`. |
+| Asset access and upload requests | Asset `name` and `asset_kind` for individual assets, and requested `access` such as `upload` or `download`. Signed URLs are never included. |
+| `build_cache.update` | `cache_key` and `result`: `bound` or `unchanged`. |
+| Checkout and subscription changes | Plan `plan` and `result` such as `checkout_created`, `confirmation_requested`, `cancelled` or `unchanged`. Opening checkout or confirmation does not prove payment or a completed plan change. |
+
+Fields are optional, and older events may lack them. New metadata does not backfill existing events. If details exceed the event size limit, `metadata` contains only `{"truncated":true}` and the core event remains available. A failed HTTP response can still include a committed `result`, for example when an invitation was saved but its email could not be sent.
+
 ## Next steps
 
 <Columns cols={2}>
