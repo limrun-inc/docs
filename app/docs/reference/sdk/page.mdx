@@ -527,7 +527,7 @@ Actions use customer-facing names such as `instance.create`, `instance.delete`, 
 
 The `action` filter on `GET /organizations/{organizationId}/audit_logs` accepts these exact names. For example, `instance.create` matches create events for all instance platforms, including historical events. Existing operation-name filters remain accepted as exact aliases for retained events. Totals and pagination include only customer-visible events. The response no longer includes `sourceService`.
 
-Automatic instance termination and build asset-upload requests remain visible. Internal setup, log-persistence, and provisioning milestones are excluded from this view, including historical events.
+Instance lifecycle events (`instance.assigned`, `instance.ready`, and `instance.terminated`) and build asset-upload requests remain visible, including historical events. Internal setup and log-persistence operations are excluded from this view.
 
 ## Next steps
 
