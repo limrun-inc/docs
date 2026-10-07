@@ -331,7 +331,7 @@ These props match `@limrun/ui` 0.16.0, the current `latest` release on npm. The 
 | `token` | string | required | Instance token. Pass `instance.status.token`. The component appends it to the connection URL as `?token=…`. |
 | `sessionId` | string | random | A unique signaling-session identifier. Prevents collisions when several browser tabs resolve to the same reused instance. Create it once per mount, for example with `useState` and `crypto.randomUUID()` as in the example above; a value that changes between renders restarts the stream. |
 | `openUrl` | string | none | A URL or deep link to open on the device once the component is ready, such as `https://example.com`, `myapp://orders/42`, or `exp://…` for Expo Go. |
-| `showFrame` | boolean | `true` | Draw the device frame. iPad frames are available from 0.17.0-rc.6; Apple Watch renders frameless. See [iPad and Apple Watch](#ipad-and-apple-watch). |
+| `showFrame` | boolean | `true` | Draw the device frame. See [iPad and Apple Watch](#ipad-and-apple-watch) for models without built-in frames. |
 | `assets` | object | bundled frames | Device frame and boot-logo images. The default entry bundles Limrun's frames; the `@limrun/ui/lite` entry omits them so a frameless embed stays small. |
 | `autoReconnect` | boolean | `false` | Reconnect automatically when a working session's connection drops, instead of showing the Retry button. |
 | `onConnectionStateChange` | callback | none | Reports the coarse connection state, `connecting`, `connected`, `reconnecting`, `failed`, or `terminated`, for status UI outside the component. |
@@ -348,7 +348,7 @@ These props match `@limrun/ui` 0.16.0, the current `latest` release on npm. The 
 | `onCameraStats` | callback | none | About once per second while the camera is streaming, reports outbound WebRTC stats such as codec, fps, bitrate, round-trip time, and quality limitation; `null` once it goes idle. |
 | `microphoneEnabled` | boolean | `false` | Capture the user's microphone and stream it into the device's microphone. Apps that consume microphone input also start capture on their own. |
 | `onMicrophoneStateChange` | callback | none | Reports microphone capture state: whether it is active, the device label, and any error. |
-| `deviceModel` | `'iphone-duo' \| 'ipad'` | auto-detected | Show the selected frame before detection. The `ipad` hint requires 0.17.0-rc.6 or later. `iphone-duo` also enables the native displays and folding controls. This prop does not select the model when creating an instance. |
+| `deviceModel` | `'iphone-duo'` | auto-detected | 0.17.0 release candidate. Enable the Duo viewer explicitly; otherwise the component discovers Duo support from the connection. It does not select the model when creating an instance. |
 | `duoModelUrl` | string | built-in model | 0.17.0 release candidate. URL of a prepared custom Duo GLB. See [iPhone Duo frame](#iphone-duo-frame). |
 
 ## Built-in input handling
@@ -446,19 +446,17 @@ These are browser-side controls. For richer control from your server, such as ta
 
 ## iPad and Apple Watch
 
-From `@limrun/ui` 0.17.0-rc.6, iPad streams automatically use an iPad Pro frame in portrait and landscape. Detection uses the video's proportions and works when WebRTC downscales the stream. Pass `deviceModel="ipad"` if you want the iPad frame visible before video arrives:
+`showFrame` ships device art for iPhone (iOS), Pixel 9 (Android phone), and Pixel Tablet (Android tablet). iPad and Apple Watch have no dedicated frame today, so render them frameless:
 
 ```tsx
 <RemoteControl
   url={session.endpointWebSocketUrl}
   token={session.token}
-  deviceModel="ipad"
+  showFrame={false}
 />
 ```
 
-Apple Watch streams render frameless. Pass `showFrame={false}` to hide the frame for any device. On earlier releases, use this prop for both iPad and Watch to avoid the iPhone frame.
-
-Select the actual simulator model on the backend with `spec.model: 'ipad'` or `spec.model: 'watch'`.
+The video stream keeps the correct aspect ratio and resolution, so you can wrap the component in your own chrome. Select the model on the backend with `spec.model: 'ipad'` or `spec.model: 'watch'`.
 
 ## End-to-end example
 
