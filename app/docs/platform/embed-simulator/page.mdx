@@ -445,7 +445,9 @@ These are browser-side controls. For richer control from your server, such as ta
 
 ## iPad and Apple Watch
 
-`showFrame` ships device art for iPhone (iOS), Pixel 9 (Android phone), and Pixel Tablet (Android tablet). iPad and Apple Watch have no dedicated frame today, so render them frameless:
+`showFrame` ships device art for iPhone (iOS), Pixel 9 (Android phone), and Pixel Tablet (Android tablet). Starting with `@limrun/ui@0.17.0-rc.4`, iPad and Apple Watch streams automatically render frameless once their video dimensions are available, in portrait and landscape. No model prop is required.
+
+With older versions, or to hide the frame before the stream starts, set `showFrame={false}`:
 
 ```tsx
 <RemoteControl
