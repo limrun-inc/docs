@@ -15,24 +15,24 @@ The flow:
 3. **Run Gradle** remotely with the project's own wrapper. Logs stream back.
 4. **Install or ship.** Upload the APK for emulators, or sign an AAB for Google Play.
 
-## Build time and idle time
+## Active/Warm pricing
 
-Where phase billing is enabled, a metered Gradle sandbox charges active work
-and idle time at different rates. The standard rate is 1 credits per minute
-for active work and 0.25 credits per minute while idle. Negotiated account
-rates can differ. Charges round up to whole credits per instance.
+Gradle instances cost **1 credit/min while active** and **0.2 credits/min while warm**.
 
-Active work includes builds, user commands, source sync, and other operations
-that change the workspace. Xcode cache restore and successful cache publication
-also count as active work. Time waiting between builds is idle and still costs
-credits. Delete the instance when finished or set an inactivity timeout that
-fits your workflow.
+Active time includes builds, commands, source syncing, and other operations that
+change the workspace. Warm time is when your instance remains running between
+operations, ready for the next request.
 
-Until phase billing is enabled, or if an instance has no usable phase report,
-Gradle retains its wall-clock rate of 0.5 credits per minute. Simulators
-and emulators have separate lifecycles and retain their runtime pricing.
-The build inactivity default is ten minutes; Xcode uses the organization's
-configured default when one is set.
+Warm time costs one-fifth of the active rate. Delete the instance when you're
+finished, or configure an inactivity timeout to terminate it automatically.
+
+Charges round up to whole credits per instance. Emulators are billed separately.
+Custom billing agreements may differ.
+
+<Note>
+If activity data is unavailable or invalid, the instance is billed at 0.5 credits/min
+for its full runtime.
+</Note>
 
 ### SDK coverage by language
 
@@ -253,6 +253,8 @@ lim gradle build . --detach --inactivity-timeout 3s
 ```
 
 Once the build is accepted, the CLI prints the instance ID, a Console link, and the exact command to retrieve its logs. Pass `--json` for `instanceId`, `execId`, `consoleUrl`, and `logsCommand`. If a webhook is configured, the output also includes `webhookUrl`.
+
+The default inactivity timeout is ten minutes.
 
 `--webhook-url` is optional; add it to receive the terminal result automatically. `--inactivity-timeout` creates a fresh Gradle instance with the requested lifecycle, so it cannot be combined with `--id`. Active builds count as activity, and the timeout starts expiring only after build and upload work stops.
 
