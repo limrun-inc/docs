@@ -517,11 +517,17 @@ Time buckets are grouped by instance start time. A bounded start-time range, fro
 
 Historical `stoppedAt` values approximate with the time billing was recorded, which can be after termination. For periodic imports, rescan overlapping windows and upsert results by `instanceTid`, and keep a reconciliation scan of older windows to catch bills delayed beyond the overlap.
 
-## Audit log actors
+## Audit logs
 
 Organization admins can review events in [Audit logs](https://console.limrun.com/audit-logs). The Actor column shows the member's current email or the API key's current name. Hover over the circled info icon, or focus it with the keyboard, to see the corresponding ID.
 
 The audit-log response includes an `actor` display label. `actorId` is present for resolved organization members and API keys. System actors use labels such as **Limrun system**; missing or removed identities display as **Actor unavailable** without an ID.
+
+Actions use customer-facing names such as `instance.create`, `instance.delete`, `instance.terminated`, `asset.upload.request`, `api_key.create`, and `member.role.change`. The `outcome` describes the result. An accepted create request does not prove readiness, and an upload request does not prove that bytes were uploaded.
+
+The `action` filter on `GET /organizations/{organizationId}/audit_logs` accepts these exact names. For example, `instance.create` matches create events for all instance platforms, including historical events. Existing operation-name filters remain accepted as exact aliases for retained events. Totals and pagination include only customer-visible events. The response no longer includes `sourceService`.
+
+Automatic instance termination and build asset-upload requests remain visible. Internal setup, log-persistence, and provisioning milestones are excluded from this view, including historical events.
 
 ## Next steps
 
