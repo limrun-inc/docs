@@ -208,6 +208,7 @@ To build on every push from a Linux runner, see [GitHub Actions recipes](/ci/git
 | The build can't find the Gradle root | Auto-discovery found more than one candidate, or the root is nested. | Pass `--project-path <dir>`, for example `--project-path android`. |
 | `--expo-app-dir` or `--abi` fails with no Expo app detected | Either flag forces the Expo pipeline on. | Remove the flag for native projects, or point `--expo-app-dir` at the Expo app. |
 | A new tool selection has no effect | The first `mise install` already ran for this sandbox. | Run `lim gradle tools install`. |
+| The first build fails installing a tool it never uses | A project mise file lists tools beyond the build, such as a monorepo's root `mise.toml`. | Add a `mise.limrun.toml` next to it with only the tools the build needs. Limrun reads it instead of that directory's other mise files; only `[tools]` applies. |
 | A running build stops with status `CANCELLED` | Another build or `lim gradle run` started on the same sandbox. | Run one operation at a time per sandbox, or use separate sandboxes. |
 | `--upload-ttl 1d` is rejected | `1d` is not a Go duration. | Use hours, for example `24h`. |
 | The download URL returns an error after a while | Signed download URLs expire after 15 minutes. | Run `lim asset list --name <asset-name> --download-url` for a fresh one. |

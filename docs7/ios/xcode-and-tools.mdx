@@ -167,6 +167,18 @@ The first sandbox operation that reads a project mise file runs `mise install` b
 
 A failed or cancelled first installation stops that operation. Retry explicitly with `lim xcode tools install`, which also installs later tool selections. Select another Java vendor with a request such as `java@corretto-17`; upstream support for macOS and the selected runtime still applies. The managed CocoaPods resolver uses the selected CocoaPods tool; a project `Gemfile` does not select its gems.
 
+### When the project mise file does not fit the sandbox
+
+Start with your project's mise files; most projects need nothing else. If a mise file lists tools a build never uses, such as databases or cloud CLIs in a monorepo's root `mise.toml`, the first installation installs them all and fails when one of them cannot install. In that case, add a `mise.limrun.toml` next to that file with only the tools the build needs:
+
+```toml
+[tools]
+node = "24"
+pnpm = "10"
+```
+
+In each directory, Limrun reads `mise.limrun.toml` instead of that directory's other mise files, and still reads mise files in other directories. Only `[tools]` applies. Unlike mise's own `mise.<env>.toml` files, it replaces those files rather than adding to them. Mise on your machine loads it only when `MISE_ENV=limrun` is set.
+
 ### Environment the build sees
 
 `NODE_BINARY` points to the Node that mise selected, in both runs and builds. For React Native and Expo builds, Limrun rewrites `ios/.xcode.env.local` with that binary and the selected tool `PATH`, so Xcode build phases use the same tools as dependency installation. Do not copy a client Node path into this file. The selected Java and Flutter installations also set `JAVA_HOME` and `FLUTTER_ROOT`.
