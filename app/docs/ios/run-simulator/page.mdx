@@ -687,6 +687,30 @@ await client.stopRecording({ presignedUrl: '<your-s3-upload-url>' });
 
 TypeScript only: `stopRecording` can save to a local file and hand the bytes to a presigned URL in the same call.
 
+### Record orientation changes
+
+To keep portrait and landscape content upright at its recorded resolution, enable segments on both start and stop:
+
+<CodeGroup labels={["CLI","TypeScript"]}>
+```bash
+lim ios record start --segments --quality 5
+# Drive the UI, including orientation changes.
+lim ios record stop --segments -o /tmp/demo
+```
+
+```ts
+await client.startRecording({ segmentOnRotation: true, quality: 5 });
+// Drive the UI, including orientation changes.
+const parts = await client.stopRecordingSegments({ localDirectory: '/tmp/demo' });
+```
+</CodeGroup>
+
+Each orientation or screen-size change starts a separate MP4. The SDK returns the parts in order, with `downloadUrl`, `width`, `height`, `startTimeMs`, and `durationMs`. Width and height describe playback after applying the MP4's orientation. With `localDirectory`, each part also has a `localPath`, and `recording.json` stores relative filenames and their timeline. Omit `localDirectory` to retrieve URLs without downloading; requests to those URLs require the instance token.
+
+Download the parts before starting another recording or terminating the instance. To keep them after termination, add `--persist` when starting, or `persist: true` in the SDK. Each part appears as a separate persisted recording. A single `--presigned-url` cannot receive multiple parts.
+
+Use `stopRecordingSegments` for a segmented recording. Calling `stopRecording` returns an error and leaves the recording running so you can stop it correctly. Without the opt-in, recording retains one MP4 with the dimensions and orientation chosen at start; rotate before starting when you need a single landscape file.
+
 ### Keep captures after the session
 
 Captures can also be persisted to Limrun storage, so they outlive the CLI process and the instance. Start them when you create the simulator, or persist a recording when you start it:
