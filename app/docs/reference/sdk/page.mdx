@@ -521,6 +521,12 @@ Historical `stoppedAt` values approximate with the time billing was recorded, wh
 
 Organization admins can review events in [Audit logs](https://console.limrun.com/audit-logs). The Actor column shows the member's current email or the API key's current name. Hover over the circled info icon, or focus it with the keyboard, to see the corresponding ID.
 
+Click an audit-log row to expand its details, or use the **Details** button with the keyboard.
+
+To download audit logs, choose **Export**, select a start and end time up to 30 days apart, and choose **CSV** or **JSON**. Export uses the current action, actor, resource and outcome filters and includes all matching events, not just the visible page. Times in the picker are local; exported timestamps use UTC. New events may take about 5 minutes to appear.
+
+`GET /organizations/{organizationId}/audit_logs/export` accepts `start`, `end`, `format=csv|json`, and the same optional `action`, `actorId`, `resourceId`, and `outcome` filters as browsing. It requires an organization admin session. The JSON download is an array of audit events; CSV includes a header and stores metadata as JSON in its last column. CSV cells that could be interpreted as spreadsheet formulas are prefixed with an apostrophe. Export preparation has a 3-minute timeout; an unsuccessful export reports an error instead of downloading a partial file. Normal browsing keeps its 7-day range and 60-second timeout.
+
 The audit-log response includes an `actor` display label. `actorId` is present for resolved organization members and API keys. System actors use labels such as **Limrun system**; missing or removed identities display as **Actor unavailable** without an ID.
 
 Actions use customer-facing names such as `instance.create`, `instance.delete`, `instance.terminated`, `asset.upload.request`, `api_key.create`, and `member.role.change`. The `outcome` describes the result. An accepted create request does not prove readiness, and an upload request does not prove that bytes were uploaded.
