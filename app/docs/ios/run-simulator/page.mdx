@@ -689,7 +689,16 @@ lim ios syslog --id <instance-id>
 
 ## Show or hide touches
 
-iOS simulators show translucent touch ripples and drag trails by default. To hide them, use the TypeScript device client:
+iOS simulators show translucent touch ripples and drag trails by default. Use the CLI to hide or restore them:
+
+```bash
+lim ios touch-indicators off
+lim ios touch-indicators on --id <instance-id>
+```
+
+Omit `--id` to target the current workspace's last iOS instance. Add `--json` to return the applied state, such as `{"enabled":false}`.
+
+From the TypeScript device client:
 
 ```ts
 await client.setTouchIndicators(false);
