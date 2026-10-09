@@ -688,6 +688,26 @@ For low-level debugging beyond one app's stdout and stderr, stream the simulator
 lim ios syslog --id <instance-id>
 ```
 
+## Show or hide touches
+
+iOS simulators show translucent touch ripples and drag trails by default. To hide them, use the TypeScript device client:
+
+```ts
+await client.setTouchIndicators(false);
+// Turn them back on when needed.
+await client.setTouchIndicators(true);
+```
+
+This setting applies to the whole simulator, including every live viewer, screenshots, and video recordings. It changes immediately without restarting apps. Reconnecting a client or starting a recording keeps the current setting; a new simulator boot enables indicators again.
+
+For a direct signaling WebSocket connection, send an ID with the toggle:
+
+```json
+{"type":"setTouchIndicators","id":"touches-1","enabled":false}
+```
+
+The reply is `{"type":"setTouchIndicatorsResult","id":"touches-1"}` on success, or includes an `error` string if the overlay is unavailable or the setting could not be changed. Set `enabled` to `true` to restore indicators. This command is supported on iPhone and iPad simulators.
+
 ## Record a video
 
 For anything that moves (animations, gestures, games), record a video instead of taking screenshots, and attach it to the pull request. Recording runs on the server. `--quality` accepts integers from `5` (default) to `10`; higher values increase fidelity and file size.
