@@ -690,7 +690,7 @@ lim ios syslog --id <instance-id>
 
 ## Show or hide touches
 
-iOS simulators show translucent touch ripples and drag trails by default. Use the CLI to hide or restore them:
+Touch ripples and drag trails are disabled by default on iOS simulators. Starting video recording turns them on automatically. Use the CLI to toggle them at any time:
 
 ```bash
 lim ios touch-indicators off
@@ -707,7 +707,7 @@ await client.setTouchIndicators(false);
 await client.setTouchIndicators(true);
 ```
 
-This setting applies to the whole simulator, including every live viewer, screenshots, and video recordings. It changes immediately without restarting apps. Reconnecting a client or starting a recording keeps the current setting; a new simulator boot enables indicators again.
+This setting applies to the whole simulator, including every live viewer, screenshots, and video recordings. It changes immediately without restarting apps. Stopping or failing a recording restores the manual setting, including changes made during recording. Reconnecting a client preserves the setting; a new simulator boot disables indicators.
 
 For a direct signaling WebSocket connection, send an ID with the toggle:
 
