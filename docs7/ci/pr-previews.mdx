@@ -44,6 +44,7 @@ Use `URLSearchParams` when generating links so spaces, `&`, `+`, and `=` are enc
 const params = new URLSearchParams({ asset: 'my-app.zip', platform: 'ios' });
 params.append('env', 'FEATURE_FLAG=1');
 params.append('env', 'API_URL=https://api.example.com');
+params.set('openUrl', 'myapp://checkout?item=123&source=preview');
 const previewUrl = `https://console.limrun.com/preview?${params}`;
 ```
 
@@ -51,6 +52,17 @@ The last occurrence of a key wins, and `KEY=` sets an empty value. The same
 [variable restrictions as `launch-app`](/ios/run-simulator#set-app-environment-variables)
 apply. Use these links for nonsecret configuration; values are visible to anyone
 who can read the URL and remain in browser history.
+
+Add `openUrl` to open a web URL or app deep link after the app launches. This works
+for both iOS and Android previews, with or without `env`. URL-encode the entire
+URL, including its query string:
+
+```text
+https://console.limrun.com/preview?asset=my-app.zip&platform=ios&openUrl=myapp%3A%2F%2Fcheckout%3Fitem%3D123%26source%3Dpreview
+```
+
+The viewer opens after the device handles the URL. If opening it fails, the
+preview page displays the error.
 
 ## Use the packaged Action
 
