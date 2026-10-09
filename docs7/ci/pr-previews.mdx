@@ -17,7 +17,7 @@ A preview link points the Limrun console at an asset in [Asset Storage](/platfor
 https://console.limrun.com/preview?asset=<asset-name>&platform=ios
 ```
 
-Opening it provisions a fresh simulator with that build pre-installed. Reviewers need no install and no Mac, but they do need to be members of your Limrun organization.
+Opening it provisions a fresh simulator and starts streaming while the console installs the build. An `Installing <asset name>` overlay stays visible until installation finishes. Reviewers need no install and no Mac, but they do need to be members of your Limrun organization.
 
 Any build that uploads to Asset Storage produces a previewable asset. From a shell or a coding agent, build with `--upload` and share the resulting URL:
 
@@ -28,6 +28,41 @@ echo "https://console.limrun.com/preview?asset=${ASSET_NAME}&platform=ios"
 ```
 
 Bazel workspaces publish the same kind of asset with `lim xcode rbe upload <asset-name>` or `lim xcode rbe --auto-upload <asset-name>`; see [Build with Bazel](/ios/build-with-bazel).
+
+## Configure the preview app
+
+For iOS, repeat the `env` query parameter to set app environment variables before
+the app's first launch. Each value uses `KEY=VALUE` syntax and must be URL-encoded:
+
+```text
+https://console.limrun.com/preview?asset=my-app.zip&platform=ios&env=FEATURE_FLAG%3D1&env=API_URL%3Dhttps%3A%2F%2Fapi.example.com
+```
+
+Use `URLSearchParams` when generating links so spaces, `&`, `+`, and `=` are encoded:
+
+```ts
+const params = new URLSearchParams({ asset: 'my-app.zip', platform: 'ios' });
+params.append('env', 'FEATURE_FLAG=1');
+params.append('env', 'API_URL=https://api.example.com');
+params.set('openUrl', 'myapp://checkout?item=123&source=preview');
+const previewUrl = `https://console.limrun.com/preview?${params}`;
+```
+
+The last occurrence of a key wins, and `KEY=` sets an empty value.
+Use these links for nonsecret configuration; values are visible to anyone
+who can read the URL and remain in browser history.
+
+Add `openUrl` to open a web URL or app deep link after the app launches. This works
+for both iOS and Android previews, with or without `env`. URL-encode the entire
+URL, including its query string:
+
+```text
+https://console.limrun.com/preview?asset=my-app.zip&platform=ios&openUrl=myapp%3A%2F%2Fcheckout%3Fitem%3D123%26source%3Dpreview
+```
+
+The stream stays visible while the app installs, launches, and opens the URL.
+The overlay disappears when these steps finish. If a step fails, the error
+appears over the stream.
 
 ## Use the packaged Action
 
@@ -46,6 +81,10 @@ permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: ios-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -55,6 +94,7 @@ jobs:
         with:
           project-path: .
           api-key: ${{ secrets.LIM_API_KEY }}
+          snapshot-key: ios-${{ github.repository_id }}-pr-${{ github.event.pull_request.number }}-workspace
 ```
 
 The Action posts a comment titled **Limrun Preview** with a table of the platform, the short commit SHA, and the preview link, and updates that same comment on later pushes. With `closed` in `on.pull_request.types`, the run on merge or close deletes the PR's Xcode sandboxes and changes the comment to say the preview was removed. The preview asset itself stays until its TTL expires, 14 days after the last upload by default.
@@ -68,7 +108,13 @@ The Action posts a comment titled **Limrun Preview** with a table of the platfor
 | `scheme` | Scheme to build. Derived from the project file when omitted. |
 | `sdk` | SDK to build. Defaults to `iphonesimulator`. |
 | `model` | Simulator model for previews: `iphone` (default) or `ipad`. |
+| `env` | Newline-delimited `KEY=VALUE` app environment variables for preview launches. Use nonsecret values because they appear in the preview URL. |
+| `open-url` | URL or app deep link to open after the preview app launches. Pass it without URL encoding. |
 | `xcode-version` | Xcode major to build with, such as `27`. Switching majors invalidates the other version's build state, so the next build starts cold. Defaults to the sandbox default. |
+| `prepare` | Remote shell script after source sync and before xcodebuild. Failure stops the build. |
+| `snapshot-key` | Disk snapshot publication key and default restore key. |
+| `snapshot-restore-keys` | One snapshot restore key per line, tried in order. |
+| `snapshot-paths` | One project-relative path per line. Omit to save the whole workspace. |
 | `build-settings` | Newline-delimited `KEY=VALUE` Xcode build settings. Keys follow the same rules as `--build-setting`; see [Pass build settings](/ios/build-with-xcode#pass-build-settings). Use `$(inherited)` to append. |
 | `bazel-target` | Bazel label of the app target, such as `//App`. Inferred for single-app workspaces. |
 | `github-token` | Token for posting the PR comment. Defaults to `github.token`. |
@@ -76,6 +122,55 @@ The Action posts a comment titled **Limrun Preview** with a table of the platfor
 | `media-token` | User token (personal access token or OAuth) with write access to the repository, used only to upload media. GitHub rejects `github.token` for attachments. |
 
 The Action sets two outputs: `preview-url` and `asset-name`. Its `action.yml` also declares `asset-id`, but the Action never sets it, so that output is always empty.
+
+### Prepare and reuse the workspace
+
+The example uses a snapshot key scoped to the repository and PR. The first build
+starts cold; subsequent builds restore that workspace before source sync. Cleanup
+waits for snapshot publication and reports its outcome. A publication failure
+warns without discarding a successful preview. Use separate keys for different
+Xcode versions or build configurations.
+
+Use `prepare` for commands that need to run remotely after sync and before
+xcodebuild. For a CocoaPods project:
+
+```yaml
+with:
+  api-key: ${{ secrets.LIM_API_KEY }}
+  snapshot-key: ios-${{ github.repository_id }}-pr-${{ github.event.pull_request.number }}-workspace
+  prepare: |
+    bundle install
+    bundle exec pod install
+```
+
+This uses the same command API as `lim xcode run`, with `/bin/sh` and `set -e`,
+from the synced project root. A failed preparation stops the build and still
+cleans up the sandbox. App-launch `env` is separate from preparation.
+
+`snapshot-restore-keys` accepts an ordered multiline list of fallback keys;
+include the destination key to try it first. `snapshot-paths` accepts one
+project-relative path per line. Leave it unset to preserve the whole workspace,
+including DerivedData and source sync state. See [Disk snapshots](/ios/snapshots)
+for publication conditions and restore matching.
+
+### App launch options
+
+Set `env` and `open-url` under `with` to configure the app when a reviewer opens
+the preview. Both inputs work with Xcode and Bazel builds:
+
+```yaml
+- uses: limrun-inc/ios-preview-action@main
+  with:
+    api-key: ${{ secrets.LIM_API_KEY }}
+    env: |
+      API_URL=https://api.example.com
+      FEATURE_FLAG=1
+    open-url: 'myapp://checkout?item=123&source=preview'
+```
+
+The Action encodes each environment entry and the URL automatically. `KEY=`
+sets an empty value; duplicate keys use the last value. Use nonsecret values:
+the preview URL appears in the PR comment, action output, logs, and browser history.
 
 ### Bazel projects
 
@@ -89,7 +184,72 @@ The same Action handles Bazel workspaces. When `project-path` is a Bazel workspa
     api-key: ${{ secrets.LIM_API_KEY }}
 ```
 
-The xcodebuild-only inputs (`project`, `workspace`, `scheme`, `build-settings`) fail the run in Bazel mode. Put your Bazel flags in `user.limrun.bazelrc` at the workspace root instead.
+The xcodebuild-only inputs (`project`, `workspace`, `scheme`, `build-settings`, `prepare`, and snapshot inputs) fail the run in Bazel mode. Put your Bazel flags in `user.limrun.bazelrc` at the workspace root instead.
+
+## Android preview action
+
+[`limrun-inc/android-preview-action`](https://github.com/limrun-inc/android-preview-action)
+builds an APK on a temporary Gradle sandbox and posts a link to a streamed Android
+emulator. Add `LIM_API_KEY` as a repository secret, then use:
+
+```yaml .github/workflows/android-preview.yml
+name: Android preview
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: android-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: limrun-inc/android-preview-action@main
+        with:
+          api-key: ${{ secrets.LIM_API_KEY }}
+          project-path: .
+          tasks: assembleDebug
+          build-env: |
+            APP_ENV=preview
+            API_URL=https://api.example.com
+          open-url: 'myapp://checkout?item=123&source=preview'
+```
+
+`project-path` selects the directory to sync. Set `gradle-project-path` to the
+Gradle root within that directory when auto-discovery is ambiguous. `tasks`
+accepts one task per line and defaults to `assembleDebug`; choose tasks that
+produce an installable APK. `build-env` accepts one `KEY=VALUE` entry per line
+for the remote build. It does not set app-launch environment variables.
+
+`open-url` is encoded automatically and opens after the app launches. Use
+nonsecret URLs because the link appears in the PR comment, logs, and browser
+history. Pass sensitive build values through GitHub secrets; those values may
+be embedded in the app artifact.
+
+Use `prepare` for remote setup or code generation before Gradle builds. It runs
+after source sync from the synced project root, with `build-env`, using the same
+command API as `lim gradle run`. For example, a JavaScript project can use:
+
+```yaml
+prepare: |
+  npm ci
+  npm run generate
+```
+
+The script runs with `/bin/sh` and `set -e`; failures stop the build and trigger
+cleanup. Android builds do not currently support disk snapshots.
+
+The action outputs `preview-url` and `asset-name`, updates its Android comment
+on each push, and deletes its Gradle sandbox after success or failure. Its post
+hook retries cleanup after cancellation. Closing the PR cleans up remaining
+builders and marks the comment as closed; the APK asset expires 14 days after
+the latest upload by default. Reviewers must belong to the asset's Limrun
+organization. Fork pull requests normally lack the required repository secrets;
+use this action on trusted `pull_request` workflows.
 
 ## Write a custom workflow
 
