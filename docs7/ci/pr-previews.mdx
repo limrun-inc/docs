@@ -17,7 +17,7 @@ A preview link points the Limrun console at an asset in [Asset Storage](/platfor
 https://console.limrun.com/preview?asset=<asset-name>&platform=ios
 ```
 
-Opening it provisions a fresh simulator with that build pre-installed. Reviewers need no install and no Mac, but they do need to be members of your Limrun organization.
+Opening it provisions a fresh simulator and starts streaming while the console installs the build. An `Installing <asset name>` overlay stays visible until installation finishes. Reviewers need no install and no Mac, but they do need to be members of your Limrun organization.
 
 Any build that uploads to Asset Storage produces a previewable asset. From a shell or a coding agent, build with `--upload` and share the resulting URL:
 
@@ -28,6 +28,41 @@ echo "https://console.limrun.com/preview?asset=${ASSET_NAME}&platform=ios"
 ```
 
 Bazel workspaces publish the same kind of asset with `lim xcode rbe upload <asset-name>` or `lim xcode rbe --auto-upload <asset-name>`; see [Build with Bazel](/ios/build-with-bazel).
+
+## Configure the preview app
+
+For iOS, repeat the `env` query parameter to set app environment variables before
+the app's first launch. Each value uses `KEY=VALUE` syntax and must be URL-encoded:
+
+```text
+https://console.limrun.com/preview?asset=my-app.zip&platform=ios&env=FEATURE_FLAG%3D1&env=API_URL%3Dhttps%3A%2F%2Fapi.example.com
+```
+
+Use `URLSearchParams` when generating links so spaces, `&`, `+`, and `=` are encoded:
+
+```ts
+const params = new URLSearchParams({ asset: 'my-app.zip', platform: 'ios' });
+params.append('env', 'FEATURE_FLAG=1');
+params.append('env', 'API_URL=https://api.example.com');
+params.set('openUrl', 'myapp://checkout?item=123&source=preview');
+const previewUrl = `https://console.limrun.com/preview?${params}`;
+```
+
+The last occurrence of a key wins, and `KEY=` sets an empty value.
+Use these links for nonsecret configuration; values are visible to anyone
+who can read the URL and remain in browser history.
+
+Add `openUrl` to open a web URL or app deep link after the app launches. This works
+for both iOS and Android previews, with or without `env`. URL-encode the entire
+URL, including its query string:
+
+```text
+https://console.limrun.com/preview?asset=my-app.zip&platform=ios&openUrl=myapp%3A%2F%2Fcheckout%3Fitem%3D123%26source%3Dpreview
+```
+
+The stream stays visible while the app installs, launches, and opens the URL.
+The overlay disappears when these steps finish. If a step fails, the error
+appears over the stream.
 
 ## Use the packaged Action
 

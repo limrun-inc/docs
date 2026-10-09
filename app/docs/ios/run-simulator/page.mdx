@@ -595,6 +595,31 @@ result, err := client.InstallApp(ctx, "https://...build.zip", &iosws.AppInstalla
 
 TypeScript only: `onExit` and `watchApp` report how an app ended; see [React to crashes and exits](#react-to-crashes-and-exits).
 
+### Set app environment variables
+
+Pass `--env KEY=VALUE` for each variable the app needs at launch:
+
+```bash
+lim ios launch-app com.example.MyApp \
+  --env API_URL=https://api.example.com \
+  --env FEATURE_FLAG=1
+```
+
+In TypeScript, pass an `env` object:
+
+```ts
+await client.launchApp('com.example.MyApp', {
+  env: { API_URL: 'https://api.example.com', FEATURE_FLAG: '1' },
+});
+```
+
+Providing variables restarts an already-running app. Combining them with
+`ForegroundIfRunning` returns an error. Use `--env KEY=` for an empty value;
+if you repeat a key, the last value wins. Values can contain `=`.
+
+[Preview links](/docs/ci/pr-previews#configure-the-preview-app) also accept app
+environment variables.
+
 ### React to crashes and exits
 
 Use `onExit` on `launchApp`, or `watchApp` for an app you didn't launch through the client, when your runner needs to know why an app stopped. Both call back once, with the log lines and an `info` object:
