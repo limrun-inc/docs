@@ -618,13 +618,6 @@ Providing variables restarts an already-running app. Combining them with
 `ForegroundIfRunning` returns an error. Use `--env KEY=` for an empty value;
 if you repeat a key, the last value wins. Values can contain `=`.
 
-Use app variable names without a `SIMCTL_CHILD_` prefix. Library loader overrides
-are silently ignored, including names beginning with `DYLD_`, `__DYLD_`, or `LD_`, and
-`LIMRUN_INSERT_LIBRARIES`. The `__XPC_`, `XPC_DYLD_`, and `SWIFT_DEBUG_` namespaces
-are also skipped. Variables already present in the inherited environment or set
-by Limrun for simulator boot or app launch keep their existing values. Customer
-variables only add new keys. Use `--runtime detox` for the managed Detox integration.
-
 [Preview links](/ci/pr-previews#configure-the-preview-app) also accept app
 environment variables.
 
