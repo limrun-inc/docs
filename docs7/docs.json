@@ -98,6 +98,7 @@
           "reference/cli",
           "reference/sdk",
           "reference/instances",
+          "reference/webhooks",
           "reference/egress-ip-addresses",
           {
             "group": "Single sign-on",
