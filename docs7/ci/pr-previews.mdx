@@ -81,6 +81,10 @@ permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: ios-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -90,6 +94,7 @@ jobs:
         with:
           project-path: .
           api-key: ${{ secrets.LIM_API_KEY }}
+          snapshot-key: ios-${{ github.repository_id }}-pr-${{ github.event.pull_request.number }}-workspace
 ```
 
 The Action posts a comment titled **Limrun Preview** with a table of the platform, the short commit SHA, and the preview link, and updates that same comment on later pushes. With `closed` in `on.pull_request.types`, the run on merge or close deletes the PR's Xcode sandboxes and changes the comment to say the preview was removed. The preview asset itself stays until its TTL expires, 14 days after the last upload by default.
@@ -106,6 +111,10 @@ The Action posts a comment titled **Limrun Preview** with a table of the platfor
 | `env` | Newline-delimited `KEY=VALUE` app environment variables for preview launches. Use nonsecret values because they appear in the preview URL. |
 | `open-url` | URL or app deep link to open after the preview app launches. Pass it without URL encoding. |
 | `xcode-version` | Xcode major to build with, such as `27`. Switching majors invalidates the other version's build state, so the next build starts cold. Defaults to the sandbox default. |
+| `prepare` | Remote shell script after source sync and before xcodebuild. Failure stops the build. |
+| `snapshot-key` | Disk snapshot publication key and default restore key. |
+| `snapshot-restore-keys` | One snapshot restore key per line, tried in order. |
+| `snapshot-paths` | One project-relative path per line. Omit to save the whole workspace. |
 | `build-settings` | Newline-delimited `KEY=VALUE` Xcode build settings. Keys follow the same rules as `--build-setting`; see [Pass build settings](/ios/build-with-xcode#pass-build-settings). Use `$(inherited)` to append. |
 | `bazel-target` | Bazel label of the app target, such as `//App`. Inferred for single-app workspaces. |
 | `github-token` | Token for posting the PR comment. Defaults to `github.token`. |
@@ -113,6 +122,36 @@ The Action posts a comment titled **Limrun Preview** with a table of the platfor
 | `media-token` | User token (personal access token or OAuth) with write access to the repository, used only to upload media. GitHub rejects `github.token` for attachments. |
 
 The Action sets two outputs: `preview-url` and `asset-name`. Its `action.yml` also declares `asset-id`, but the Action never sets it, so that output is always empty.
+
+### Prepare and reuse the workspace
+
+The example uses a snapshot key scoped to the repository and PR. The first build
+starts cold; subsequent builds restore that workspace before source sync. Cleanup
+waits for snapshot publication and reports its outcome. A publication failure
+warns without discarding a successful preview. Use separate keys for different
+Xcode versions or build configurations.
+
+Use `prepare` for commands that need to run remotely after sync and before
+xcodebuild. For a CocoaPods project:
+
+```yaml
+with:
+  api-key: ${{ secrets.LIM_API_KEY }}
+  snapshot-key: ios-${{ github.repository_id }}-pr-${{ github.event.pull_request.number }}-workspace
+  prepare: |
+    bundle install
+    bundle exec pod install
+```
+
+This uses the same command API as `lim xcode run`, with `/bin/sh` and `set -e`,
+from the synced project root. A failed preparation stops the build and still
+cleans up the sandbox. App-launch `env` is separate from preparation.
+
+`snapshot-restore-keys` accepts an ordered multiline list of fallback keys;
+include the destination key to try it first. `snapshot-paths` accepts one
+project-relative path per line. Leave it unset to preserve the whole workspace,
+including DerivedData and source sync state. See [Disk snapshots](/ios/snapshots)
+for publication conditions and restore matching.
 
 ### App launch options
 
@@ -145,7 +184,7 @@ The same Action handles Bazel workspaces. When `project-path` is a Bazel workspa
     api-key: ${{ secrets.LIM_API_KEY }}
 ```
 
-The xcodebuild-only inputs (`project`, `workspace`, `scheme`, `build-settings`) fail the run in Bazel mode. Put your Bazel flags in `user.limrun.bazelrc` at the workspace root instead.
+The xcodebuild-only inputs (`project`, `workspace`, `scheme`, `build-settings`, `prepare`, and snapshot inputs) fail the run in Bazel mode. Put your Bazel flags in `user.limrun.bazelrc` at the workspace root instead.
 
 ## Android preview action
 
@@ -190,6 +229,19 @@ for the remote build. It does not set app-launch environment variables.
 nonsecret URLs because the link appears in the PR comment, logs, and browser
 history. Pass sensitive build values through GitHub secrets; those values may
 be embedded in the app artifact.
+
+Use `prepare` for remote setup or code generation before Gradle builds. It runs
+after source sync from the synced project root, with `build-env`, using the same
+command API as `lim gradle run`. For example, a JavaScript project can use:
+
+```yaml
+prepare: |
+  npm ci
+  npm run generate
+```
+
+The script runs with `/bin/sh` and `set -e`; failures stop the build and trigger
+cleanup. Android builds do not currently support disk snapshots.
 
 The action outputs `preview-url` and `asset-name`, updates its Android comment
 on each push, and deletes its Gradle sandbox after success or failure. Its post
