@@ -103,6 +103,8 @@ The Action posts a comment titled **Limrun Preview** with a table of the platfor
 | `scheme` | Scheme to build. Derived from the project file when omitted. |
 | `sdk` | SDK to build. Defaults to `iphonesimulator`. |
 | `model` | Simulator model for previews: `iphone` (default) or `ipad`. |
+| `env` | Newline-delimited `KEY=VALUE` app environment variables for preview launches. Use nonsecret values because they appear in the preview URL. |
+| `open-url` | URL or app deep link to open after the preview app launches. Pass it without URL encoding. |
 | `xcode-version` | Xcode major to build with, such as `27`. Switching majors invalidates the other version's build state, so the next build starts cold. Defaults to the sandbox default. |
 | `build-settings` | Newline-delimited `KEY=VALUE` Xcode build settings. Keys follow the same rules as `--build-setting`; see [Pass build settings](/ios/build-with-xcode#pass-build-settings). Use `$(inherited)` to append. |
 | `bazel-target` | Bazel label of the app target, such as `//App`. Inferred for single-app workspaces. |
@@ -111,6 +113,25 @@ The Action posts a comment titled **Limrun Preview** with a table of the platfor
 | `media-token` | User token (personal access token or OAuth) with write access to the repository, used only to upload media. GitHub rejects `github.token` for attachments. |
 
 The Action sets two outputs: `preview-url` and `asset-name`. Its `action.yml` also declares `asset-id`, but the Action never sets it, so that output is always empty.
+
+### App launch options
+
+Set `env` and `open-url` under `with` to configure the app when a reviewer opens
+the preview. Both inputs work with Xcode and Bazel builds:
+
+```yaml
+- uses: limrun-inc/ios-preview-action@main
+  with:
+    api-key: ${{ secrets.LIM_API_KEY }}
+    env: |
+      API_URL=https://api.example.com
+      FEATURE_FLAG=1
+    open-url: 'myapp://checkout?item=123&source=preview'
+```
+
+The Action encodes each environment entry and the URL automatically. `KEY=`
+sets an empty value; duplicate keys use the last value. Use nonsecret values:
+the preview URL appears in the PR comment, action output, logs, and browser history.
 
 ### Bazel projects
 
