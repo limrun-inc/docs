@@ -6,7 +6,7 @@ icon: "zap"
 ---
 # Webhooks
 
-Register an organization endpoint to receive events as HTTPS POST requests. Organization administrators and API keys with the `organization:*:all` scope can manage endpoints and read event history. Instance and scoped tokens cannot access these endpoints.
+Register an organization endpoint to receive events as HTTPS POST requests. Organization administrators and API keys with the `organization:*:all` scope can manage endpoints. Instance and scoped tokens cannot access these endpoints.
 
 ## Register an endpoint
 
@@ -102,13 +102,13 @@ export function verifyLimrunWebhook(rawBody, signature, signingSecret) {
 }
 ```
 
-Acknowledge with any 2xx response after durably accepting the event in your application. Delivery attempts time out after 20 seconds. Each delivery is attempted up to 12 times, with exponential backoff starting at 30 seconds and capped at six hours. A rejected destination is marked failed immediately. Disabling an endpoint pauses pending deliveries and excludes it from new events.
+Acknowledge with any 2xx response after durably accepting the event in your application. Delivery attempts time out after 20 seconds. Each delivery is attempted up to 12 times, with exponential backoff starting at 30 seconds and capped at six hours. A rejected destination is marked failed immediately. Disabling an endpoint pauses pending deliveries and excludes it from new events. An attempt already claimed by a worker may still finish. Each endpoint has at most one active delivery attempt.
 
-Once recorded, events and delivery jobs are durable. Delivery is at least once and can arrive out of order. Deduplicate by `id`, including manual replays. Events retain the same ID and payload on retry; each attempt gets a fresh signature timestamp. Subscriptions are selected when Limrun records the event. Registration does not replay events already in the log.
+Limrun retries failed deliveries automatically. Delivery is at least once and can arrive out of order. Deduplicate by `id`. Events retain the same ID and payload on retry; each attempt gets a fresh signature timestamp. Subscriptions are selected when Limrun records the event. New endpoints receive only future events.
 
 Registry sessions and in-instance distribution operations report what they observe. A process stopping before it records an outcome can leave that outcome unreported. An expired OTA session does not cancel an IPA transfer already in progress.
 
-## Inspect and replay
+## Inspect and retry
 
 All paths below start with `/v1/organizations/ORG_ID` and use your API key:
 
@@ -116,13 +116,10 @@ All paths below start with `/v1/organizations/ORG_ID` and use your API key:
 | --- | --- |
 | `GET /webhook_endpoints` | List endpoints. |
 | `GET /webhook_endpoints/ENDPOINT_ID` | Read an endpoint without its secret. |
-| `PUT /webhook_endpoints/ENDPOINT_ID` | Replace its URL and filters. Set `enabled: false` to pause. |
+| `PUT /webhook_endpoints/ENDPOINT_ID` | Replace its complete configuration. Omitted filters are cleared; omitted `enabled` defaults to `true`. Include `enabled: false` to keep it paused. |
 | `DELETE /webhook_endpoints/ENDPOINT_ID` | Permanently deactivate the endpoint. |
-| `GET /webhook_events` | Read recorded events. |
-| `GET /webhook_endpoints/ENDPOINT_ID/deliveries` | Inspect delivery state, attempt count, and the most recent result. |
-| `POST /webhook_endpoints/ENDPOINT_ID/deliveries/DELIVERY_ID/replay` | Requeue a delivered or failed event for an enabled endpoint. |
 
-List operations accept `limit` from 1 to 100 and `offset` from 0 to 10000. Replay retains the event and delivery IDs and resets the attempt budget. Pending deliveries cannot be replayed. To replace a lost signing secret, create a new endpoint, save its secret, and delete the old endpoint.
+List operations accept `limit` from 1 to 100 and `offset` from 0 to 10000. To replace a lost signing secret, create a new endpoint, save its secret, and delete the old endpoint.
 
 ## Confirm an asset upload
 
