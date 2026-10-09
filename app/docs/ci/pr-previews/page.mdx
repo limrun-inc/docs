@@ -16,7 +16,7 @@ A preview link points the Limrun console at an asset in [Asset Storage](/docs/pl
 https://console.limrun.com/preview?asset=<asset-name>&platform=ios
 ```
 
-Opening it provisions a fresh simulator with that build pre-installed. Reviewers need no install and no Mac, but they do need to be members of your Limrun organization.
+Opening it provisions a fresh simulator and starts streaming while the console installs the build. An `Installing <asset name>` overlay stays visible until installation finishes. Reviewers need no install and no Mac, but they do need to be members of your Limrun organization.
 
 Any build that uploads to Asset Storage produces a previewable asset. From a shell or a coding agent, build with `--upload` and share the resulting URL:
 
@@ -60,8 +60,9 @@ URL, including its query string:
 https://console.limrun.com/preview?asset=my-app.zip&platform=ios&openUrl=myapp%3A%2F%2Fcheckout%3Fitem%3D123%26source%3Dpreview
 ```
 
-The viewer opens after the device handles the URL. If opening it fails, the
-preview page displays the error.
+The stream stays visible while the app installs, launches, and opens the URL.
+The overlay disappears when these steps finish. If a step fails, the error
+appears over the stream.
 
 ## Use the packaged Action
 
