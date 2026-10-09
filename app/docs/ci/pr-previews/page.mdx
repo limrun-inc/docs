@@ -146,6 +146,58 @@ The same Action handles Bazel workspaces. When `project-path` is a Bazel workspa
 
 The xcodebuild-only inputs (`project`, `workspace`, `scheme`, `build-settings`) fail the run in Bazel mode. Put your Bazel flags in `user.limrun.bazelrc` at the workspace root instead.
 
+## Android preview action
+
+[`limrun-inc/android-preview-action`](https://github.com/limrun-inc/android-preview-action)
+builds an APK on a temporary Gradle sandbox and posts a link to a streamed Android
+emulator. Add `LIM_API_KEY` as a repository secret, then use:
+
+```yaml title=".github/workflows/android-preview.yml"
+name: Android preview
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: android-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: limrun-inc/android-preview-action@main
+        with:
+          api-key: ${{ secrets.LIM_API_KEY }}
+          project-path: .
+          tasks: assembleDebug
+          build-env: |
+            APP_ENV=preview
+            API_URL=https://api.example.com
+          open-url: 'myapp://checkout?item=123&source=preview'
+```
+
+`project-path` selects the directory to sync. Set `gradle-project-path` to the
+Gradle root within that directory when auto-discovery is ambiguous. `tasks`
+accepts one task per line and defaults to `assembleDebug`; choose tasks that
+produce an installable APK. `build-env` accepts one `KEY=VALUE` entry per line
+for the remote build. It does not set app-launch environment variables.
+
+`open-url` is encoded automatically and opens after the app launches. Use
+nonsecret URLs because the link appears in the PR comment, logs, and browser
+history. Pass sensitive build values through GitHub secrets; those values may
+be embedded in the app artifact.
+
+The action outputs `preview-url` and `asset-name`, updates its Android comment
+on each push, and deletes its Gradle sandbox after success or failure. Its post
+hook retries cleanup after cancellation. Closing the PR cleans up remaining
+builders and marks the comment as closed; the APK asset expires 14 days after
+the latest upload by default. Reviewers must belong to the asset's Limrun
+organization. Fork pull requests normally lack the required repository secrets;
+use this action on trusted `pull_request` workflows.
+
 ## Write a custom workflow
 
 Write the workflow yourself when you need a different comment format, your own asset naming, or a CI system other than GitHub Actions. The CLI runs anywhere Node runs, so the same `lim xcode build --upload` pattern works on GitLab CI, CircleCI, Buildkite, and Jenkins.
