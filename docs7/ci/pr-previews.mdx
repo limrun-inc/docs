@@ -29,6 +29,29 @@ echo "https://console.limrun.com/preview?asset=${ASSET_NAME}&platform=ios"
 
 Bazel workspaces publish the same kind of asset with `lim xcode rbe upload <asset-name>` or `lim xcode rbe --auto-upload <asset-name>`; see [Build with Bazel](/ios/build-with-bazel).
 
+## Configure the preview app
+
+For iOS, repeat the `env` query parameter to set app environment variables before
+the app's first launch. Each value uses `KEY=VALUE` syntax and must be URL-encoded:
+
+```text
+https://console.limrun.com/preview?asset=my-app.zip&platform=ios&env=FEATURE_FLAG%3D1&env=API_URL%3Dhttps%3A%2F%2Fapi.example.com
+```
+
+Use `URLSearchParams` when generating links so spaces, `&`, `+`, and `=` are encoded:
+
+```ts
+const params = new URLSearchParams({ asset: 'my-app.zip', platform: 'ios' });
+params.append('env', 'FEATURE_FLAG=1');
+params.append('env', 'API_URL=https://api.example.com');
+const previewUrl = `https://console.limrun.com/preview?${params}`;
+```
+
+The last occurrence of a key wins, and `KEY=` sets an empty value. The same
+[variable restrictions as `launch-app`](/ios/run-simulator#set-app-environment-variables)
+apply. Use these links for nonsecret configuration; values are visible to anyone
+who can read the URL and remain in browser history.
+
 ## Use the packaged Action
 
 [`limrun-inc/ios-preview-action`](https://github.com/limrun-inc/ios-preview-action) wraps the create, build, upload, and PR comment steps into one. Its `post:` step deletes the Xcode sandbox after every run, so no sandbox outlives the job.
