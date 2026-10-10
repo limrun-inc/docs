@@ -1,6 +1,6 @@
 ---
 name: limrun-ios-simulator
-description: "Drive an app running on a Limrun cloud iOS simulator: launch, tap, type, read the accessibility element tree, read app logs and simulator syslog, screenshot, record video, connect the app to local services, play a video file as the camera, set the clipboard, read and write user defaults, post notifications, and run timed action chains. Use after a build (from any builder) when the user wants to see, test, or interact with their app on a simulator, or says 'show me a screenshot', 'tap', 'run the UI test', 'record a video', 'read the logs', 'connect localhost', 'reach my local server from the simulator', 'mock the camera', 'paste into the app', 'change the language', 'simulate Face ID', or 'launch on simulator'. To build the app first, use limrun-xcode-bazel (Bazel workspaces) or limrun-xcode (xcodebuild projects)."
+description: "Drive an app running on a Limrun cloud iOS simulator: launch, tap, type, read the accessibility element tree, read app logs and simulator syslog, screenshot, record video, connect the app to local services or a persistent tunnel, play a video file as the camera, set the clipboard, read and write user defaults, post notifications, and run timed action chains. Use after a build (from any builder) when the user wants to see, test, or interact with their app on a simulator, or says 'show me a screenshot', 'tap', 'run the UI test', 'record a video', 'read the logs', 'connect localhost', 'reach my local server from the simulator', 'mock the camera', 'paste into the app', 'change the language', 'simulate Face ID', or 'launch on simulator'. To build the app first, use limrun-xcode-bazel (Bazel workspaces) or limrun-xcode (xcodebuild projects)."
 user-invocable: true
 effort: high
 ---
@@ -207,6 +207,36 @@ CA, so **apps with certificate pinning fail through inspected selectors**:
 leave the pinned host out of the selectors or pass `--no-inspect` to keep TLS
 end to end (no summaries, HAR, or persistence).
 
+## Reaching a private network through a persistent tunnel
+
+An organization can run a persistent tunnel: a connector inside its network,
+created by an admin with `lim tunnel create` or in the console (Network) and
+run with `lim tunnel run`, that serves every instance naming it. When the user names one, pass it at
+create time instead of starting a tunnel yourself:
+
+```bash
+lim ios create --tunnel <tunnel-name>
+```
+
+The app reaches the tunnel's selectors, such as `localhost:3000` or
+`*.internal.example`, at those addresses. They resolve on the connector's
+machine, not on yours. The tunnel takes the instance's one destination
+tunnel, so do not start or stop `lim ios tunnel` on it.
+
+Creation checks the tunnel and fails when it is not usable:
+
+- `tunnel <name> does not exist`: the name is wrong or the tunnel was not
+  created. Ask the user for the right name.
+- `tunnel <name> is offline`: no connector is running. Ask the user to
+  start it.
+- `did not attach within 30s`: the connector cannot attach the instance.
+  Ask the user to check the connector's output.
+
+Retrying the create in a loop does not help in any of these cases.
+
+The tunnel's token belongs on the connector's machine. Never ask the user to
+paste it into the conversation.
+
 ## Launching the app
 
 The build skills reinstall and relaunch the app after every successful build,
@@ -216,13 +246,32 @@ fresh attach to an old build, or after a terminate), launch it by bundle ID:
 ```bash
 lim ios launch-app <bundle-id>                            # foregrounds it if already running
 lim ios launch-app <bundle-id> --mode RelaunchIfRunning   # restart for a clean state
+lim ios launch-app <bundle-id> --env API_URL=https://api.example.com --env FEATURE_FLAG=1
 lim ios terminate-app <bundle-id>                         # stop it, e.g. to reset app state
 ```
 
 If you don't know the bundle ID, run `lim ios list-apps`.
 
+`--env KEY=VALUE` is repeatable and restarts the app so the variables take effect.
+An explicit `--mode ForegroundIfRunning` with variables is rejected. Use `KEY=`
+for an empty value; the last occurrence of a key wins. Managed Detox launches
+can combine `--runtime detox` with `--env`.
+
 `launch-app` streams the app's logs and returns when the app exits or the
 command is interrupted. Pass `--detach` to launch and return immediately.
+When the app ends, `launch-app` prints the exit reason (`crash`, `exit`, or
+`terminated`). After a crash it adds the exception and signal, the crash
+message (for example a Swift `Fatal error` line or an uncaught exception's
+reason), and the crashed thread's frames with the app's own function names.
+That report is the way to see why an app died; frames carry no file and line,
+which need the build's dSYM (`atos -l <load address>` with the address from
+the report's `Binary Images` lines).
+
+A React Native or Expo red error screen is not an exit: the app process keeps
+running, so nothing is reported. In the TypeScript SDK, `launchApp`'s
+`onExit(logs, info)` gets the same report, and `watchApp(bundleId, onExit)`
+reports the next exit of an app you did not launch, for example one opened
+with `lim ios open-url`.
 
 ## App logs
 
@@ -455,11 +504,25 @@ echo "https://console.limrun.com/preview?asset=${ASSET_NAME}&platform=ios"
 ```
 
 Once the command finishes, you can give the following URL to the user to
-click to see a simulator where this bundle is pre-installed.
+click to open a simulator stream while the console installs this bundle.
 
 ```
 https://console.limrun.com/preview?asset=${ASSET_NAME}&platform=ios
 ```
+
+For nonsecret iOS app configuration, append repeatable URL-encoded `env=KEY=VALUE`
+parameters, for example `&env=FEATURE_FLAG%3D1&env=API_URL%3Dhttps%3A%2F%2Fapi.example.com`.
+Use `URLSearchParams.append("env", "KEY=VALUE")` when constructing links. The app
+receives these variables on its first launch. Values are visible in the link
+and browser history.
+
+Add `openUrl` to open a URL or app deep link after launch, for example
+`&openUrl=myapp%3A%2F%2Fcheckout`. Use `URLSearchParams.set("openUrl", url)` to
+encode the full URL and its query string. This works with or without `env`;
+the stream stays visible while the app installs, launches, and opens the URL.
+An `Installing <asset name>` overlay shows installation progress and disappears
+when the preview is ready.
+
 
 ## Cleanup
 
