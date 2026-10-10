@@ -70,8 +70,15 @@
         "pages": [
           "ci/github-actions",
           "ci/pr-previews",
-          "ci/build-logs-and-webhooks",
-          "ci/persistent-tunnels"
+          "ci/build-logs-and-webhooks"
+        ]
+      },
+      {
+        "group": "Networking",
+        "icon": "network",
+        "pages": [
+          "networking/persistent-tunnels",
+          "networking/egress-ip-addresses"
         ]
       },
       {
@@ -99,7 +106,6 @@
           "reference/cli",
           "reference/sdk",
           "reference/instances",
-          "reference/egress-ip-addresses",
           {
             "group": "Single sign-on",
             "icon": "shield-check",

@@ -42,7 +42,7 @@ Six credentials show up in Limrun integrations. Hand each one only to the party 
 | Instance token (`status.token`) | Drive one instance through its endpoints, only while it is running. Returned only to credentials that can control the instance. | Whoever drives that instance: a device client, `<RemoteControl />`, an MCP client, or a [sandboxed agent](/agents/sandboxed-agents). |
 | Stream token (`status.streamToken`) | Open the instance's streaming WebSocket (`status.endpointWebSocketUrl`) and nothing else. | A browser that only streams the device, while the instance token stays on your backend. |
 | Signed stream URL (`status.signedStreamUrl`) | Open the instance in the Limrun console's streaming view, with the instance token in the URL fragment. | Anyone you want to watch or use the device: a reviewer, a teammate, a Slack thread. |
-| Tunnel token | Run the connector of one [persistent tunnel](/ci/persistent-tunnels) and nothing else. Shown once, when it is created or rotated. | The machine that runs the connector, or its CI secret. |
+| Tunnel token | Run the connector of one [persistent tunnel](/networking/persistent-tunnels) and nothing else. Shown once, when it is created or rotated. | The machine that runs the connector, or its CI secret. |
 | Scoped token | Reach specific registry endpoints, such as device installs or the Apple relay, for a limited time. | A browser session started by your backend. See [scoped tokens](/reference/sdk#scoped-tokens). |
 
 Create API keys in the console under **Settings**, **API Keys**. The CLI reads `LIM_API_KEY` from the environment or a `.env` file in the working directory, or uses the key stored in `~/.lim/config.yaml`.
