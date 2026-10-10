@@ -23,7 +23,7 @@ The dialog then shows the connector command, `lim tunnel run --token <token>`. C
 
 Selectors resolve on the connector's machine. `localhost:3000` reaches port 3000 on the machine that runs the connector, and a domain resolves through that machine's DNS, `/etc/hosts`, and VPN.
 
-From a terminal or a pipeline, create the tunnel with `lim tunnel create`, which needs admin permissions:
+From a terminal or a pipeline, create the tunnel with `lim tunnel create`:
 
 ```bash
 lim tunnel create staging --selector localhost:3000 --selector "*.internal.example.com"
@@ -142,7 +142,7 @@ Its connector exits, its token stops working, and instances that name it lose ac
 
 ## Run a quick tunnel
 
-To share a service for one session without creating a tunnel first, run a quick tunnel, which needs admin permissions:
+To share a service for one session without creating a tunnel first, run a quick tunnel:
 
 ```bash
 lim tunnel run --name scratch --selector localhost:3000
