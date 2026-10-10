@@ -70,7 +70,8 @@
         "pages": [
           "ci/github-actions",
           "ci/pr-previews",
-          "ci/build-logs-and-webhooks"
+          "ci/build-logs-and-webhooks",
+          "ci/persistent-tunnels"
         ]
       },
       {
