@@ -64,6 +64,16 @@ The stream stays visible while the app installs, launches, and opens the URL.
 The overlay disappears when these steps finish. If a step fails, the error
 appears over the stream.
 
+Add `tunnel` with the name of a [persistent tunnel](/networking/persistent-tunnels)
+when the app needs services in your private network, such as a staging API behind
+a VPN. The preview instance attaches to the tunnel before the app launches, for
+both iOS and Android previews, so the tunnel's connector must be running when a
+reviewer opens the link:
+
+```text
+https://console.limrun.com/preview?asset=my-app.zip&platform=ios&tunnel=staging
+```
+
 ## Use the packaged Action
 
 [`limrun-inc/ios-preview-action`](https://github.com/limrun-inc/ios-preview-action) wraps the create, build, upload, and PR comment steps into one. Its `post:` step deletes the Xcode sandbox after every run, so no sandbox outlives the job.
@@ -110,6 +120,7 @@ The Action posts a comment titled **Limrun Preview** with a table of the platfor
 | `model` | Simulator model for previews: `iphone` (default) or `ipad`. |
 | `env` | Newline-delimited `KEY=VALUE` app environment variables for preview launches. Use nonsecret values because they appear in the preview URL. |
 | `open-url` | URL or app deep link to open after the preview app launches. Pass it without URL encoding. |
+| `tunnel` | Name of a [persistent tunnel](/networking/persistent-tunnels) the preview simulator attaches to before the app launches. Its connector must be running when a reviewer opens the preview. |
 | `xcode-version` | Xcode major to build with, such as `27`. Switching majors invalidates the other version's build state, so the next build starts cold. Defaults to the sandbox default. |
 | `prepare` | Remote shell script after source sync and before xcodebuild. Failure stops the build. |
 | `snapshot-key` | Disk snapshot publication key and default restore key. |
@@ -172,6 +183,9 @@ The Action encodes each environment entry and the URL automatically. `KEY=`
 sets an empty value; duplicate keys use the last value. Use nonsecret values:
 the preview URL appears in the PR comment, action output, logs, and browser history.
 
+Set `tunnel` to the name of a [persistent tunnel](/networking/persistent-tunnels)
+when the app needs services in your private network.
+
 ### Bazel projects
 
 The same Action handles Bazel workspaces. When `project-path` is a Bazel workspace root (it contains `MODULE.bazel`, `WORKSPACE`, or `WORKSPACE.bazel` directly), the Action builds with [remote build execution](/ios/build-with-bazel) instead of `xcodebuild` and uploads the built app as the preview asset. The runner needs `bazelisk` on the `PATH`; GitHub-hosted runners have it preinstalled. Set `bazel-target`, for example `//App`, when the workspace has more than one app target; a single-app workspace is inferred:
@@ -227,7 +241,8 @@ for the remote build. It does not set app-launch environment variables.
 
 `open-url` is encoded automatically and opens after the app launches. Use
 nonsecret URLs because the link appears in the PR comment, logs, and browser
-history. Pass sensitive build values through GitHub secrets; those values may
+history. `tunnel` names a [persistent tunnel](/networking/persistent-tunnels) the
+preview emulator attaches to before the app launches. Pass sensitive build values through GitHub secrets; those values may
 be embedded in the app artifact.
 
 Use `prepare` for remote setup or code generation before Gradle builds. It runs

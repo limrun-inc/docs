@@ -6,7 +6,7 @@ icon: "network"
 ---
 # Connect an iOS simulator to local services
 
-A destination tunnel sends the connections you declare from the simulator through the machine that runs the tunnel, so the app keeps using the addresses it already has, such as `localhost:8000` or `api.corp.example`. This page covers iOS simulators; for Android emulators, see [Connect an Android emulator to local services](/docs/android/local-services), which reuses the selector and inspection rules described here.
+A destination tunnel sends the connections you declare from the simulator through the machine that runs the tunnel, so the app keeps using the addresses it already has, such as `localhost:8000` or `api.corp.example`. This page covers iOS simulators; for Android emulators, see [Connect an Android emulator to local services](/docs/android/local-services), which reuses the selector and inspection rules described here. To route instances through one long-running connector in your network, whichever machine creates them, use a [persistent tunnel](/docs/networking/persistent-tunnels) instead.
 
 <Note>
   This page covers traffic from the device to your service. Reaching a server that runs *inside* the device from outside, such as WebDriverAgent, is the opposite direction and uses `targetHttpPortUrlPrefix`. See [Appium](/docs/testing/appium) for how that works.

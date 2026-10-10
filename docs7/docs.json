@@ -74,6 +74,14 @@
         ]
       },
       {
+        "group": "Networking",
+        "icon": "network",
+        "pages": [
+          "networking/persistent-tunnels",
+          "networking/egress-ip-addresses"
+        ]
+      },
+      {
         "group": "Platform integration",
         "icon": "blocks",
         "pages": [
@@ -98,7 +106,6 @@
           "reference/cli",
           "reference/sdk",
           "reference/instances",
-          "reference/egress-ip-addresses",
           {
             "group": "Single sign-on",
             "icon": "shield-check",
