@@ -710,6 +710,10 @@ await client.stopRecording({ presignedUrl: '<your-s3-upload-url>' });
 
 </CodeGroup>
 
+Recordings include touch ripples and drag trails by default on iPhone and iPad simulators. To omit them, use `lim ios record start --no-touch-indicators` or pass `touchIndicators: false` to `client.startRecording()`.
+
+Indicators also appear in live views and screenshots while recording. They turn off when recording stops or fails. Reconnecting a viewer preserves the recording's setting. Each new recording defaults to indicators enabled.
+
 TypeScript only: `stopRecording` can save to a local file and hand the bytes to a presigned URL in the same call.
 
 ### Keep captures after the session
