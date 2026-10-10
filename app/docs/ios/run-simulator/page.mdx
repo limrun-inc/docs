@@ -45,6 +45,7 @@ These `lim ios create` flags cover most workflows:
 | `--install-asset <name>` | Install an app that is already in [Asset Storage](/docs/platform/asset-storage). Repeatable. |
 | `--install-url <url>` | Install an app from a signed download URL. Repeatable. |
 | `--keychain <asset-name>` | Restore an encrypted keychain asset after creation. See [Save and restore the keychain](#save-and-restore-the-keychain). |
+| `--tunnel <name>` | Route the destinations of a [persistent tunnel](/docs/ci/persistent-tunnels) through its connector. Creation fails when the tunnel does not exist, no connector holds it, or it does not attach within 30 seconds. |
 | `--force-bundle-id <bundle-id>` | After this app first enters the foreground, bring it back whenever it is closed or backgrounded. It does not launch the app. |
 | `--display-name <name>` | Name shown in listings and the console. |
 | `--rm` | Delete the instance when the CLI process exits. Useful for one-shot runs. |
