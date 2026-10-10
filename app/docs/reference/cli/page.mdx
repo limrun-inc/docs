@@ -71,7 +71,7 @@ Commands that act on instances share these flags. Account commands such as `lim 
 | `LIM_SIGNED_UPLOAD_URL` | `lim xcode build`, `lim gradle build` | Default for `--signed-upload-url` when `--upload` is not set. |
 | `LIM_KEYSTORE_PASSWORD`, `LIM_KEY_PASSWORD` | `lim gradle build` | Passwords for `--keystore`. See [Sign and publish](/docs/android/sign-and-publish). |
 | `LIM_PLAYSTORE_ACCESS_TOKEN` | `lim gradle build` | Google access token for `--upload-to-playstore`. |
-| `LIM_TUNNEL_TOKEN` | `lim tunnel run` | Tunnel token, in place of `--token`. See [Persistent tunnels](/docs/ci/persistent-tunnels). |
+| `LIM_TUNNEL_TOKEN` | `lim tunnel run` | Tunnel token, in place of `--token`. See [Persistent tunnels](/docs/networking/persistent-tunnels). |
 
 ## Commands
 
@@ -226,12 +226,12 @@ The Guide column links to the page that explains a command in context. Commands 
 
 | Command | What it does | Guide |
 |---|---|---|
-| `lim tunnel create` | Create a persistent tunnel and print the command that runs it | [Persistent tunnels](/docs/ci/persistent-tunnels#create-a-tunnel) |
-| `lim tunnel delete` | Delete a persistent tunnel | [Persistent tunnels](/docs/ci/persistent-tunnels#delete-a-tunnel) |
-| `lim tunnel list` | List persistent tunnels | [Persistent tunnels](/docs/ci/persistent-tunnels#create-a-tunnel) |
-| `lim tunnel rotate` | Issue a persistent tunnel's token and revoke the old one | [Persistent tunnels](/docs/ci/persistent-tunnels#rotate-the-token) |
-| `lim tunnel run` | Serve a persistent tunnel to every instance that names it | [Persistent tunnels](/docs/ci/persistent-tunnels#run-the-connector) |
-| `lim tunnel update` | Replace a persistent tunnel's selectors | [Persistent tunnels](/docs/ci/persistent-tunnels#change-the-selectors) |
+| `lim tunnel create` | Create a persistent tunnel and print the command that runs it | [Persistent tunnels](/docs/networking/persistent-tunnels#create-a-tunnel) |
+| `lim tunnel delete` | Delete a persistent tunnel | [Persistent tunnels](/docs/networking/persistent-tunnels#delete-a-tunnel) |
+| `lim tunnel list` | List persistent tunnels | [Persistent tunnels](/docs/networking/persistent-tunnels#create-a-tunnel) |
+| `lim tunnel rotate` | Issue a persistent tunnel's token and revoke the old one | [Persistent tunnels](/docs/networking/persistent-tunnels#rotate-the-token) |
+| `lim tunnel run` | Serve a persistent tunnel to every instance that names it | [Persistent tunnels](/docs/networking/persistent-tunnels#run-the-connector) |
+| `lim tunnel update` | Replace a persistent tunnel's selectors | [Persistent tunnels](/docs/networking/persistent-tunnels#change-the-selectors) |
 
 ### Skills, sessions, and account
 

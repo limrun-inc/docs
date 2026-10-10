@@ -130,7 +130,7 @@ Flags for `lim android create`:
 | `--reuse-if-exists` | Return the existing instance with exactly the same labels instead of creating a new one. Looked up in the region that handles the create. |
 | `--inactivity-timeout <duration>` | Inactivity timeout (`1m`, `10m`, `3h`). Without the flag, your organization's Android default applies. The maximum is `24h`. |
 | `--hard-timeout <duration>` | Forced termination after this wall-clock window. Defaults to no cap. |
-| `--tunnel <name>` | Route the destinations of a [persistent tunnel](/docs/ci/persistent-tunnels) through its connector. Creation fails when the tunnel does not exist, no connector holds it, or it does not attach within 30 seconds. |
+| `--tunnel <name>` | Route the destinations of a [persistent tunnel](/docs/networking/persistent-tunnels) through its connector. Creation fails when the tunnel does not exist, no connector holds it, or it does not attach within 30 seconds. |
 | `--install <path>` | Upload a local APK and install it while provisioning. Repeatable. See [Pre-install APKs](#pre-install-apks). |
 | `--asset-ttl <duration>` | Expiry for files uploaded by `--install`, as a Go duration (`24h`, minimum `1m`). Does not affect `--install-asset`. Defaults to no expiry. |
 | `--install-asset <name>` | Install an APK that is already in Asset Storage. Repeatable. |
