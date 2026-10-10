@@ -23,24 +23,17 @@ The dialog then shows the connector command, `lim tunnel run --token <token>`. C
 
 Selectors resolve on the connector's machine. `localhost:3000` reaches port 3000 on the machine that runs the connector, and a domain resolves through that machine's DNS, `/etc/hosts`, and VPN.
 
-To create tunnels from automation, such as an infrastructure pipeline, call the API with an admin's API key. The path takes your organization ID, which the console shows under **Settings**, **Organization**:
+From a terminal or a pipeline, create the tunnel with `lim tunnel create` and an admin's API key in `LIM_API_KEY`:
 
 ```bash
-curl -X POST "https://api.limrun.com/v1/organizations/<organization-id>/tunnels" \
-  -H "Authorization: Bearer $LIM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "staging",
-    "selectors": ["localhost:3000", "*.internal.example.com"],
-    "token": { "expirationMonths": 12 }
-  }'
+lim tunnel create staging --selector localhost:3000 --selector "*.internal.example.com"
 ```
 
-The response holds the tunnel in `tunnel`, including its ID in `tunnel.id`, and the connector's token in `token.token`. `expirationMonths` accepts 1 to 60. For a tunnel created in the console, find its ID with `GET /v1/organizations/<organization-id>/tunnels`.
+The command prints the connector command, `lim tunnel run --token <token>`, the only time the token is shown. `--expiration-months` sets the token's lifetime, from 1 to 60 months (default 12), and `--quiet` prints only the token, for example to store it as a CI secret. `lim tunnel list` shows each tunnel with its connector, selectors, and token expiry; add `--json` for tunnel IDs.
 
 ## Run the connector
 
-Run the connector on a machine that reaches every selector, such as a VM inside your network, a CI runner, or a laptop on your VPN. `lim tunnel run` needs `lim` 0.42.0 or later, and `runTunnel` needs `@limrun/api` 0.62.0 or later. Keep the connector running for as long as instances need the tunnel:
+Run the connector on a machine that reaches every selector, such as a VM inside your network, a CI runner, or a laptop on your VPN. The `lim tunnel` commands need `lim` 0.43.0 or later, and `runTunnel` needs `@limrun/api` 0.62.0 or later. Keep the connector running for as long as instances need the tunnel:
 
 <CodeGroup labels={["CLI","TypeScript"]}>
 ```bash
@@ -53,7 +46,8 @@ lim tunnel run
 ```ts
 import { runTunnel } from '@limrun/api';
 
-// The CLI reads both IDs from the token; runTunnel needs them passed.
+// The CLI reads both IDs from the token. The organization ID is under
+// Settings > Organization in the console; `lim tunnel list --json` shows tunnel IDs.
 const connector = runTunnel({
   token: process.env['LIM_TUNNEL_TOKEN']!,
   baseURL: 'https://api.limrun.com',
@@ -116,39 +110,32 @@ Android instances attach only when every exact selector uses port 1024 or higher
 
 ## Change the selectors
 
-In the console, hover over the tunnel's row, select the pencil button next to its selectors, edit them, and select **Save selectors**. From automation, call the API:
+In the console, hover over the tunnel's row, select the pencil button next to its selectors, edit them, and select **Save selectors**. From a terminal, pass the complete new list:
 
 ```bash
-curl -X PATCH "https://api.limrun.com/v1/organizations/<organization-id>/tunnels/<tunnel-id>" \
-  -H "Authorization: Bearer $LIM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "selectors": ["localhost:3000", "localhost:4000"] }'
+lim tunnel update staging --selector localhost:3000 --selector localhost:4000
 ```
 
 Instances attached after the change get the new selectors; attached instances keep theirs. To apply the change to attached instances, restart the connector.
 
 ## Rotate the token
 
-If the token may have leaked, rotate it now. Otherwise, rotate it before it expires. In the console, select **Rotate** in the tunnel's **Token** column, choose **Token expires in**, select **Rotate token**, and copy the new connector command. From automation, call the API:
+If the token may have leaked, rotate it now. Otherwise, rotate it before it expires. In the console, select **Rotate** in the tunnel's **Token** column, choose **Token expires in**, select **Rotate token**, and copy the new connector command. From a terminal:
 
 ```bash
-curl -X POST "https://api.limrun.com/v1/organizations/<organization-id>/tunnels/<tunnel-id>/token" \
-  -H "Authorization: Bearer $LIM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "expirationMonths": 12 }'
+lim tunnel rotate staging
 ```
 
-The response holds the new token in `token`. The old token stops working at once, and connectors running with it exit within about 10 seconds. A tunnel has one token, so restart every connector, standbys included, with the new one.
+The command prints the new connector command. The old token stops working at once, and connectors running with it exit within about 10 seconds. A tunnel has one token, so restart every connector, standbys included, with the new one.
 
 From 14 days before the token expires, the connector logs a warning once a day and the console flags the token.
 
 ## Delete a tunnel
 
-Delete a tunnel with the delete button on its row in the console, then confirm with **Delete tunnel**. From automation, call the API:
+Delete a tunnel with the delete button on its row in the console, then confirm with **Delete tunnel**. From a terminal:
 
 ```bash
-curl -X DELETE "https://api.limrun.com/v1/organizations/<organization-id>/tunnels/<tunnel-id>" \
-  -H "Authorization: Bearer $LIM_API_KEY"
+lim tunnel delete staging
 ```
 
 Its connector exits, its token stops working, and instances that name it lose access to your network.
