@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { RootProvider } from "@farming-labs/theme";
 import docsConfig from "@/docs.config";
 import "@farming-labs/next/api-reference.css";
 import "./global.css";
 import { webMcpScript } from "@/components/webmcp-script";
+import { CampaignLinks } from "@/components/campaign-links";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: intentional theme init */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <RootProvider theme={{ defaultTheme: "light", disableTransitionOnChange: false }}>
+          <Suspense><CampaignLinks /></Suspense>
           {children}
         </RootProvider>
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static WebMCP registration, see webmcp-script.ts */}
