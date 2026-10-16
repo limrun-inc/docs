@@ -91,7 +91,7 @@ The SCIM credential is separate from the **Limrun SSO** client secret and Limrun
 
 ### Configure attribute mappings
 
-Enable both user and group provisioning. Under the provisioning configuration's attribute mappings, map only attributes Limrun supports. Remove mappings for enterprise-extension fields such as `manager` and `department`.
+Enable user provisioning and disable group provisioning. Under the provisioning configuration's attribute mappings, map only attributes Limrun supports. Remove mappings for enterprise-extension fields such as `manager` and `department`.
 
 | Entra source | SCIM user attribute | Configuration |
 |---|---|---|
@@ -105,21 +105,18 @@ Enable both user and group provisioning. Under the provisioning configuration's 
 
 Use `userPrincipalName` for `userName` only when it equals the OIDC email. A guest's `#EXT#` principal name is not a work email. Every provisioned user's email domain must be verified in the Limrun organization.
 
-For groups, keep `objectId` mapped to `externalId`, `displayName` to `displayName`, and `members` to `members`. Use distinct group names for Entra matching, even though Limrun identifies groups by their SCIM IDs.
 
 See [Microsoft's attribute mapping guide](https://learn.microsoft.com/en-us/entra/identity/app-provisioning/customize-application-attributes) and Limrun's [supported SCIM attributes and operations](/docs/reference/single-sign-on/scim#protocol-support).
 
-### Synchronize groups and activate access management
+### Assign roles and activate access management
 
-1. Assign pilot access groups under **Limrun SCIM > Users and groups**. Include an admin group and its direct user members.
-2. Scope provisioning to **Sync only assigned users and groups**. Ensure those users can also sign in through **Limrun SSO**. See [Microsoft's scoping guidance](https://learn.microsoft.com/en-us/entra/identity/app-provisioning/define-conditional-rules-for-provisioning-user-accounts).
-3. Start provisioning. Check Entra's provisioning logs and wait for both users and group memberships to appear in Limrun. A successful connection test alone does not synchronize the directory.
-4. In Limrun, map the synchronized groups to **Admin**, **Member**, or **Viewer**. Confirm that every existing member who should retain access, including administrators, is active and belongs to a mapped group.
-5. Select **Activate SCIM**. Test a provisioned user's SSO login, then test group removal, deactivation, and reactivation with a pilot account.
+1. Assign pilot users under **Limrun SCIM > Users and groups**. Groups can determine application assignment within Entra, but Limrun does not synchronize group resources.
+2. Scope provisioning to **Sync only assigned users and groups**. Ensure those users can also sign in through **Limrun SSO**.
+3. Choose whether Limrun administrators or Entra will manage roles. For Entra-managed roles, enable **Manage roles through the identity provider** in Limrun and configure application-role provisioning to the SCIM User `roles` attribute. Use `admin`, `member`, or `viewer` as the role value, with only one role per user. Follow [Microsoft's role provisioning instructions](https://learn.microsoft.com/en-us/entra/identity/app-provisioning/customize-application-attributes#provisioning-a-role-to-a-scim-app).
+4. Start provisioning and check Entra's logs. In Limrun, confirm that users appear with the intended roles and that an administrator will retain access. A successful connection test alone does not synchronize users.
+5. Select **Activate SCIM**. Test SSO sign-in, role changes, deactivation, and reactivation with a pilot account.
 
-Activation is permanent and can remove or demote the last admin. A user needs both an active SCIM record and membership in a mapped group. Direct application assignment without a mapped group does not grant Limrun access after activation. Nested groups are not supported; provision direct user memberships.
-
-For role precedence, recovery, and credential rotation, see [SCIM provisioning](/docs/reference/single-sign-on/scim).
+Activation is permanent and can remove the last admin. Console-managed new or reactivated users receive the default join role. Entra-managed users need an active SCIM record and an assigned role. See [SCIM provisioning](/docs/reference/single-sign-on/scim) for role ownership and recovery.
 
 ## Troubleshoot
 
@@ -137,6 +134,6 @@ For role precedence, recovery, and credential rotation, see [SCIM provisioning](
 
 **Provisioning returns 401 or 403.** Check the SCIM base URL and Secret Token. After rotating the Limrun SCIM credential, replace the token in Entra; the previous credential stops working immediately.
 
-**A provisioned user cannot enter Limrun.** Confirm SCIM is activated, the user is active, and a synchronized group containing the user maps to a role. Also check assignment to **Limrun SSO**. Review both Entra provisioning logs and Limrun provisioning history for failed or pending changes.
+**A provisioned user cannot enter Limrun.** Confirm SCIM is activated, the user is active, and the selected role policy grants the user a role. Also check assignment to **Limrun SSO**. Review both Entra provisioning logs and Limrun provisioning history for failed or pending changes.
 
-**Users synchronize but groups do not.** Enable group mappings, assign the groups to **Limrun SCIM**, and check the provisioning scope. Limrun calculates roles from SCIM group membership, not from OIDC group claims.
+**Group provisioning fails.** Disable group provisioning. Limrun accepts users and role assignments, not group resources. Configure group-to-role rules within Entra if needed.

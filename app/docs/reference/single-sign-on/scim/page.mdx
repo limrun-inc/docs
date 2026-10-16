@@ -2,74 +2,88 @@
 title: "SCIM provisioning"
 order: 3
 icon: "users"
-description: "Control who can access your Limrun organization, and with which role, from your identity provider."
+description: "Provision Limrun users and choose whether administrators or your identity provider assign roles."
 ---
 
 # SCIM provisioning
 
-SCIM manages who can access your organization. [OIDC SSO](/docs/reference/single-sign-on) handles sign-in. Configure SSO and verify your email domains before connecting provisioning.
+SCIM manages organization membership. [OIDC SSO](/docs/reference/single-sign-on) handles sign-in. Configure SSO and verify your email domains before connecting provisioning.
 
 ## Connect your directory
 
 1. Open **Settings > Single Sign-On > Directory provisioning (SCIM)** as an organization admin.
-2. Generate a credential. Copy the **SCIM base URL** and the bearer credential into your identity provider's SCIM 2.0 configuration. The credential is shown once and grants provisioning access to this organization only.
-3. Enable user creation, profile updates, deactivation, and group provisioning. Set SCIM `userName` to the same work email sent in the OIDC `email` claim. It must belong to a verified domain of this organization.
-4. Assign users and push groups from the identity provider. Refresh the directory in Limrun to see them.
-5. Map each group to **Admin**, **Member**, **Viewer**, or **No access**.
-6. Select **Save mappings** to save your choices, or **Activate SCIM** to save and activate them. Activation makes the directory authoritative for organization membership.
+2. Generate a credential. Copy the **SCIM base URL** and bearer credential into your provider's SCIM 2.0 configuration. The credential is shown once and grants provisioning access to this organization only.
+3. Enable user creation, profile updates, and deactivation. Disable group provisioning and Group Push. Set SCIM `userName` to the same work email sent in the OIDC `email` claim, within a verified organization domain.
+4. Assign users in your provider and refresh the directory in Limrun. Groups may determine assignments inside the provider, but Limrun does not synchronize groups or map them to roles.
+5. Choose who manages roles using **Manage roles through the identity provider**, then select **Save role policy**. See the role modes below.
+6. Check the provisioned users and their eligible roles, including an administrator who should retain access. Select **Activate SCIM**.
 
-During setup, users and groups synchronize while existing members retain access. Newly provisioned users cannot sign in until activation. Activation is permanent; subsequent directory changes and saved mappings apply immediately. Directory syncs and credential rotation preserve unsaved role choices. If another admin changes mappings or activates SCIM, refresh before saving.
+During setup, users synchronize while existing members retain access. Newly provisioned users cannot sign in until activation. Activation is permanent. Directory changes apply immediately once active. Policy revisions prevent an administrator from overwriting a concurrent policy change; refresh if prompted.
+
+## Choose who manages roles
+
+### Administrators in Limrun
+
+Leave **Manage roles through the identity provider** disabled. Administrators can change existing members' roles in **Settings > Members**. SCIM profile updates preserve those roles and reject requests that assign roles.
+
+Newly provisioned active users receive the organization's **Default role for new members** when SCIM is active. Deactivation removes membership. Reactivation assigns the current default role, which may differ from the user's previous role. Existing members retain their role during activation if they are active in the provisioned directory.
+
+### Identity provider
+
+Enable **Manage roles through the identity provider** and select **Save role policy** before synchronizing role assignments. Console role edits are blocked. Configure the provider to send exactly one of `admin`, `member`, or `viewer` through the SCIM User `roles` attribute:
+
+```json
+{"roles": [{"value": "member"}]}
+```
+
+The provider can derive this assignment from its own groups or policies. Limrun receives the resulting role, not the groups. An active user without an assigned role has no access. Removing the role removes membership. Deactivation retains the assignment for reactivation; deleting the SCIM user removes it. A replacement `PUT` that omits `roles` clears the assignment; a profile-only `PATCH` preserves it.
+
+Enabling provider-managed roles copies current memberships into initial assignments for their SCIM identities. Review those assignments in your provider. Before activation, assignments synchronize without granting access.
+
+Disabling provider-managed roles clears provider assignments and preserves existing membership roles. When SCIM is active, active provisioned users who had no role receive the default role. Re-enabling seeds from current memberships, so old provider assignments do not return.
 
 ## Identity provider setup
 
-SSO and provisioning require separate configuration. Installing an SSO application does not start directory synchronization.
+SSO and provisioning require separate configuration. Installing an SSO application does not start synchronization. Use the generated SCIM bearer credential, not a Limrun API key or the SSO application's client secret.
 
-| Identity provider | Provisioning configuration |
+- **Okta:** Configure SCIM 2.0 with bearer authentication. Enable user provisioning and leave Group Push disabled. See [Okta SSO](/docs/reference/single-sign-on/okta) for authentication setup.
+- **Microsoft Entra ID:** Configure automatic user provisioning in a non-gallery enterprise application. Use the SCIM base URL and credential as the Secret Token, and disable group provisioning. See the [Entra guide](/docs/reference/single-sign-on/microsoft-entra#configure-scim-provisioning).
+
+### Okta entitlement configuration
+
+Okta Identity Governance is required for entitlement management. Enable schema discovery and configure the Role entitlement as follows:
+
+| Setting | Value |
 |---|---|
-| Okta | Use a SCIM 2.0 application integration with HTTP bearer authentication. Enable user provisioning and Group Push. See [Okta SSO](/docs/reference/single-sign-on/okta) for sign-in setup. |
-| Microsoft Entra ID | Create a non-gallery enterprise application and configure automatic provisioning with the SCIM base URL and credential as the **Secret Token**. Enable user and group mappings. Follow the [Microsoft Entra ID guide](/docs/reference/single-sign-on/microsoft-entra#configure-scim-provisioning). |
+| Resource Type | `Role` |
+| Endpoint | `/Roles` |
+| Multi-valued | Disabled |
+| ID attribute | `id` |
+| Display Name attribute | `displayName` |
+| Description attribute | Leave blank |
 
-Use the generated SCIM credential, not a Limrun organization API key or the OIDC application's client secret. For Entra's non-gallery setup, this credential works directly in the provisioning configuration; no OAuth token endpoint is needed.
+Okta discovers Admin, Member, and Viewer. Assign roles individually or through entitlement policies, and enable provider-managed roles in Limrun before synchronizing them. See [Okta's entitlement management guide](https://developer.okta.com/docs/guides/scim-with-entitlements/main/).
 
-### Check provisioning before activation
+## Access and recovery
 
-1. Test the connection in your identity provider.
-2. Synchronize a pilot user and a group containing that user. Confirm the email matches their OIDC `email` claim.
-3. In Limrun, confirm the group contains the expected user and map it to a role. Provisioning a user without a mapped group grants no access after activation.
-4. Synchronize and map an admin group that includes the administrators who should retain access. Check existing members as well as new users before selecting **Activate SCIM**.
+Activation removes membership for users who are absent from the provisioned directory or inactive. Provider-managed roles also require a role assignment. SCIM can remove or demote the last admin. In provider-managed mode, restore administration by assigning `admin` to an active user in the provider. In console-managed mode, if no administrator remains, contact Limrun support; new or reactivated users receive the default Member or Viewer role.
 
-After activation, test sign-in, group removal, deactivation, and reactivation with a pilot user. Check your identity provider's provisioning logs and Limrun's provisioning history after each change. Access changes take effect when Limrun receives the provisioning request, so allow for the provider's synchronization schedule.
+Connecting SCIM disables domain auto-join, invitations, and manual membership additions and removals, including during setup. Role edits follow the selected ownership mode. Having an email in the organization's domain is not enough to join. SSO remains required for verified domains.
 
-Limrun supports direct user membership in groups. Configure directory assignments and attribute mappings in your identity provider; Limrun does not create them for you.
+Deactivation or deletion removes this organization's user access and revokes user-approved MCP grants. Role downgrades also revoke those grants. Other organizations, shared organization API keys, and already-running instances are preserved.
 
-## How access is calculated
-
-Once SCIM is activated, a user has access only when their SCIM record is active and at least one of their groups maps to a Limrun role. Provisioning creates their Limrun account immediately, or reuses their existing account by verified work email. Creating the account alone grants no access. Activation and group assignments create the organization membership before their first SSO sign-in.
-
-When several mapped groups contain a user, the highest role wins: **Admin > Member > Viewer**. Unmapped groups grant no access. Group mappings follow the group's stable SCIM ID, so a group rename preserves its mapping. A deleted and recreated group has a new ID and needs a new mapping. Groups can share a display name; mappings always use their IDs.
-
-Deactivating or deleting a user removes their organization membership. Deactivation takes precedence over any groups that still contain them. Removing a user from a mapped group recalculates access from their remaining groups. Reactivation restores access only if they still have an eligible mapped group.
-
-SCIM can remove or demote the last admin, including the person who activates SCIM. Keep an appropriate admin group mapped before applying the policy. If the last admin loses access, assign an active user to that mapped admin group in the identity provider to restore administration.
-
-Connecting SCIM disables domain auto-join, invitations, and manual membership changes, including during setup. Having an email in the organization's domain is not enough to join. SSO remains required for verified domains. Users denied admission see "Your organization manages access through SCIM" and should ask their administrator for an access-group assignment.
-
-Removal affects this organization's user access and user-approved MCP grants. It preserves the user's other organizations, shared organization API keys, and already-running instances.
+After activation, test sign-in, role changes, deactivation, and reactivation with a pilot user. Check provider logs and Limrun's provisioning history. Access changes take effect when Limrun receives the request, subject to the provider's synchronization schedule.
 
 ## Manage the connection
 
-The provisioning screen shows synchronized users, their group-derived roles, and provisioning history. Errors appear in the history with the affected request and status.
-
-**Rotate credential** immediately replaces the old credential. Update the identity provider with the new value. **Revoke credential** stops provisioning requests without changing the access policy or current memberships. There is no switch back to manual membership management. SCIM requires the configured SSO connection and verified domains; removing SSO or changing those domains is blocked.
+The provisioning screen shows users, their eligible roles, and provisioning history. **Rotate credential** immediately invalidates the old credential. **Revoke credential** stops provisioning without changing membership or role ownership. Neither action disables SCIM enforcement. The configured SSO connection and verified domains cannot be removed while SCIM is configured.
 
 ## Protocol support
 
-The base URL serves `/Users`, `/Groups`, `/ServiceProviderConfig`, `/ResourceTypes`, and `/Schemas`. User and group resources support create, read, replace, atomic PATCH, and delete. Lists support `startIndex` and `count`, up to 1,000 results per request. A zero count returns only the total.
+The base URL serves `/Users`, read-only `/Roles`, `/ServiceProviderConfig`, `/ResourceTypes`, and `/Schemas`. `/Groups` is not supported. Users support create, read, replace, atomic PATCH, and delete. Lists support `startIndex` and `count`, with up to 1,000 results per request. A zero count returns only the total.
 
-Supported equality filters are `userName eq "alice@example.com"` for users, `displayName eq "Engineering"` for groups, and `externalId` or `id` for either resource. User names and group display names match without regard to case. Use `attributes` or `excludedAttributes` to select or exclude fields, including sub-attributes such as `name.givenName`. These parameters cannot be combined. Unsupported filters return a SCIM `invalidFilter` error.
+User lists support equality filters on `userName`, `externalId`, and `id`. User names match without regard to case. Role lists support equality filters on `id` and `displayName`. Unsupported filters return `invalidFilter`. Use either `attributes` or `excludedAttributes` to project responses, including sub-attributes such as `name.givenName`.
 
-Requests are limited to 1 MiB. PATCH requests support up to 100 operations and apply atomically. Value filters in PATCH paths support compound expressions, such as `emails[type eq "work" and primary eq true].value`. Requests exceeding the filter evaluation or output limits return HTTP 413.
+Requests are limited to 1 MiB. PATCH supports up to 100 operations and applies atomically. Value filters support compound expressions such as `emails[type eq "work" and primary eq true].value`. Filter evaluation and output limits return HTTP 413 when exceeded. Send `active` as a JSON boolean. Server-assigned attributes such as `id` are ignored in create and replace requests.
 
-Send `active` as a JSON boolean. To remove a single group member, use a filtered PATCH path such as `members[value eq "USER_ID"]`. Removing `members` without a filter clears all members. Empty `members` and `groups` attributes may be omitted from responses. Server-assigned attributes such as `id` are ignored in create and replace requests.
-
-Groups contain direct user members. Nested groups, bulk requests, sorting, password provisioning, enterprise extensions, and ETags are not supported. Flatten nested directory membership before provisioning. The service advertises its capabilities and supported core profile attributes through SCIM discovery endpoints.
+Bulk requests, sorting, password provisioning, enterprise extensions, and ETags are not supported. Discovery endpoints advertise the supported core profile attributes and capabilities.
