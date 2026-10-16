@@ -121,6 +121,7 @@ The Action posts a comment titled **Limrun Preview** with a table of the platfor
 | `env` | Newline-delimited `KEY=VALUE` app environment variables for preview launches. Use nonsecret values because they appear in the preview URL. |
 | `open-url` | URL or app deep link to open after the preview app launches. Pass it without URL encoding. |
 | `tunnel` | Name of a [private tunnel](/networking/private-tunnels) the preview simulator attaches to before the app launches. Its connector must be running when a reviewer opens the preview. |
+| `device-state-key` | Name under which each reviewer's simulator state is saved between previews. See [Keep a reviewer signed in between previews](#keep-a-reviewer-signed-in-between-previews). |
 | `xcode-version` | Xcode major to build with, such as `27`. Switching majors invalidates the other version's build state, so the next build starts cold. Defaults to the sandbox default. |
 | `prepare` | Remote shell script after source sync and before xcodebuild. Failure stops the build. |
 | `snapshot-key` | Disk snapshot publication key and default restore key. |
@@ -185,6 +186,42 @@ the preview URL appears in the PR comment, action output, logs, and browser hist
 
 Set `tunnel` to the name of a [private tunnel](/networking/private-tunnels)
 when the app needs services in your private network.
+
+### Keep a reviewer signed in between previews
+
+Every preview starts from a fresh simulator, so without further configuration a
+reviewer signs in to the app on every pull request. Set `device-state-key` to a
+name for the app, and each reviewer's simulator state is saved when they leave a
+preview and restored before the app launches on their next one:
+
+```yaml
+- uses: limrun-inc/ios-preview-action@main
+  with:
+    api-key: ${{ secrets.LIM_API_KEY }}
+    device-state-key: myapp
+```
+
+The saved state holds the simulator keychain, which is where login sessions
+live, the app's data container and App Group containers, and the privacy
+permissions the reviewer granted. Caches, `tmp`, and system-managed files are
+not saved, and an app whose remaining data exceeds 256 MiB is left out of the
+save.
+
+The key is a name, not a secret, and the link that carries it is posted on the
+pull request for everyone. Who the state belongs to comes from the reviewer's
+console login when they open the link: seven reviewers under one key have seven
+separate saved states, and none of them can read another's. Use one key per app;
+two apps that share a key share settings but not logins, because keychain items
+belong to the app that wrote them.
+
+Two things happen on their own. An app build older than the one that saved the
+state starts clean, because older builds cannot read newer data. A saved state
+that was written on another iOS major version restores the app's data but not
+the keychain, so the reviewer signs in once more and the next save replaces it.
+A reviewer can save at any time with **Save now** in the preview, and can turn
+saving off on their device with **Don't save my state on this device**. Saved
+states that nobody opened for 30 days, or whose owner left the organization,
+are deleted.
 
 ### Bazel projects
 

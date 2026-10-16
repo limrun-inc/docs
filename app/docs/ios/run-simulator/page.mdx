@@ -917,7 +917,7 @@ Without `--bundle-id`, file commands target the simulator staging folder. With `
 
 ## Save and restore the keychain
 
-If your app keeps login or session state in the iOS keychain, save the keychain after signing in once and restore it into later simulators. Save it from the signed-in simulator:
+If your app keeps login or session state in the iOS keychain, save the keychain after signing in once and restore it into later simulators. For PR previews, where every reviewer should keep their own login and settings without running commands, use the preview action's `device-state-key` instead; see [Keep a reviewer signed in between previews](/docs/ci/pr-previews#keep-a-reviewer-signed-in-between-previews). Save the keychain from the signed-in simulator:
 
 ```bash
 # The default asset name is "keychain/login.tar.gz"
