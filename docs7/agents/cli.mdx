@@ -21,7 +21,7 @@ bun  add     --global lim
 ## JSON for automation
 
 Commands that list `--json` in their help treat it as a public output contract.
-Finite commands write one JSON value to stdout. List commands return arrays,
+Non-streaming commands write one JSON value to stdout. List commands return arrays,
 including `[]` for an empty result. Streams and watch modes emit one complete
 JSON value per line. Human-readable diagnostics go to stderr.
 
@@ -35,7 +35,8 @@ lim android create --hard-timeout=10m --json > instance.json
 jq -r '.metadata.id' instance.json
 
 lim asset push ./app.apk --json | jq -r .id
-lim gradle build . --json > build.json 2> build.log
+lim gradle build . --json > build.ndjson 2> diagnostics.log
+jq 'select(.type == "result")' build.ndjson
 lim ios syslog --json | jq --unbuffered -r .line
 ```
 
@@ -47,10 +48,13 @@ and amount; app actions include the bundle ID or package name. Text entry report
 `{"ok":true,"id":"..."}`. Asset uploads return the asset response. File downloads
 return `localPath` and `bytes`.
 
-Foreground Xcode and Gradle builds return `instanceId` and the SDK execution
-result, including `execId`, `status`, `exitCode`, and any download URL or store
-publication status. Build logs go to stderr. Sandbox `run`, `tools`, and mise
-`use` commands include captured `stdout` and `stderr` in the execution result.
+Foreground Xcode and Gradle builds stream NDJSON to stdout. Each build log line
+is `{type:"stdout",line}` or `{type:"stderr",line}`, followed by one
+`{type:"result",instanceId,...}` event containing `execId`, `status`, `exitCode`,
+and any download URL or store publication status. The final result is also
+emitted for failed or timed-out executions. CLI diagnostics stay on stderr.
+Detached builds still return one acknowledgement object. Sandbox `run`, `tools`,
+and mise `use` commands include captured `stdout` and `stderr` in the execution result.
 `sync --watch` emits sync events with `bytesSent` and `durationMs`.
 
 Always check the exit status. An execution can return JSON and still fail. A
