@@ -39,8 +39,11 @@ lim gradle build . --json > build.json 2> build.log
 lim ios syslog --json | jq --unbuffered -r .line
 ```
 
-Simple device actions, such as `tap` and `type`, return
-`{"ok":true}`. Instance, asset, and private-tunnel deletion returns
+Device actions return `ok`, the resolved `instanceId`, and action details. For
+example, `tap 100 200 --json` returns
+`{"ok":true,"instanceId":"...","x":100,"y":200}`. Scroll results include direction
+and amount; app actions include the bundle ID or package name. Text entry reports
+`textLength` without echoing the input. Instance, asset, and private-tunnel deletion returns
 `{"ok":true,"id":"..."}`. Asset uploads return the asset response. File downloads
 return `localPath` and `bytes`.
 
