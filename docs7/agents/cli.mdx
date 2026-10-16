@@ -18,6 +18,51 @@ pnpm add     --global lim
 bun  add     --global lim
 ```
 
+## JSON for automation
+
+Commands that list `--json` in their help treat it as a public output contract.
+Finite commands write one JSON value to stdout. List commands return arrays,
+including `[]` for an empty result. Streams and watch modes emit one complete
+JSON value per line. Human-readable diagnostics go to stderr.
+
+Instance creation returns the instance resource, including `metadata.id` and
+`status`. Android creation returns the same resource with the default background
+ADB tunnel enabled. Add `--no-connect` when your automation does not need a local
+ADB connection. JSON mode already suppresses browser opening.
+
+```bash
+lim android create --hard-timeout=10m --json > instance.json
+jq -r '.metadata.id' instance.json
+
+lim asset push ./app.apk --json | jq -r .id
+lim gradle build . --json > build.json 2> build.log
+lim ios syslog --json | jq --unbuffered -r .line
+```
+
+Simple device actions, such as `tap` and `type`, return
+`{"ok":true}`. Instance, asset, and private-tunnel deletion returns
+`{"ok":true,"id":"..."}`. Asset uploads return the asset response. File downloads
+return `localPath` and `bytes`.
+
+Foreground Xcode and Gradle builds return `instanceId` and the SDK execution
+result, including `execId`, `status`, `exitCode`, and any download URL or store
+publication status. Build logs go to stderr. Sandbox `run`, `tools`, and mise
+`use` commands include captured `stdout` and `stderr` in the execution result.
+`sync --watch` emits sync events with `bytesSent` and `durationMs`.
+
+Always check the exit status. An execution can return JSON and still fail. A
+`timedOut` result means the client stopped waiting; the remote work may still be
+running. CLI and API errors are reported on stderr as
+`{"error":{"code":"CLI_ERROR","message":"..."}}`, with a more specific code
+when available and numeric `status` for HTTP errors. stderr may also contain
+human diagnostics.
+
+Place `--json` before `--` when forwarding arguments to another tool. JSON does
+not change command lifetime: foreground connections and `create --rm` still wait
+for shutdown. Preserve field names and types in consumers, allow additional
+fields, and consult the [CLI JSON output contract](https://github.com/limrun-inc/typescript-sdk/blob/main/packages/cli/JSON_OUTPUT.md)
+for command-specific responses and streaming formats.
+
 ## Set your API key
 
 Create an API key at [console.limrun.com/settings](https://console.limrun.com/settings) under **API Keys**, then export it in the shell your agent uses:
