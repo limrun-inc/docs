@@ -232,7 +232,9 @@ When the build needs files that are not in your repository, such as a `.netrc` f
 <CodeGroup>
 ```bash CLI
 # --additional-file local=remote; repeat the flag for each file
-lim xcode build . --additional-file ~/.netrc=~/.netrc
+lim xcode build . \
+  --additional-file "$HOME/.npmrc=~/.npmrc" \
+  --additional-file "$HOME/.netrc=~/.netrc"
 ```
 
 ```ts TypeScript
@@ -246,7 +248,9 @@ await xcode.sync('./my-app', {
 ```
 </CodeGroup>
 
-Remote paths that start with `~/` expand to the sandbox's home directory.
+Remote paths that start with `~/` expand to the sandbox's managed build home. Other remote paths are relative to the workspace. Use `.npmrc` as the destination for workspace-level registry configuration. The same flag works with `lim xcode sync`; repeat it on each build that needs these files.
+
+For private-package 401s, check that the remote build has the registry configuration and credentials it needs. If `.npmrc` references `${NPM_TOKEN}`, pass `--env NPM_TOKEN="$NPM_TOKEN"` too. Keep credential contents out of logs and commits. Sync preserves file permissions, so set restrictive local permissions such as `chmod 600` before uploading.
 
 ### Keep the delta cache on CI
 
