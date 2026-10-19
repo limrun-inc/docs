@@ -2,7 +2,7 @@
   "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
   "source": {
     "repository": "https://github.com/limrun-inc/skills",
-    "commit": "099d8d8bcccecaec0c0d2cfe78896ed0e1da19f0"
+    "commit": "450edc97b894068727690b81e6b0eecc0749296e"
   },
   "skills": [
     {
@@ -10,7 +10,7 @@
       "type": "skill-md",
       "description": "Build an iOS / Apple app on remote Xcode with `lim xcode build` instead of local xcodebuild, run project commands with `lim xcode run`, or run its XCTest suites with `lim xcode test`, from any environment (Linux, Windows, macOS, VM, container). Use for non-Bazel projects (an `.xcodeproj` / `.xcworkspace`, an XcodeGen `project.yml` with a gitignored project, React Native / Expo native build) when the user wants to build, compile, run code generation or Make targets, test, inspect build logs, reload, produce a preview build, or ship a signed device IPA. To run, tap, screenshot, or otherwise interact with the result on a simulator, use limrun-ios-simulator. For Bazel workspaces, use limrun-xcode-bazel.",
       "url": "/.well-known/agent-skills/limrun-xcode/SKILL.md",
-      "digest": "sha256:e122a54e02429c7ee36e24de00174469afaf2ad882a21411886f8febb13628ea"
+      "digest": "sha256:04b9ab1f94ff5295609e7e2f5fa2bd34df49f430ff72e05744b2c64a19b8cea9"
     },
     {
       "name": "limrun-ios-simulator",
@@ -59,7 +59,7 @@
       "type": "skill-md",
       "description": "Build an Android app on a remote Gradle sandbox with `lim gradle build` instead of local Gradle or Android Studio, from any environment (Linux, Windows, macOS, VM, container). Use when the user wants to build an APK or AAB, sign a release with an upload key, prepare a Play Store publish, inspect build logs, or select sandbox tools and run shell commands, for native Android projects, React Native, and Expo. To run, tap, screenshot, or otherwise interact with the built APK on an emulator, use limrun-android-emulator. For iOS builds, use limrun-xcode or limrun-expo-development.",
       "url": "/.well-known/agent-skills/limrun-gradle/SKILL.md",
-      "digest": "sha256:8b37893ab6532e2e7878af0c92d848e27294b59327f3a04033a3b13c85e049dc"
+      "digest": "sha256:85be3f44bd9db7db069d8be8bd141fd0c87ad32768fb1359a9372f320f2ad141"
     },
     {
       "name": "limrun-android-emulator",
