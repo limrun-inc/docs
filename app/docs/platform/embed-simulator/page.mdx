@@ -326,7 +326,7 @@ export function Simulator() {
 
 ## Component props
 
-These props match `@limrun/ui` 0.16.0, the current `latest` release on npm. The iPhone Duo props ship in the 0.17.0 release candidate (`npm install @limrun/ui@rc`).
+Automatic iOS frame selection and `onDeviceInfoChange` require `@limrun/ui` 0.18.0 or newer.
 
 | Prop | Type | Default | Use |
 |---|---|---|---|
@@ -334,10 +334,11 @@ These props match `@limrun/ui` 0.16.0, the current `latest` release on npm. The 
 | `token` | string | required | Instance token. Pass `instance.status.token`. The component appends it to the connection URL as `?token=…`. |
 | `sessionId` | string | random | A unique signaling-session identifier. Prevents collisions when several browser tabs resolve to the same reused instance. Create it once per mount, for example with `useState` and `crypto.randomUUID()` as in the example above; a value that changes between renders restarts the stream. |
 | `openUrl` | string | none | A URL or deep link to open on the device once the component is ready, such as `https://example.com`, `myapp://orders/42`, or `exp://…` for Expo Go. |
-| `showFrame` | boolean | `true` | Draw the device frame. See [iPad and Apple Watch](#ipad-and-apple-watch) for models without built-in frames. |
+| `showFrame` | boolean | automatic | iOS starts with an iPhone frame, then selects the iPhone, iPad, or Apple Watch artwork from runtime device information. Set this explicitly to override automatic selection. Android retains its phone/tablet frame behavior. |
 | `assets` | object | bundled frames | Device frame and boot-logo images. The default entry bundles Limrun's frames; the `@limrun/ui/lite` entry omits them so a frameless embed stays small. |
 | `autoReconnect` | boolean | `false` | Reconnect automatically when a working session's connection drops, instead of showing the Retry button. |
 | `onConnectionStateChange` | callback | none | Reports the coarse connection state, `connecting`, `connected`, `reconnecting`, `failed`, or `terminated`, for status UI outside the component. |
+| `onDeviceInfoChange` | callback | none | Receives iOS runtime `{ model, name?, foldSupported }` over the existing signaling connection. Receives `null` when connection parameters change. Use it for titles or surrounding controls. |
 | `onTerminated` | callback | none | Fires once when the component concludes the instance is gone, not just disconnected. After a drop it probes the instance over HTTP; a 404 stops reconnecting, replaces the Retry button with a terminated message, and calls this. |
 | `className` | string | none | Extra class names applied on top of the component's defaults. |
 | `inspectMode` | `boolean \| 'hover-only'` | off | Draw accessibility boxes over the stream. `true` makes boxes selectable, with Tap, Copy selector, and Copy id actions, and blocks device input; `'hover-only'` previews boxes under the cursor while input still passes through. |
@@ -351,7 +352,7 @@ These props match `@limrun/ui` 0.16.0, the current `latest` release on npm. The 
 | `onCameraStats` | callback | none | About once per second while the camera is streaming, reports outbound WebRTC stats such as codec, fps, bitrate, round-trip time, and quality limitation; `null` once it goes idle. |
 | `microphoneEnabled` | boolean | `false` | Capture the user's microphone and stream it into the device's microphone. Apps that consume microphone input also start capture on their own. |
 | `onMicrophoneStateChange` | callback | none | Reports microphone capture state: whether it is active, the device label, and any error. |
-| `deviceModel` | `'iphone-duo'` | auto-detected | 0.17.0 release candidate. Enable the Duo viewer explicitly; otherwise the component discovers Duo support from the connection. It does not select the model when creating an instance. |
+| `deviceModel` | `'iphone-duo'` | auto-detected | Enable the Duo viewer explicitly; otherwise the component discovers Duo support from the connection. It does not select the model when creating an instance. |
 | `duoModelUrl` | string | built-in model | 0.17.0 release candidate. URL of a prepared custom Duo GLB. See [iPhone Duo frame](#iphone-duo-frame). |
 
 ## Built-in input handling
@@ -449,7 +450,11 @@ These are browser-side controls. For richer control from your server, such as ta
 
 ## iPad and Apple Watch
 
-`showFrame` ships device art for iPhone (iOS), Pixel 9 (Android phone), and Pixel Tablet (Android tablet). iPad and Apple Watch have no dedicated frame today, so render them frameless:
+`showFrame` ships device art for iPhone, iPad, Apple Watch, Pixel 9, and Pixel Tablet. Starting in 0.18.0, `RemoteControl` shows an iPhone frame while device information loads, then selects the matching iOS frame. The iPad frame follows portrait and landscape rotation. Both iPad and Watch frames fit the actual video aspect ratio. The Watch uses a dark, bandless case based on Simulator's appearance. Its crown and side button are decorative; interact with the screen as usual.
+
+To supply custom iOS artwork, set `assets.ios.tabletFrame`, `tabletFrameLandscape`, or `watchFrame` and match the bundled SVGs' centered screen openings. The lite entry includes no artwork. A missing device-specific asset renders frameless.
+
+Use `showFrame={false}` to hide device art:
 
 ```tsx
 <RemoteControl
