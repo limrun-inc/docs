@@ -948,7 +948,12 @@ Without `--bundle-id`, file commands target the simulator staging folder. With `
 
 ## Save and restore the keychain
 
-If your app keeps login or session state in the iOS keychain, save the keychain after signing in once and restore it into later simulators. Save it from the signed-in simulator:
+[Simulator snapshots](/reference/instances#simulator-snapshots) save all
+installed apps, their data, keychain, and supported permissions under a name.
+For iOS previews, add
+[`snapshot-key`](/ci/pr-previews#keep-app-state-between-previews) to the preview URL.
+
+To save only the keychain, run this command after signing in to your app:
 
 ```bash
 # The default asset name is "keychain/login.tar.gz"

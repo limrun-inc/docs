@@ -127,12 +127,88 @@ The `spec` fields accepted by `iosInstances.create` (TypeScript names; Python us
 | `spec.tunnel` | string | Name of a [private tunnel](/networking/private-tunnels). The instance reaches the tunnel's selectors through its connector. Creation fails when the tunnel does not exist, no connector holds it, or it does not attach within 30 seconds, and the instance becomes ready only after the tunnel attaches. TypeScript SDK, CLI, and REST only. |
 | `spec.forceBundleId` | string | After this app first enters the foreground, Limrun brings it back whenever it is closed or backgrounded. It does not launch the app at startup. |
 | `spec.clues[]` | array | Placement hints: `ClientIP` with the end user's IP, or `ClientLocation` with coordinates (TypeScript SDK and REST only). See [Client location clues](#client-location-clues). |
+| `spec.deviceState.key` | string | Simulator snapshot key. Shared within your organization; each save replaces the previous snapshot. REST only. See [Simulator snapshots](#simulator-snapshots). |
+| `spec.deviceState.restoreMode` | `'server' \| 'client'` | Default `server`: restores before readiness. `client`: lets the caller restore after readiness; saving requires a restoration acknowledgment. REST only. |
 | `spec.initialAssets[]` | array | Apps or keychain state to apply at boot. App entries use `kind: 'App'` with `source` `URL`, `AssetName`, or `AssetID`, plus an optional `launchMode` of `ForegroundIfRunning` or `RelaunchIfRunning`; omit `launchMode` to install without launching. Keychain entries use `kind: 'Keychain'` and require `encryptionKey`. See [Pre-install at boot](/platform/asset-storage#pre-install-at-boot) and [Save and restore the keychain](/ios/run-simulator#save-and-restore-the-keychain). |
 | `spec.sandbox.xcode.enabled` | boolean | Legacy: create an embedded Xcode sandbox with the simulator. The API still accepts it for old clients, but the TypeScript SDK (from 0.54.0) and CLI (from 0.35.0) no longer offer it. Create the sandbox separately and attach instead; see [Move off the embedded Xcode sandbox](/ios/build-with-xcode#move-off-the-embedded-xcode-sandbox). |
 
 <Frame>
   <img src="/images/console/03-ios-models.png" alt="Console Playground iOS model picker showing iPhone, iPad, and Apple Watch options" />
 </Frame>
+
+### Simulator snapshots
+
+A simulator snapshot saves all installed user apps, their data, shared App Group
+containers, the keychain, and supported privacy permissions. Create an instance
+with the same key to restore those apps and their state. No app assets are
+required for restoration.
+
+For example, this REST request creates a simulator that restores `my-test-device`
+and saves back to that key when it terminates:
+
+```json
+{
+  "wait": true,
+  "spec": {
+    "deviceState": { "key": "my-test-device" }
+  }
+}
+```
+
+Keys belong to your organization. The first instance starts fresh; each save
+replaces the snapshot under that key. Installing a newer build of an app after
+restoration updates the app and keeps its data. Apps that you do not update stay
+at their saved versions. For Preview links, see
+[Keep app state between previews](/ci/pr-previews#keep-app-state-between-previews).
+
+Snapshots have these limits:
+
+- They exclude system apps, the Photos library, Contacts, simulator settings,
+  caches, temporary files, logs, and system-managed container files.
+- Supported privacy grants and denials are restored. Limited Photos and Contacts
+  access is excluded.
+- The total uncompressed snapshot, including app bundles, can be up to 4 GiB.
+  If saving fails or exceeds this limit, the previous snapshot stays unchanged.
+- Restoration requires the same iOS major version. Limrun selects the saved major
+  version when you omit it. A request for a different major version fails.
+
+By default, restoration runs before readiness. The create response reports
+`status.deviceState.restore.phase` as `restored`, `empty`, or `failed`, or `pending`
+if the call returns early. A failed restore can leave partial state on the new
+simulator, but saving stays disabled to protect the previous snapshot. Instance
+get and list responses do not include restore or save progress.
+
+To inspect saved archives, open [Snapshots](https://console.limrun.com/snapshots?type=ios)
+and select **iOS**. The list shows saved status, compressed size, last
+save time, iOS version, and last use. Open a key for its details and a reusable
+Preview link.
+
+The REST API exposes the same information:
+
+| Endpoint | Result |
+|---|---|
+| `GET /v1/organizations/{organizationId}/ios_snapshots` | Snapshot keys in alphabetical order. Use `prefix` to filter, `limit` to set the page size, and the returned `nextOffset` as the next request's `offset`. The default limit is 25 and the maximum is 100. |
+| `GET /v1/organizations/{organizationId}/ios_snapshots/{key}` | Current archive information for one URL-encoded key. |
+
+Both endpoints require iOS read access in the organization. A key can exist before
+its first save; `saved: false` means it has no archive. `publishedAt` is the last
+save time, while `lastUsedAt` is when a simulator last resolved the key.
+
+With `restoreMode: "client"`, the caller controls restoration after readiness:
+
+1. Create an instance with `spec.deviceState: { key: "my-test-device", restoreMode: "client" }`
+   and wait for readiness.
+2. Pass `status.deviceState.restore.downloadUrl` from the create response to the
+   simulator's `importDeviceState` signaling command. This installs the saved apps
+   and restores their state. If the URL is empty, there is no saved snapshot.
+3. After a successful restore, or when there is no saved snapshot, send
+   `POST /v1/ios_instances/{id}/device_state/ready` with no body. This enables
+   manual saving and saving at termination.
+4. Install any app updates, then launch the apps you need.
+
+Do not acknowledge a failed or incomplete restore. The download URL is temporary;
+keep it private. Older snapshots that contain only data require the corresponding
+apps to be installed before restoration can complete.
 
 ## Android spec
 
