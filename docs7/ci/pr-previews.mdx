@@ -39,6 +39,35 @@ Bazel workspaces publish the same kind of asset with `lim xcode rbe upload <asse
 
 ## Configure the preview app
 
+Every preview instance includes a `user-email` label with the
+email address of the signed-in user who opens the link. This applies to PR and
+Playground preview links. A label supplied in the URL cannot override this value.
+
+Repeat `asset` to install multiple apps on the same device. Apps install and
+launch in URL order, and must belong to the same organization. Repeat `label`
+with `key=value` to attach labels to the instance:
+
+```ts
+const params = new URLSearchParams({ platform: 'ios' });
+params.append('asset', 'customer-app.zip');
+params.append('asset', 'companion-app.zip');
+params.append('label', 'env=preview');
+params.append('label', 'pr=42');
+const previewUrl = `https://console.limrun.com/preview?${params}`;
+```
+
+In the console Playground, select the device, apps, and optional tunnel, then
+expand **Labels** to enter labels in the key and value fields. A new empty row appears when you type a key or value. The dropdown beside **Start** offers
+**Copy as command** and **Copy as URL**. The command uses your CLI login, so sign
+in to the same organization before running it. The URL records the selected
+organization and requires the recipient to have access to it.
+
+Playground URLs preserve the OS version, model, all apps, labels, and tunnel.
+They also work without apps. Opening one uses the **Start** configuration and adds
+the viewer's email label, with apps installed before the device is ready and the
+organization's default inactivity timeout. Existing PR preview links keep their five-minute
+inactivity timeout and stream while apps install.
+
 For iOS, repeat the `env` query parameter to set app environment variables before
 the app's first launch. Each value uses `KEY=VALUE` syntax and must be URL-encoded:
 
