@@ -151,6 +151,28 @@ const { simulator } = await xcode.attachNewSimulator(); // or xcode.attachSimula
 
 Pass the Xcode sandbox's `sandbox_` ID to `lim xcode` commands and the simulator's `ios_` ID to `lim ios` commands. The two instances have separate lifecycles: delete each one, or let each time out on its own.
 
+## Connect private GitHub dependencies
+
+When GitHub connections are enabled, an organization admin can open **Settings > GitHub**
+in the console and connect the repositories needed by builds. The connecting GitHub
+user must have admin access to every selected repository.
+
+Use HTTPS Git URLs such as `https://github.com/your-org/private-library.git`.
+All Xcode and Gradle builds in the Limrun organization can read the connected
+repositories without uploading a personal access token or `.netrc` file.
+No additional build flag or GitHub Actions workflow is required. Allow a short
+time for a new connection to become available in each region.
+
+This connection covers Git access to github.com. SSH URLs, GitHub Packages,
+and private binary download URLs need separate authentication. Existing
+credential files remain available for repositories outside the connection.
+
+Disconnecting stops new credentials from being issued after the change reaches
+each region. Credentials already issued can remain valid for up to one hour.
+Automatic GitHub credentials are not written to credential files. Downloaded
+private source and credential files you upload yourself can still be included
+in snapshots.
+
 ## Sync your source
 
 Every `lim xcode build` syncs first. The first sync uploads everything; later syncs send only what changed. For a continuous sync without building, for example while a tool watches the remote workspace, use watch mode:

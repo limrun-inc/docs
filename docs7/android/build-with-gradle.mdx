@@ -155,6 +155,28 @@ Commands stream their output.
 Commands and builds share one slot per sandbox: starting a new command or build cancels the one that is running.
 </Note>
 
+## Connect private GitHub dependencies
+
+When GitHub connections are enabled, an organization admin can open **Settings > GitHub**
+in the console and connect the repositories needed by builds. The connecting GitHub
+user must have admin access to every selected repository.
+
+Use HTTPS Git URLs such as `https://github.com/your-org/private-library.git`.
+All Xcode and Gradle builds in the Limrun organization can read the connected
+repositories without uploading a personal access token or `.netrc` file.
+No additional build flag or GitHub Actions workflow is required. Allow a short
+time for a new connection to become available in each region.
+
+This connection covers Git access to github.com. SSH URLs, GitHub Packages,
+and private binary download URLs need separate authentication. Existing
+credential files remain available for repositories outside the connection.
+
+Disconnecting stops new credentials from being issued after the change reaches
+each region. Credentials already issued can remain valid for up to one hour.
+Automatic GitHub credentials are not written to credential files. Downloaded
+private source and credential files you upload yourself can still be included
+in snapshots.
+
 ## Keep builds warm
 
 Reuse the same sandbox for later builds. It keeps its dependency caches and temporary files between builds and commands, until the instance is deleted. The image also ships warmed Gradle caches and a pnpm 10 store, so only another pnpm major needs an initial registry download.
