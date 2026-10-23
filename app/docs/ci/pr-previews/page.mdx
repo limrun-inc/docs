@@ -13,28 +13,32 @@ PR previews work like web deploy previews for an iOS app. Previews cover iOS app
 A preview link points the Limrun console at an asset in [Asset Storage](/docs/platform/asset-storage):
 
 ```text
-https://console.limrun.com/preview?asset=<asset-name>&platform=ios
+https://console.limrun.com/stream?asset=<asset-name>&platform=ios
 ```
 
-Opening it provisions a fresh simulator and starts streaming while the console installs the build. An `Installing <asset name>` overlay stays visible until installation finishes. Reviewers need no install and no Mac, but they do need to be members of your Limrun organization.
+Opening the link takes the reviewer to Playground with the app and launch settings filled in. The console automatically selects an organization that owns the linked apps. Reviewers can change the device model, apps, labels, tunnel, environment variables, URL to open, and inactivity timeout before clicking **Start**. Reviewers need no install and no Mac, but they do need to be members of your Limrun organization.
 
-The simulator is an iPhone unless the link says otherwise. Add `model` to open the same build on an iPhone Duo or an iPad:
+Start checks that the selected apps are available before provisioning a fresh simulator, then begins streaming while the console installs and launches each app in order. An `Installing <asset name>` overlay stays visible until installation finishes. The device uses the same Playground controls and inspectors, including **Inspect**, **Connect**, and **Stop**.
+
+The optional `model` parameter preselects `iphone`, `iphone-duo`, `ipad`, or `watch`. To share the edited configuration, open the dropdown beside **Start device** and choose **Copy as URL** in Playground.
+
+Links default to iPhone. For example, this link preselects iPhone Duo:
 
 ```text
-https://console.limrun.com/preview?asset=<asset-name>&platform=ios&model=iphone-duo
+https://console.limrun.com/stream?asset=<asset-name>&platform=ios&model=iphone-duo
 ```
-
-`model` accepts `iphone`, `iphone-duo`, and `ipad`. Each link provisions its own simulator, so post one link per model when reviewers need to check a build on both an iPhone and an iPhone Duo.
 
 Any build that uploads to Asset Storage produces a previewable asset. From a shell or a coding agent, build with `--upload` and share the resulting URL:
 
 ```bash
 ASSET_NAME="${PR_NUMBER:-$(date +%s)}.zip"
 lim xcode build . --upload "${ASSET_NAME}"
-echo "https://console.limrun.com/preview?asset=${ASSET_NAME}&platform=ios"
+echo "https://console.limrun.com/stream?asset=${ASSET_NAME}&platform=ios"
 ```
 
 Bazel workspaces publish the same kind of asset with `lim xcode rbe upload <asset-name>` or `lim xcode rbe --auto-upload <asset-name>`; see [Build with Bazel](/docs/ios/build-with-bazel).
+
+Existing `/preview` links redirect to `/stream` with their settings preserved. Opening `/stream` without configuration arguments shows the default Playground form.
 
 ## Configure the preview app
 
@@ -42,7 +46,7 @@ For iOS, repeat the `env` query parameter to set app environment variables befor
 the app's first launch. Each value uses `KEY=VALUE` syntax and must be URL-encoded:
 
 ```text
-https://console.limrun.com/preview?asset=my-app.zip&platform=ios&env=FEATURE_FLAG%3D1&env=API_URL%3Dhttps%3A%2F%2Fapi.example.com
+https://console.limrun.com/stream?asset=my-app.zip&platform=ios&env=FEATURE_FLAG%3D1&env=API_URL%3Dhttps%3A%2F%2Fapi.example.com
 ```
 
 Use `URLSearchParams` when generating links so spaces, `&`, `+`, and `=` are encoded:
@@ -52,7 +56,7 @@ const params = new URLSearchParams({ asset: 'my-app.zip', platform: 'ios' });
 params.append('env', 'FEATURE_FLAG=1');
 params.append('env', 'API_URL=https://api.example.com');
 params.set('openUrl', 'myapp://checkout?item=123&source=preview');
-const previewUrl = `https://console.limrun.com/preview?${params}`;
+const previewUrl = `https://console.limrun.com/stream?${params}`;
 ```
 
 The last occurrence of a key wins, and `KEY=` sets an empty value.
@@ -64,12 +68,25 @@ for both iOS and Android previews, with or without `env`. URL-encode the entire
 URL, including its query string:
 
 ```text
-https://console.limrun.com/preview?asset=my-app.zip&platform=ios&openUrl=myapp%3A%2F%2Fcheckout%3Fitem%3D123%26source%3Dpreview
+https://console.limrun.com/stream?asset=my-app.zip&platform=ios&openUrl=myapp%3A%2F%2Fcheckout%3Fitem%3D123%26source%3Dpreview
 ```
 
 The stream stays visible while the app installs, launches, and opens the URL.
 The overlay disappears when these steps finish. If a step fails, the error
-appears over the stream.
+appears over the stream. Choose **Resume setup** to retry the unfinished app and
+continue on the same device. Completed apps are not reinstalled. If only opening
+the URL failed, resuming retries that step.
+
+Keep the tab open until setup finishes. Refreshing interrupts the remaining steps;
+the same tab remembers its progress and offers **Resume setup** when you return
+to the device. Closing the tab can discard that progress. **Stop** cancels the
+remaining setup and terminates the device. These behaviors also apply when
+starting directly from Playground.
+
+For a link with a saved simulator snapshot, keep the tab open during restoration.
+If you refresh before restoration completes, stop the device and reopen the link.
+Once restoration finishes, interrupted app installation and launch can resume
+without restoring the snapshot again.
 
 Add `tunnel` with the name of a [private tunnel](/docs/networking/private-tunnels)
 when the app needs services in your private network, such as a staging API behind
@@ -78,7 +95,7 @@ both iOS and Android previews, so the tunnel's connector must be running when a
 reviewer opens the link:
 
 ```text
-https://console.limrun.com/preview?asset=my-app.zip&platform=ios&tunnel=staging
+https://console.limrun.com/stream?asset=my-app.zip&platform=ios&tunnel=staging
 ```
 
 ## Use the packaged Action
@@ -282,7 +299,7 @@ This workflow builds on every PR open or push, uploads under a PR-scoped asset n
 ```markdown
 📱 **iOS preview ready**
 
-Preview: https://console.limrun.com/preview?asset=my-app-pr-42.zip&platform=ios
+Preview: https://console.limrun.com/stream?asset=my-app-pr-42.zip&platform=ios
 ```
 
 The workflow:
@@ -329,7 +346,7 @@ jobs:
         with:
           script: |
             const assetName = process.env.ASSET_NAME;
-            const url = `https://console.limrun.com/preview?asset=${encodeURIComponent(assetName)}&platform=ios`;
+            const url = `https://console.limrun.com/stream?asset=${encodeURIComponent(assetName)}&platform=ios`;
             const body = [
               '📱 **iOS preview ready**',
               '',
