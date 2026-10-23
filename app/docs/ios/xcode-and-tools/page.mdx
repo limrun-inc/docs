@@ -97,7 +97,7 @@ The sandbox has one Xcode selected at a time, and the workspace preference wins.
 
 ## Reuse the workspace across sandboxes
 
-A sandbox's workspace, including dependency installs and build products, is lost when the instance terminates. A disk snapshot saves it under a key and restores it into a later sandbox, so the next build starts warm. Create the sandbox with `--snapshot-key`, and delete it with `--wait-snapshot` after a successful build. [Disk snapshots](/docs/ios/snapshots) covers keys, branch fallbacks, and the SDK. Use a separate key per Xcode version, because a restore under a different Xcode is wiped.
+A sandbox's workspace, including dependency installs and build products, is lost when the instance terminates. A disk snapshot saves it under a key and restores it into a later sandbox, so the next build starts warm. New CLI-created sandboxes default to a snapshot key derived from Git origin and the project directory. Override it with `--snapshot-key`, or use `--no-snapshot` to create without snapshots. Delete with `--wait-snapshot` after a successful build to wait for publication. [Disk snapshots](/docs/ios/snapshots) covers keys, branch fallbacks, and the SDK. Use a separate key per Xcode version, because a restore under a different Xcode is wiped.
 
 ## Select developer tools
 
