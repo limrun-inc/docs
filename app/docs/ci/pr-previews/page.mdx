@@ -6,7 +6,7 @@ icon: "git-pull-request"
 ---
 # Automatic PR previews with GitHub Actions
 
-PR previews work like web deploy previews for an iOS app. Previews cover iOS apps only. The packaged Action runs on GitHub Actions, and the underlying `lim xcode build --upload` pattern works on any CI system.
+PR previews work like web deploy previews for a mobile app. Preview links support iOS and Android; the build workflows on this page cover iOS. The packaged Action runs on GitHub Actions, and the underlying `lim xcode build --upload` pattern works on any CI system.
 
 ## How a preview link works
 
@@ -18,13 +18,26 @@ https://console.limrun.com/preview?asset=<asset-name>&platform=ios
 
 Opening it provisions a fresh simulator and starts streaming while the console installs the build. An `Installing <asset name>` overlay stays visible until installation finishes. Reviewers need no install and no Mac, but they do need to be members of your Limrun organization.
 
-The simulator is an iPhone unless the link says otherwise. Add `model` to open the same build on an iPhone Duo or an iPad:
+Add `model` to select the device for the preview:
 
 ```text
 https://console.limrun.com/preview?asset=<asset-name>&platform=ios&model=iphone-duo
 ```
 
-`model` accepts `iphone`, `iphone-duo`, and `ipad`. Each link provisions its own simulator, so post one link per model when reviewers need to check a build on both an iPhone and an iPhone Duo.
+The model values match the CLI and TypeScript SDK:
+
+| `platform` | `model` values | Default |
+| --- | --- | --- |
+| `ios` | `iphone`, `iphone-duo`, `ipad`, `watch` | `iphone` |
+| `android` | `phone`, `tablet` | `phone` |
+
+For an Android tablet, use an uploaded APK asset:
+
+```text
+https://console.limrun.com/preview?asset=<apk-asset-name>&platform=android&model=tablet
+```
+
+An unknown model or a model from the other platform makes the link invalid. Each link provisions its own device, so post one link per model when reviewers need to check multiple models.
 
 Any build that uploads to Asset Storage produces a previewable asset. From a shell or a coding agent, build with `--upload` and share the resulting URL:
 
